@@ -214,7 +214,7 @@ function hostStart(){
 /* ---------- Every phone: secret, answering, events ---------- */
 function syncSecret(){
   if(!G||!G.gid){mySecret=null;return}
-  if(!mySecret||mySecret.gid!==G.gid){const s=LS.get('hl-sec-'+code+'-'+G.gid);mySecret=s&&s.gid===G.gid?s:null}
+  if(!mySecret||mySecret.gid!==G.gid){const s=LS.get('hl-sec-'+code+'-'+G.gid+'-'+PID);mySecret=s&&s.gid===G.gid?s:null}
 }
 function answerIfAsked(){
   if(!G||G.phase!=='play'||!G.q||G.q.tg!==PID||!mySecret)return;
@@ -310,7 +310,7 @@ async function leaveGame(){
   render(true);
 }
 function lockSecret(n){
-  ui.sec='';mySecret={gid:G.gid,n};LS.set('hl-sec-'+code+'-'+G.gid,mySecret);
+  ui.sec='';mySecret={gid:G.gid,n};LS.set('hl-sec-'+code+'-'+G.gid+'-'+PID,mySecret);
   setP({ready:G.gid});
 }
 function sendAct(act){setP({act:{gid:G.gid,seq:G.seq,...act}})}

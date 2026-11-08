@@ -4,7 +4,7 @@ window.makeSupabaseRoom=function(cfg){
   var myKey=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
   return {
     join:function(name){
-      var ch=getClient().channel('hl-'+name,{config:{broadcast:{self:false}}});
+      var ch=null;
       var myPres={},peers=new Map(),peerFns=[],connFns=[];
       var connected=false,subscribed=false,left=false;
       var sendTimer=null,lastSend=0,hbTimer=null,sweepTimer=null,notifyQueued=false;
@@ -43,36 +43,41 @@ window.makeSupabaseRoom=function(cfg){
           if(dropped)notifyPeers();
         },2000);
       }
-      ch.on('broadcast',{event:'p'},function(m){
-        var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
-        var cur=peers.get(pl.k),now=Date.now();
-        var p=pl.p||{};
-        if(!cur)peers.set(pl.k,{presence:p,updatedAt:now,lastHeard:now});
-        else{
-          if(JSON.stringify(cur.presence)!==JSON.stringify(p)){cur.presence=p;cur.updatedAt=now}
-          cur.lastHeard=now;
-        }
-        notifyPeers();
-      });
-      ch.on('broadcast',{event:'hello'},function(m){
-        var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
-        sendNow();
-      });
-      ch.on('broadcast',{event:'bye'},function(m){
-        var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
-        if(peers.delete(pl.k))notifyPeers();
-      });
-      ch.subscribe(function(status){
-        if(left)return;
-        if(status==='SUBSCRIBED'){
-          connected=true;subscribed=true;notifyConn();
-          rawSend('hello',{k:myKey});
+      function setup(){
+        ch=getClient().channel('hl-'+name,{config:{broadcast:{self:false}}});
+        ch.on('broadcast',{event:'p'},function(m){
+          var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
+          var cur=peers.get(pl.k),now=Date.now();
+          var p=pl.p||{};
+          if(!cur)peers.set(pl.k,{presence:p,updatedAt:now,lastHeard:now});
+          else{
+            if(JSON.stringify(cur.presence)!==JSON.stringify(p)){cur.presence=p;cur.updatedAt=now}
+            cur.lastHeard=now;
+          }
+          notifyPeers();
+        });
+        ch.on('broadcast',{event:'hello'},function(m){
+          var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
           sendNow();
-          startTimers();
-        }else if(status==='CLOSED'||status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
-          connected=false;subscribed=false;notifyConn();
-        }
-      });
+        });
+        ch.on('broadcast',{event:'bye'},function(m){
+          var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
+          if(peers.delete(pl.k))notifyPeers();
+        });
+        var mine=ch;
+        ch.subscribe(function(status){
+          if(left||mine!==ch)return;
+          if(status==='SUBSCRIBED'){
+            connected=true;subscribed=true;notifyConn();
+            rawSend('hello',{k:myKey});
+            sendNow();
+            startTimers();
+          }else if(status==='CLOSED'||status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+            connected=false;subscribed=false;notifyConn();
+          }
+        });
+      }
+      setup();
       return Promise.resolve({
         presence:function(patch){
           try{
@@ -92,6 +97,12 @@ window.makeSupabaseRoom=function(cfg){
           return function(){var i=connFns.indexOf(fn);if(i>=0)connFns.splice(i,1)};
         },
         connected:function(){return connected},
+        reconnect:function(){
+          if(connected||left)return;
+          try{var r=getClient().removeChannel(ch);if(r&&r.catch)r.catch(function(){})}catch(e){}
+          subscribed=false;
+          setup();
+        },
         leave:function(){
           left=true;
           rawSend('bye',{k:myKey});

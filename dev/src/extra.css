@@ -117,3 +117,15 @@
 .pic{width:44px}
 .rng{font-size:13px;white-space:nowrap}
 .nm{font-size:17px}
+
+.conn-banner{background:var(--yellow);border:3px solid var(--ink);border-radius:12px;font-weight:800;font-size:14px;text-align:center;padding:6px;margin:6px 12px 0}
+.hint-pop{display:block;background:var(--yellow);border:3px solid var(--ink);border-radius:14px;padding:6px 12px;font-family:var(--display);font-size:17px;color:var(--ink);box-shadow:0 3px 0 var(--ink);text-align:center;animation:hintBob 1.2s ease-in-out infinite}
+@keyframes hintBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.timer-pill{display:inline-block;font-family:var(--display);font-size:16px;line-height:1;background:var(--ink);color:var(--yellow);border-radius:12px;padding:4px 10px;margin-left:8px;vertical-align:middle}
+.timer-pill.low{background:var(--red);color:var(--white);animation:timerPulse .6s ease-in-out infinite}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@media (prefers-reduced-motion:reduce){.hint-pop,.timer-pill.low{animation:none}}
+
+/* QR join */
+.qr{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:6px;box-shadow:0 4px 0 var(--ink);width:min(190px,60vw)}
+.qr img{display:block;width:100%;height:auto;image-rendering:pixelated}

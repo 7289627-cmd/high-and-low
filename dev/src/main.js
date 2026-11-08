@@ -18,9 +18,12 @@ let roomNS=null, roomState='checking', R=null, connected=false, joinedAt=0;
 let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
 let lastEv=null, evPrimed=null, winShown=null;
-let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:''};
+let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0};
+let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, qSched=0, tickTimer=null, wheelSched=null;
 
+function hint(key,text){return LS.get('hl-hint-'+key)?'':`<div class="hint-pop"><span>${text}</span></div>`}
+function seen(key){LS.set('hl-hint-'+key,1)}
 const pv=p=>({color:COLORS[p.c%6],acc:p.c,id:p.c});
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
 const zone=p=>p.hi-p.lo+1<=10;
@@ -62,6 +65,7 @@ function update(){
       if(G&&!Array.isArray(G.players))G=null;
     } else hostTick();
     syncSecret();answerIfAsked();playNewEvent();
+    if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
     if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;later(showWinner,900)}
@@ -71,7 +75,7 @@ function update(){
 
 /* ---------- Host engine ---------- */
 function newLobby(){
-  return{gid:uid(),phase:'lobby',max:10000,lives:3,players:[{pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''}],
+  return{gid:uid(),phase:'lobby',max:10000,lives:3,timer:0,players:[{pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''}],
     turn:0,seq:0,stage:'await',q:null,ev:null,en:0,asked:0,win:null};
 }
 function publishG(){
@@ -99,7 +103,7 @@ function hostTick(){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
       if(peerMap.has(p.pid))lastSeen[p.pid]=Date.now();
-      else if(Date.now()-(lastSeen[p.pid]||Date.now())>30000){markLeft(p);ch=true}
+      else if(Date.now()-(lastSeen[p.pid]||Date.now())>90000){markLeft(p);ch=true}
     }
   }
   if(G.phase==='secrets'){
@@ -119,6 +123,16 @@ function hostTick(){
         const act=(getPres(cur.pid)||{}).act;
         if(act&&act.gid===G.gid&&act.seq===G.seq&&validAct(cur,act)){
           G.q={seq:G.seq,a:cur.pid,tg:act.tg,t:act.t,dir:act.dir==='l'?'l':'h',x:act.x,n:act.n};ch=true;
+        } else if(G.timer>0&&timerSched!==G.gid+':'+G.seq){
+          const key=G.gid+':'+G.seq;timerSched=key;
+          later(()=>{
+            if(!G||G.gid+':'+G.seq!==key||G.phase!=='play'||G.stage!=='await'||G.q)return;
+            const t=byPid(G.sub&&G.sub[0]),c=G.players[G.turn];if(!t||!c)return;
+            const base={seq:G.seq,a:c.pid,tg:t.pid};
+            if(zone(t)){const cl=candList(t);if(!cl.length)return;G.q={...base,t:'guess',n:cl[rnd(0,cl.length-1)]}}
+            else G.q={...base,t:'ask',dir:'h',x:Math.floor((t.lo+t.hi-1)/2)};
+            publishG();
+          },window.HL_TEST_TIMER_MS||G.timer*1000);
         }
       }
     }
@@ -233,6 +247,7 @@ function playNewEvent(){
   if(ev.t==='ask'||ev.t==='miss'){
     ui.bubble={pid:ev.tg,id:ev.id,up:ev.t==='ask'&&!!ev.ans,text:ev.t==='miss'?'Wrong!':(ev.ans?'Yes!':'Nope!')};
     later(()=>{if(ui.bubble&&ui.bubble.id===ev.id){ui.bubble=null;render(true)}},1800);
+    if(ev.t==='ask'&&ev.tg===PID)seen('asked');
     if(navigator.vibrate&&ev.tg===PID)try{navigator.vibrate(30)}catch(e){}
   }
   else if(ev.t==='hit'&&T)showScene(ev.k,T,`${A?A.name:'Someone'} guessed ${fmt(ev.n)}!`,`${T.pid===PID?'You':T.name} ${CAPTION[ev.k]}`,3900);
@@ -319,12 +334,13 @@ function doAsk(){
   const x=Number(ui.num);
   const lo=ui.dir==='l'?t.lo+1:t.lo, hi=ui.dir==='l'?t.hi:t.hi-1;
   if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick a whole number from ${fmt(lo)} to ${fmt(hi)}.`;render(true);return}
-  ui.err='';sendAct({tg:t.pid,t:'ask',dir:ui.dir,x});ui.step='dir';ui.num='';
+  ui.err='';sendAct({tg:t.pid,t:'ask',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
 }
 
 /* ---------- Render ---------- */
 function render(force){
-  const sig=JSON.stringify([view,mode,roomState,connected,G,{...ui,land:0},mySecret,myPres.act,myPres.ready,
+  trackConn();
+  const sig=JSON.stringify([view,mode,roomState,connected,connBanner(),timerLeft()!==null,G,{...ui,land:0},mySecret,myPres.act,myPres.ready,
     G&&G.players.map(p=>[(getPres(p.pid)||{}).ready,peerMap.has(p.pid)]),NAME,!!(G||Date.now()-joinedAt>7000)]);
   if(!force&&sig===lastSig)return;lastSig=sig;
   const ae=document.activeElement,keepId=ae&&ae.id,selS=ae&&ae.selectionStart;
@@ -345,7 +361,7 @@ function homeHTML(){
  <div class="home-actions">
   <button class="btn primary big full" id="hostBtn" ${online?'':'disabled'}>Host a game</button>
   <div class="or">OR JOIN</div>
-  <div class="join-row"><input id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="Room code"><button class="btn" id="joinBtn" ${online?'':'disabled'}>Join</button></div>
+  <div class="join-row"><input id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Room code"><button class="btn" id="joinBtn" ${online?'':'disabled'}>Join</button></div>
   ${ui.homeErr?`<p class="err">${esc(ui.homeErr)}</p>`:''}
  </div>
  <div class="or">OR</div>
@@ -355,9 +371,28 @@ function homeHTML(){
 </section>
 </main>`;
 }
+function inviteURL(){return location.origin+location.pathname+'#room='+code}
+function qrHTML(){
+  if(!window.qrcode||!code)return '';
+  try{const q=window.qrcode(0,'M');q.addData(inviteURL());q.make();
+    return `<div class="qr"><img src="${q.createDataURL(6,2)}" alt="QR code to join room ${esc(code)}"></div>`}catch(e){return ''}
+}
+function trackConn(){
+  if(view!=='game'||mode!=='online'||connected){discSince=0;return}
+  if(!discSince){discSince=Date.now();later(()=>render(),2100)}
+}
+function connBanner(){return view==='game'&&mode==='online'&&!connected&&discSince>0&&Date.now()-discSince>2000}
+function timerLeft(){
+  if(!G||G.phase!=='play'||G.stage!=='await'||G.q||!(G.timer>0))return null;
+  const cur=G.players[G.turn];if(!cur||cur.bot||!cur.a)return null;
+  if(ui.timerSeq!==G.gid+':'+G.seq)return null;
+  return Math.max(0,Math.ceil(G.timer-(Date.now()-ui.timerStart)/1000));
+}
+function timerPill(){const v=timerLeft();if(v===null)return '';return `<span class="timer-pill ${v<6?'low':''}">${Math.floor(v/60)}:${String(v%60).padStart(2,'0')}</span>`}
 function headerHTML(){
   const st=mode==='solo'?'<span class="status solo"><i></i>Practice</span>':(connected?'<span class="status"><i></i>Live</span>':'<span class="status off"><i></i>Connecting</span>');
-  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'?`<span class="pill">${esc(code)}</span>`:''}${st}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>`;
+  const ban=connBanner()?'<div class="conn-banner">Reconnecting…</div>':'';
+  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'?`<span class="pill">${esc(code)}</span>`:''}${st}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>${ban}`;
 }
 function gameHTML(){
   if(!G){
@@ -389,9 +424,9 @@ function askViewHTML(){
   const t=curTarget(),me=byPid(PID);
   const k=(G.subN||1)-G.sub.length+1;
   const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':`<span class="qcount">Question ${k} of ${G.subN}</span>`}
-<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(t.lo)} – ${fmt(t.hi)}</span></div></div></div>`;
+${timerPill()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(t.lo)} – ${fmt(t.hi)}</span></div></div></div>`;
   if(ui.step!=='num'){
-    return `<section class="askv">${top}<div class="split">
+    return `<section class="askv">${top}${hint('dir','Tap HIGHER or LOWER')}<div class="split">
 <button class="half hi" data-pickdir="h">${BIG_UP}<span class="word">HIGHER</span></button>
 <button class="half lo" data-pickdir="l"><span class="word">LOWER</span>${BIG_DN}</button>
 <div class="speaker"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span><div class="speech"><span class="jit">Is it…</span></div></div>
@@ -404,7 +439,7 @@ function askViewHTML(){
   return `<section class="askv">${top}
 <div class="say"><span class="spk-bean ${ui.num?'jit-slow':'jit'}">${charSVG(pv(me),'talk')}</span>
 <div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot ${ui.num?'jit':''}">${slotsHTML(ui.num,String(G.max).length)}<span class="qm">?</span></span></div></div>
-<p class="sub ask-hint"><span>Pick from ${fmt(lo)} to ${fmt(hi)}.</span><span>Tap ${word.toLowerCase()} to flip it.</span></p>
+${hint('num','Type a number, then tap Ask!')}<p class="sub ask-hint"><span>Pick from ${fmt(lo)} to ${fmt(hi)}.</span><span>Tap ${word.toLowerCase()} to flip it.</span></p>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 ${padHTML(`<button class="key mid" data-k="mid">MID</button>`,land)}
 <button class="btn primary big full" id="askGo" ${ui.num?'':'disabled'}>Ask ${esc(t.name)}!</button>
@@ -458,7 +493,7 @@ function lobbyHTML(){
 ${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:'<span></span>'}</div>`).join('');
   const full=!byPid(PID)&&G.players.length>=6;
   return `<main class="scroll">
-${mode==='online'?`<section class="panel center"><div class="code-label">Room code</div><div class="code">${esc(code)}</div><p class="tip">Friends open this game on their phones, tap Join and type this code.</p></section>`:''}
+${mode==='online'?`<section class="panel center"><div class="code-label">Room code</div><div class="code">${esc(code)}</div>${qrHTML()}<p class="tip">Friends scan this with their camera, or tap Join and type the code.</p>${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Link copied!':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}</section>`:''}
 <section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
 ${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" style="justify-self:start">+ Add a bot</button>':''}
 ${full?'<p class="err">This room is full.</p>':''}</section>
@@ -466,14 +501,16 @@ ${full?'<p class="err">This room is full.</p>':''}</section>
 ${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
 <h2>Wrong guesses</h2>
 ${isHost?`<div class="chips">${[[0,'No penalty'],[1,'1 heart'],[2,'2 hearts'],[3,'3 hearts']].map(([v,l])=>`<button class="chip-btn" data-lives="${v}" aria-pressed="${G.lives===v}">${l}</button>`).join('')}</div>`:''}
-<p class="tip">${G.lives?`Everyone starts with ${G.lives} heart${G.lives>1?'s':''}. A wrong exact guess costs one, and running out takes you out too.`:'A wrong exact guess just crosses that number off.'}</p></section>
+<p class="tip">${G.lives?`Everyone starts with ${G.lives} heart${G.lives>1?'s':''}. A wrong exact guess costs one, and running out takes you out too.`:'A wrong exact guess just crosses that number off.'}</p>
+<h2>Turn timer</h2>
+${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' seconds per question':'Off'}</p>`}</section>
 ${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host to start…</p>'}
 </main>`;
 }
 function secretsHTML(){
   const me=byPid(PID);
   const list=G.players.map(p=>{const r=p.bot||(getPres(p.pid)||{}).ready===G.gid;return `<div class="prow2"><span>${charSVG(pv(p),r?'idle':'scared')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="${r?'state-ok':'state-wait'}">${r?'Ready':'Picking…'}</span></div>`}).join('');
-  if(me&&!mySecret)return `<main class="scroll"><section class="panel center"><div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">Pick your secret number</h2><p class="tip">Anything from 1 to ${fmt(G.max)}. Keep your screen to yourself.</p>
+  if(me&&!mySecret)return `<main class="scroll"><section class="panel center">${hint('secret','Pick a number nobody will guess!')}<div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">Pick your secret number</h2><p class="tip">Anything from 1 to ${fmt(G.max)}. Keep your screen to yourself.</p>
 <div class="secret-big entry">${slotsHTML(ui.sec,String(G.max).length)}</div>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 ${padHTML(`<button class="key mid" data-k="rand">RND</button>`,false)}
@@ -506,11 +543,12 @@ function trayHTML(){
   if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID;
   const evLine=G.ev?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
-  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}</div>${evLine}</div></div>`;
+  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${timerPill()}</div>${evLine}</div></div>`;
   if(!myTurn){
     const ct=curTarget();
     let body=G.stage==='wheel'?'<p class="hint">Spinning for who goes first…</p>':G.q?`<p class="hint">${esc(qText(G.q))}</p>`:(ct?`<p class="hint">${esc(cur.name)} is about to question ${ct.pid===PID?'you':esc(ct.name)} (${(G.subN||1)-G.sub.length+1} of ${G.subN}).</p>`:`<p class="hint">Waiting for ${esc(cur.name)}…</p>`);
     if(G.q&&G.q.tg===PID)body+=`<p class="sub">Your phone answers for you, honestly.</p>`;
+    if((G.q&&G.q.tg===PID)||(!G.q&&ct&&ct.pid===PID))body+=hint('asked','Your phone answers for you. No lying!');
     if(me&&!me.a)body+=`<p class="sub">You're out. Enjoy the chaos.</p>`;
     return head+body;
   }
@@ -519,7 +557,7 @@ function trayHTML(){
   const t=curTarget();
   if(!t||!t.a)return head;
   const btns=[];for(let n=t.lo;n<=t.hi;n++){const x=t.x.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
-  return head+`<p class="q"><b>${esc(t.name)}</b> is in the guess zone. Pick their exact number.</p><div class="guess-grid">${btns.join('')}</div>
+  return head+hint('guess','Down to 10! Guess their exact number.')+`<p class="q"><b>${esc(t.name)}</b> is in the guess zone. Pick their exact number.</p><div class="guess-grid">${btns.join('')}</div>
 <div class="sub"><span>${G.lives?'Miss and you lose a heart.':'Miss and it gets crossed off.'}</span><span>Question ${(G.subN||1)-G.sub.length+1} of ${G.subN}</span></div>`;
 }
 
@@ -528,7 +566,7 @@ function on(id,fn){const el=document.getElementById(id);if(el)el.onclick=fn;retu
 function bind(){
   if(view==='home'){
     const ni=$('#nameIn');ni.oninput=()=>{NAME=clean(ni.value);LS.set('hl-name',NAME)};
-    const ci=$('#codeIn');ci.oninput=()=>{ci.value=ci.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)};
+    const ci=$('#codeIn');ci.oninput=()=>{ci.value=ci.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=ci.value};
     const need=()=>{if(!NAME){ui.homeErr='Type your name first.';render(true);$('#nameIn').focus();return false}ui.homeErr='';return true};
     on('hostBtn',()=>{if(!need())return;let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];startOnline(true,c)});
     const join=()=>{if(!need())return;const c=ci.value;if(!/^[A-Z]{4}$/.test(c)){ui.homeErr='Room codes are 4 letters.';render(true);return}startOnline(false,c)};
@@ -539,24 +577,33 @@ function bind(){
   }
   on('leaveBtn',()=>{if(ui.leaveArmed){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
   if(!G)return;
+  on('inviteBtn',()=>{
+    const url=inviteURL();
+    if(navigator.share){try{const r=navigator.share({title:'High & Low',text:'Join my High & Low game! Room '+code,url});if(r&&r.catch)r.catch(()=>{})}catch(e){}return}
+    const fail=()=>{ui.inviteUrl=url;render(true)};
+    try{
+      navigator.clipboard.writeText(url).then(()=>{ui.inviteCopied=true;ui.inviteUrl='';render(true);later(()=>{ui.inviteCopied=false;render(true)},2000)},fail);
+    }catch(e){fail()}
+  });
   on('addBot',()=>{addBot();publishG()});
   $$('[data-rmbot]').forEach(b=>b.onclick=()=>{G.players=G.players.filter(p=>p.pid!==b.dataset.rmbot);publishG()});
   $$('[data-max]').forEach(b=>b.onclick=()=>{G.max=+b.dataset.max;publishG()});
+  $$('[data-timer]').forEach(b=>b.onclick=()=>{G.timer=+b.dataset.timer;publishG()});
   $$('[data-lives]').forEach(b=>b.onclick=()=>{G.lives=+b.dataset.lives;publishG()});
   on('startBtn',()=>{if(isHost&&G.players.length>=2)hostStart()});
   on('toLobby',toLobby);
   on('lockBtn',lockFromPad);
   on('showBtn',e=>{e.stopPropagation();ui.show=!ui.show;render(true)});
-  $$('[data-pickdir]').forEach(b=>b.onclick=()=>{ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
+  $$('[data-pickdir]').forEach(b=>b.onclick=()=>{seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
   on('flipDir',()=>{ui.dir=ui.dir==='l'?'h':'l';ui.land=true;ui.err='';buzz(15);render(true)});
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
   $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   on('askGo',doAsk);
-  $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct())sendAct({tg:t.pid,t:'guess',n:+b.dataset.n})});
+  $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});
 }
 
 function buzz(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
-function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick a whole number from 1 to ${fmt(G.max)}.`;render(true);return}ui.err='';lockSecret(n)}
+function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick a whole number from 1 to ${fmt(G.max)}.`;render(true);return}ui.err='';lockSecret(n);seen('secret')}
 document.addEventListener('keydown',e=>{
   if(view!=='game'||!G||e.target.tagName==='INPUT')return;
   const onPad=(G.phase==='secrets'&&byPid(PID)&&!mySecret)||(askViewOn()&&ui.step==='num');
@@ -565,9 +612,32 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Backspace')padPress('del');
   else if(e.key==='Enter'){if(G.phase==='secrets')lockFromPad();else doAsk()}
 });
+function wake(){
+  if(document.visibilityState!=='visible')return;
+  if(view==='game'&&R){
+    try{R.presence(myPres).catch(()=>{})}catch(e){}
+    try{if(R.connected&&!R.connected()&&R.reconnect)R.reconnect()}catch(e){}
+    schedule();
+  }
+}
+document.addEventListener('visibilitychange',wake);
+window.addEventListener('pageshow',wake);
+setInterval(()=>{if(timerLeft()===null)return;document.querySelectorAll('.timer-pill').forEach(el=>{const v=timerLeft();if(v===null)return;el.textContent=Math.floor(v/60)+':'+String(v%60).padStart(2,'0');el.classList.toggle('low',v<6)})},1000);
 /* ---------- Boot ---------- */
+const DEEP=(()=>{
+  const m=location.hash.match(/room=([A-Za-z]{4})/);if(!m)return null;
+  try{let h=location.hash.replace(/room=[A-Za-z]{4}&?/,'').replace(/&$/,'');if(h==='#')h='';history.replaceState(null,'',location.pathname+location.search+h)}catch(e){}
+  return m[1].toUpperCase();
+})();
 render(true);
 (async()=>{
   try{if(window.HL_CONFIG&&window.makeSupabaseRoom)roomNS=window.makeSupabaseRoom(window.HL_CONFIG);else roomNS=window.claude&&window.claude.use?await window.claude.use('room'):null}catch(e){roomNS=null}
   roomState=roomNS?'ok':'none';render(true);
+  if(DEEP){
+    if(roomState==='ok'&&NAME)startOnline(false,DEEP);
+    else{ui.codeIn=DEEP;if(!NAME)ui.homeErr='Type your name, then tap Join.';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}
+  }else{
+    const s=LS.get('hl-session');
+    if(s&&s.code&&Date.now()-s.at<3*3600e3&&roomState==='ok')startOnline(!!s.host,s.code);
+  }
 })();

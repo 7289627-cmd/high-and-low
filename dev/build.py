@@ -1,0 +1,44 @@
+"""Build the single-file game: src/* -> /home/claude/high-and-low.html. Run: python3 /home/claude/hl/build.py"""
+import pathlib
+H=pathlib.Path('/home/claude/hl')
+HEAD='''<title>High and Low</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">
+'''
+css=(H/'src/base.css').read_text()+(H/'src/extra.css').read_text()
+js=(H/'src/base.js').read_text()+(H/'src/main.js').read_text()
+import sys,json
+if len(sys.argv)>1 and sys.argv[1]=='web':
+    cfgp=H/'config.json'
+    if cfgp.exists(): cfg=json.loads(cfgp.read_text())
+    else:
+        cfg={'url':'','key':''}; print('WARNING: config.json missing, using empty url/key')
+    wjs=(H/'src/net-supabase.js').read_text()+js
+    head=('<!doctype html><html lang="en"><head>'
+    '<meta charset="utf-8">'
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">'
+    '<meta name="apple-mobile-web-app-capable" content="yes">'
+    '<meta name="mobile-web-app-capable" content="yes">'
+    '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
+    '<meta name="theme-color" content="#7FD0E4">'
+    '<link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-title" content="High &amp; Low"><link rel="icon" type="image/png" href="icon-180.png">\n'
+    '<title>High and Low</title>\n'
+    '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">\n')
+    reset=':root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}\n'
+    out=(head+'<style>'+reset+css+'</style>\n</head><body>\n<div id="app"></div>\n<div id="ov" hidden></div>\n\n'
+    '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>\n'
+    '<script>window.HL_CONFIG={url:'+json.dumps(cfg.get('url',''))+',key:'+json.dumps(cfg.get('key',''))+'}</script>\n'
+    '<script>\n'+wjs+'</script>\n</body></html>\n')
+    (H/'site').mkdir(exist_ok=True)
+    (H/'site/index.html').write_text(out)
+    (H/'test/_built_web.js').write_text(wjs)
+    print('WEB BUILD OK', len(out),'bytes')
+    sys.exit(0)
+out=HEAD+'<style>'+css+'</style>\n\n<div id="app"></div>\n<div id="ov" hidden></div>\n\n<script>\n'+js+'</script>\n'
+pathlib.Path('/home/claude/high-and-low.html').write_text(out)
+(H/'test/_built.js').write_text(js)
+print('BUILD OK', len(out),'bytes')

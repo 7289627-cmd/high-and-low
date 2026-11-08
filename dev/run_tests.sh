@@ -1,0 +1,18 @@
+#!/bin/bash
+# One-command check. Prints PASS/FAIL lines only. Run: bash /home/claude/hl/run_tests.sh
+cd /home/claude/hl
+python3 build.py || { echo "FAIL build"; exit 1; }
+node --check test/_built.js && echo "PASS syntax" || { echo "FAIL syntax"; exit 1; }
+cd test
+S=$(timeout 400 node sim.js 2>&1 | grep -E "END|STUCK|timeout|errors")
+echo "$S" | grep -q "END" && echo "$S" | grep -q "errors \[\]" && echo "PASS solo game: $(echo "$S"|grep END)" || echo "FAIL solo game: $S"
+M=$(timeout 400 node mp.js 2>&1 | grep -E "END|errors" )
+echo "$M" | grep -q "errors \[\] \[\]" && echo "PASS two-phone game (no errors) $(echo "$M"|grep END)" || echo "FAIL two-phone game: $M"
+cd /home/claude/hl
+python3 build.py web >/dev/null || { echo "FAIL web build"; exit 1; }
+node --check test/_built_web.js && echo "PASS web syntax" || { echo "FAIL web syntax"; exit 1; }
+cd test
+W=$(timeout 400 node mp_web.js 2>&1 | grep -E "END|errors" )
+echo "$W" | grep -q "errors \[\] \[\]" && echo "PASS web two-phone game (no errors) $(echo "$W"|grep END)" || echo "FAIL web two-phone game: $W"
+cd ..
+python3 build.py >/dev/null

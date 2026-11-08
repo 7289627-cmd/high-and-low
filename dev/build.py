@@ -9,7 +9,8 @@ HEAD='''<title>High and Low</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 '''
 css=(H/'src/base.css').read_text()+(H/'src/extra.css').read_text()
-js=(H/'src/base.js').read_text()+(H/'src/main.js').read_text()
+snd=(H/'src/sound.js').read_text()
+js=snd+(H/'src/base.js').read_text()+(H/'src/main.js').read_text()
 import sys,json
 if len(sys.argv)>1 and sys.argv[1]=='web':
     cfgp=H/'config.json'

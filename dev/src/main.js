@@ -22,7 +22,11 @@ let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:fals
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, qSched=0, tickTimer=null, wheelSched=null;
 
-function hint(key,text){return LS.get('hl-hint-'+key)?'':`<div class="hint-pop"><span>${text}</span></div>`}
+function sfx(k,o){try{SFX.play(k,o)}catch(e){}}
+const babRate=()=>{const me=G&&byPid(PID);return 0.9+((me?me.c:0)%6)*0.07};
+const sfxSeen={hint:new Set(),seq:new Set(),go:new Set(),burst:new Set(),final:new Set(),hurry:new Set(),over:new Set(),lobby:{gid:null,n:0}};
+let hbTimer=null,hbPeriod=0;
+function hint(key,text){if(LS.get('hl-hint-'+key))return '';if(!sfxSeen.hint.has(key)){sfxSeen.hint.add(key);sfx('hint')}return `<div class="hint-pop"><span>${text}</span></div>`}
 function seen(key){LS.set('hl-hint-'+key,1)}
 const pv=p=>({color:COLORS[p.c%6],acc:p.c,id:p.c});
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
@@ -64,13 +68,54 @@ function update(){
       G=h?h.pres.game:null;
       if(G&&!Array.isArray(G.players))G=null;
     } else hostTick();
-    syncSecret();answerIfAsked();playNewEvent();
+    syncSecret();answerIfAsked();playNewEvent();stateSounds();
     if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
     if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;later(showWinner,900)}
   }
   render();
+}
+
+function stateSounds(){
+  try{
+    if(!G)return;
+    if(G.phase==='lobby'){
+      const L=sfxSeen.lobby,n=G.players.length;
+      if(L.gid===G.gid){if(n>L.n)sfx('join');else if(n<L.n)sfx('leave')}
+      L.gid=G.gid;L.n=n;
+    } else sfxSeen.lobby.gid=null;
+    if(G.phase==='play'&&G.stage==='await'){
+      const key=G.gid+':'+G.seq;
+      if(!sfxSeen.seq.has(key)){
+        sfxSeen.seq.add(key);
+        const cur=G.players[G.turn];
+        if(G.seq===1&&!sfxSeen.go.has(G.gid)){sfxSeen.go.add(G.gid);sfx('vo_go')}
+        else if(cur&&cur.pid===PID&&G.sub&&G.sub.length===G.subN)sfx('yourturn');
+      }
+    }
+    if(G.phase==='play'&&G.players.length>=3&&G.players.filter(p=>p.a).length===2&&!sfxSeen.final.has(G.gid)){sfxSeen.final.add(G.gid);sfx('vo_final',{delay:0.6})}
+    heartCheck();
+  }catch(e){}
+}
+function heartOn(){
+  if(!G||G.phase!=='play'||G.stage!=='await'||!G.sub||!G.sub.length)return 0;
+  const t=byPid(G.sub[0]);
+  if(!t||!t.a||!zone(t))return 0;
+  return left(t)<=3?600:900;
+}
+function heartCheck(){
+  const per=heartOn();
+  if(!per){if(hbTimer){clearInterval(hbTimer);hbTimer=null;hbPeriod=0}return}
+  if(hbTimer&&hbPeriod===per)return;
+  clearInterval(hbTimer);hbPeriod=per;
+  const beat=()=>{if(!heartOn()){clearInterval(hbTimer);hbTimer=null;hbPeriod=0;return}sfx('heart');sfx('heart',{delay:0.18})};
+  hbTimer=setInterval(beat,per);beat();
+}
+function deathSfx(k){
+  const d={anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]}[k]||[];
+  d.forEach(x=>sfx(x[0],x[2]?{delay:x[1],rate:x[2]}:{delay:x[1]}));
+  sfx('sad',{delay:2.4});
 }
 
 /* ---------- Host engine ---------- */
@@ -244,6 +289,10 @@ function playNewEvent(){
   if(!G.ev||G.ev.id===lastEv)return;
   lastEv=G.ev.id;const ev=G.ev;
   const A=byPid(ev.a),T=byPid(ev.tg);
+  if(ev.t==='ask')sfx(ev.ans?'yes':'nope');
+  else if(ev.t==='miss')sfx('nope');
+  else if(ev.t==='bonk'){sfx('bonk');sfx('vo_wrong',{delay:0.45})}
+  else if(ev.t==='hit'||ev.t==='out'||ev.t==='left')deathSfx(ev.k);
   if(ev.t==='ask'||ev.t==='miss'){
     ui.bubble={pid:ev.tg,id:ev.id,up:ev.t==='ask'&&!!ev.ans,text:ev.t==='miss'?'Wrong!':(ev.ans?'Yes!':'Nope!')};
     later(()=>{if(ui.bubble&&ui.bubble.id===ev.id){ui.bubble=null;render(true)}},1800);
@@ -284,6 +333,7 @@ function showWinner(){
   ++sceneSeq;
   const w=byPid(G.win);
   let conf='';for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
+  sfx('win');sfx(w&&w.pid===PID?'vo_youwin':'vo_gameover',{delay:0.9});
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
   openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>
 <div class="btn-row">${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);
@@ -333,8 +383,8 @@ function doAsk(){
   const t=curTarget();if(!t||!askViewOn())return;
   const x=Number(ui.num);
   const lo=ui.dir==='l'?t.lo+1:t.lo, hi=ui.dir==='l'?t.hi:t.hi-1;
-  if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick a whole number from ${fmt(lo)} to ${fmt(hi)}.`;render(true);return}
-  ui.err='';sendAct({tg:t.pid,t:'ask',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
+  if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick a whole number from ${fmt(lo)} to ${fmt(hi)}.`;sfx('error');render(true);return}
+  ui.err='';sfx('send');sendAct({tg:t.pid,t:'ask',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
 }
 
 /* ---------- Render ---------- */
@@ -354,7 +404,7 @@ function homeHTML(){
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   return `<main class="scroll">
-<section class="hero"><h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div></section>
+<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div></section>
 <section class="panel">
  <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="12" autocomplete="nickname" value="${esc(NAME)}" placeholder="Type your name"></div>
  ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
@@ -389,10 +439,15 @@ function timerLeft(){
   return Math.max(0,Math.ceil(G.timer-(Date.now()-ui.timerStart)/1000));
 }
 function timerPill(){const v=timerLeft();if(v===null)return '';return `<span class="timer-pill ${v<6?'low':''}">${Math.floor(v/60)}:${String(v%60).padStart(2,'0')}</span>`}
+const SPK='<path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
+function muteHTML(){
+  const m=SFX.muted;
+  return `<button class="mute-btn" id="muteBtn" aria-label="${m?'Unmute sounds':'Mute sounds'}" aria-pressed="${m}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none">${SPK}${m?'<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>':'<path d="M16 8.5q3 3.5 0 7M19 5.5q6 6.5 0 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>'}</svg></button>`;
+}
 function headerHTML(){
   const st=mode==='solo'?'<span class="status solo"><i></i>Practice</span>':(connected?'<span class="status"><i></i>Live</span>':'<span class="status off"><i></i>Connecting</span>');
   const ban=connBanner()?'<div class="conn-banner">Reconnecting…</div>':'';
-  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'?`<span class="pill">${esc(code)}</span>`:''}${st}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>${ban}`;
+  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>${ban}`;
 }
 function gameHTML(){
   if(!G){
@@ -426,6 +481,8 @@ function askViewHTML(){
   const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':`<span class="qcount">Question ${k} of ${G.subN}</span>`}
 ${timerPill()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(t.lo)} – ${fmt(t.hi)}</span></div></div></div>`;
   if(ui.step!=='num'){
+    const bk=G.gid+':'+G.seq;
+    if(!sfxSeen.burst.has(bk)){sfxSeen.burst.add(bk);[0,0.14,0.28,0.42].forEach(d=>sfx('babble'+rnd(1,3),{delay:d,rate:babRate()+(Math.random()-.5)*0.16}))}
     return `<section class="askv">${top}${hint('dir','Tap HIGHER or LOWER')}<div class="split">
 <button class="half hi" data-pickdir="h">${BIG_UP}<span class="word">HIGHER</span></button>
 <button class="half lo" data-pickdir="l"><span class="word">LOWER</span>${BIG_DN}</button>
@@ -475,17 +532,33 @@ function showWheel(){
 <svg class="pointer" viewBox="0 0 40 44" aria-hidden="true"><path d="M20 42L4 6h32z" fill="#EE4B3B" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></svg></div>
 <p id="wheelMsg" class="wheel-msg">Spinning…</p></div>`);
   const el=$('#wheel');
+  sfx('spin');sfx('vo_ready',{delay:0.3});
+  {let prev=null,cum=0,idx=0;
+   const loop=()=>{
+    if(id!==sceneSeq||!el||!el.isConnected)return;
+    try{
+      const tf=getComputedStyle(el).transform,m=tf&&tf.match(/matrix\(([^)]+)\)/);
+      if(m){const v=m[1].split(',').map(Number),raw=Math.atan2(v[1],v[0])*180/Math.PI;
+        if(prev!==null){let d=((raw-prev)%360+360)%360;if(d>180)d-=360;if(d>0)cum+=d}
+        prev=raw;
+        const ni=Math.floor(cum/w);let c=0;
+        while(idx<ni){idx++;if(c++<3)sfx('tick')}
+      }
+    }catch(e){}
+    requestAnimationFrame(loop);
+   };
+   requestAnimationFrame(loop);}
   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(el)el.style.transform=`rotate(${final}deg)`}));
-  later(()=>{if(id!==sceneSeq)return;const m=$('#wheelMsg');if(m){m.textContent=first.pid===PID?'You go first!':`${first.name} goes first!`;m.classList.add('win')}buzz(40)},4300);
+  later(()=>{if(id!==sceneSeq)return;const m=$('#wheelMsg');if(m){m.textContent=first.pid===PID?'You go first!':`${first.name} goes first!`;m.classList.add('win')}sfx('wheelland');buzz(40)},4300);
   later(()=>{if(id===sceneSeq)closeOv()},5800);
 }
 function padPress(k){
   const field=G.phase==='secrets'?'sec':'num';
   const maxLen=String(G.max).length;
   let v=ui[field];
-  if(k==='del')v=v.slice(0,-1);
-  else if(k==='mid'){const t=curTarget();if(t)v=String(ui.dir==='l'?Math.ceil((t.lo+t.hi+1)/2):Math.floor((t.lo+t.hi-1)/2))}
-  else if(/^\d$/.test(k)){if(v.length<maxLen&&!(v===''&&k==='0'))v+=k}
+  if(k==='del'){sfx('del');v=v.slice(0,-1)}
+  else if(k==='mid'){sfx('pick');const t=curTarget();if(t)v=String(ui.dir==='l'?Math.ceil((t.lo+t.hi+1)/2):Math.floor((t.lo+t.hi-1)/2))}
+  else if(/^\d$/.test(k)){if(field==='sec')sfx('key');else sfx('babble'+(1+ui.num.length%3),{rate:babRate()+ui.num.length*0.04});if(v.length<maxLen&&!(v===''&&k==='0'))v+=k}
   ui[field]=v;ui.err='';render(true);
 }
 function lobbyHTML(){
@@ -564,6 +637,7 @@ function trayHTML(){
 /* ---------- Bindings ---------- */
 function on(id,fn){const el=document.getElementById(id);if(el)el.onclick=fn;return el}
 function bind(){
+  on('muteBtn',()=>{SFX.setMuted(!SFX.muted);if(!SFX.muted)sfx('pick');render(true)});
   if(view==='home'){
     const ni=$('#nameIn');ni.oninput=()=>{NAME=clean(ni.value);LS.set('hl-name',NAME)};
     const ci=$('#codeIn');ci.oninput=()=>{ci.value=ci.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=ci.value};
@@ -594,16 +668,16 @@ function bind(){
   on('toLobby',toLobby);
   on('lockBtn',lockFromPad);
   on('showBtn',e=>{e.stopPropagation();ui.show=!ui.show;render(true)});
-  $$('[data-pickdir]').forEach(b=>b.onclick=()=>{seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
-  on('flipDir',()=>{ui.dir=ui.dir==='l'?'h':'l';ui.land=true;ui.err='';buzz(15);render(true)});
+  $$('[data-pickdir]').forEach(b=>b.onclick=()=>{sfx('pick');sfx('land',{delay:0.18});seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
+  on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.land=true;ui.err='';buzz(15);render(true)});
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
-  $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
+  $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   on('askGo',doAsk);
-  $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});
+  $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sfx('send');sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});
 }
 
 function buzz(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
-function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick a whole number from 1 to ${fmt(G.max)}.`;render(true);return}ui.err='';lockSecret(n);seen('secret')}
+function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick a whole number from 1 to ${fmt(G.max)}.`;sfx('error');render(true);return}ui.err='';sfx('send');sfx('lock',{delay:0.15});lockSecret(n);seen('secret')}
 document.addEventListener('keydown',e=>{
   if(view!=='game'||!G||e.target.tagName==='INPUT')return;
   const onPad=(G.phase==='secrets'&&byPid(PID)&&!mySecret)||(askViewOn()&&ui.step==='num');
@@ -622,7 +696,14 @@ function wake(){
 }
 document.addEventListener('visibilitychange',wake);
 window.addEventListener('pageshow',wake);
-setInterval(()=>{if(timerLeft()===null)return;document.querySelectorAll('.timer-pill').forEach(el=>{const v=timerLeft();if(v===null)return;el.textContent=Math.floor(v/60)+':'+String(v%60).padStart(2,'0');el.classList.toggle('low',v<6)})},1000);
+setInterval(()=>{
+  const tv=timerLeft();
+  if(tv!==null&&G&&G.players[G.turn]&&G.players[G.turn].pid===PID){
+    const k=ui.timerSeq;
+    if(tv<=5&&tv>0&&!sfxSeen.hurry.has('h'+k)){sfxSeen.hurry.add('h'+k);sfx('vo_hurry')}
+    if(tv===0&&!sfxSeen.hurry.has('o'+k)){sfxSeen.hurry.add('o'+k);sfx('vo_timeover')}
+  }
+  if(tv===null)return;document.querySelectorAll('.timer-pill').forEach(el=>{const v=timerLeft();if(v===null)return;el.textContent=Math.floor(v/60)+':'+String(v%60).padStart(2,'0');el.classList.toggle('low',v<6)})},1000);
 /* ---------- Boot ---------- */
 const DEEP=(()=>{
   const m=location.hash.match(/room=([A-Za-z]{4})/);if(!m)return null;

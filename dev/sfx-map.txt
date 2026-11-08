@@ -1,0 +1,40 @@
+key       interface-sounds/addons/kenney_interface_sounds/click_002.wav
+del       interface-sounds/addons/kenney_interface_sounds/back_002.wav
+pick      interface-sounds/addons/kenney_interface_sounds/select_002.wav
+land      zips/kenney_impact-sounds/Audio/impactPlank_medium_000.ogg
+send      interface-sounds/addons/kenney_interface_sounds/confirmation_001.wav
+yes       zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI04.ogg
+nope      zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI05.ogg
+yourturn  interface-sounds/addons/kenney_interface_sounds/question_002.wav
+tick      interface-sounds/addons/kenney_interface_sounds/tick_002.wav
+spin      zips/kenney_casino-audio/Audio/card-fan-1.ogg
+wheelland zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI16.ogg
+lock      zips/kenney_casino-audio/Audio/chips-stack-1.ogg
+join      interface-sounds/addons/kenney_interface_sounds/open_001.wav
+leave     interface-sounds/addons/kenney_interface_sounds/close_001.wav
+hint      interface-sounds/addons/kenney_interface_sounds/pluck_001.wav
+error     interface-sounds/addons/kenney_interface_sounds/error_004.wav
+bonk      zips/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg
+sad       zips/kenney_music-jingles/Audio/Sax jingles/jingles_SAX01.ogg
+anvil     zips/kenney_impact-sounds/Audio/impactMetal_heavy_000.ogg
+anvil2    zips/kenney_impact-sounds/Audio/impactBell_heavy_001.ogg
+zap       interface-sounds/addons/kenney_interface_sounds/glitch_002.wav
+whoosh    interface-sounds/addons/kenney_interface_sounds/maximize_006.wav
+chomp     zips/kenney_impact-sounds/Audio/impactSoft_heavy_000.ogg
+melt      zips/kenney_music-jingles/Audio/Sax jingles/jingles_SAX14.ogg
+pop       zips/kenney_impact-sounds/Audio/impactPunch_heavy_000.ogg
+pop2      zips/kenney_impact-sounds/Audio/impactGlass_light_001.ogg
+heart     zips/kenney_impact-sounds/Audio/impactSoft_medium_000.ogg
+babble1   ui-audio/addons/kenney_ui_audio/rollover1.wav
+babble2   ui-audio/addons/kenney_ui_audio/rollover2.wav
+babble3   ui-audio/addons/kenney_ui_audio/rollover3.wav
+win       zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI02.ogg
+vo_ready  zips/kenney_voiceover-pack/Male/ready.ogg
+vo_go     zips/kenney_voiceover-pack/Male/go.ogg
+vo_youwin zips/kenney_voiceover-pack/Male/you_win.ogg
+vo_gameover zips/kenney_voiceover-pack/Male/game_over.ogg
+vo_final  zips/kenney_voiceover-pack/Male/final_round.ogg
+vo_hurry  zips/kenney_voiceover-pack/Male/hurry_up.ogg
+vo_timeover zips/kenney_voiceover-pack/Male/time_over.ogg
+vo_wrong  zips/kenney_voiceover-pack/Male/wrong.ogg
+vo_correct zips/kenney_voiceover-pack/Male/correct.ogg

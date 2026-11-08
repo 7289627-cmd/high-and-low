@@ -1,0 +1,12 @@
+const fs=require('fs'),path=require('path');
+const src=fs.readFileSync(path.join(__dirname,'_built_web.js'),'utf8');
+const dir=path.join(__dirname,'..','site','sfx');
+const keys=new Set(['babble1','babble2','babble3']);
+let m;const re=/\bsfx\(\s*(['"])([A-Za-z0-9_]+)\1\s*[,)]/g;
+while((m=re.exec(src)))keys.add(m[2]);
+const km=src.match(/KEYS:\[([^\]]*)\]/);
+const listed=km?km[1].split(',').map(s=>s.trim().replace(/['"]/g,'')).filter(Boolean):[];
+if(listed.length!==40)keys.add('__SFX.KEYS_has_'+listed.length+'_not_40');
+listed.forEach(k=>keys.add(k));
+const missing=[...keys].filter(k=>!fs.existsSync(path.join(dir,k+'.mp3')));
+console.log(missing.length?'FAIL sfx files: '+missing.join(','):'PASS sfx files');

@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>High &amp; Low sound board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">
+<style>
+:root{--ink:#1E2240;--paper:#FFF8EC;--paper-2:#F1E4CB;--red:#EE4B3B;--green:#2FA36B;--yellow:#FFD23F;--sky:#7FD0E4;--muted:#545C7D;--white:#fff;--display:"Lilita One",system-ui,sans-serif;--body:"Baloo 2",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.35;padding:16px}
+main{max-width:560px;margin:0 auto;display:grid;gap:10px}
+h1{font-family:var(--display);font-weight:400;font-size:32px;margin:0 0 4px;color:var(--white);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill}
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:14px 0 0}
+.row{display:flex;align-items:center;gap:10px;background:var(--paper);border:3px solid var(--ink);border-radius:16px;padding:8px 10px;box-shadow:0 4px 0 var(--ink)}
+.txt{flex:1;min-width:0;display:grid}
+.txt b{font-family:var(--display);font-weight:400;font-size:18px}
+.txt span{font-size:14px;font-weight:600;color:var(--muted)}
+.play{font-family:var(--display);font-size:16px;background:var(--white);color:var(--ink);border:3px solid var(--ink);border-radius:12px;padding:6px 16px;box-shadow:0 3px 0 var(--ink);cursor:pointer;flex:none}
+.play:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+</style></head><body><main>
+<h1>High &amp; Low sound board</h1>
+<h2>Buttons</h2>
+<div class="row"><div class="txt"><b>key</b><span>Tapping a digit on the secret number pad</span></div><button class="play" data-k="key" aria-label="Play key">Play</button></div>
+<div class="row"><div class="txt"><b>del</b><span>Tapping delete on either number pad</span></div><button class="play" data-k="del" aria-label="Play del">Play</button></div>
+<div class="row"><div class="txt"><b>pick</b><span>RND, MID, HIGHER or LOWER taps, and when you unmute</span></div><button class="play" data-k="pick" aria-label="Play pick">Play</button></div>
+<div class="row"><div class="txt"><b>land</b><span>Right after pick when choosing or flipping HIGHER or LOWER</span></div><button class="play" data-k="land" aria-label="Play land">Play</button></div>
+<div class="row"><div class="txt"><b>send</b><span>Ask!, Lock it in, or tapping a guess grid number</span></div><button class="play" data-k="send" aria-label="Play send">Play</button></div>
+<div class="row"><div class="txt"><b>lock</b><span>Just after send when you lock in your secret number</span></div><button class="play" data-k="lock" aria-label="Play lock">Play</button></div>
+<div class="row"><div class="txt"><b>error</b><span>A validation error shows on a number screen</span></div><button class="play" data-k="error" aria-label="Play error">Play</button></div>
+<h2>Questions</h2>
+<div class="row"><div class="txt"><b>yes</b><span>A question is answered Yes</span></div><button class="play" data-k="yes" aria-label="Play yes">Play</button></div>
+<div class="row"><div class="txt"><b>nope</b><span>A question is answered No, or a wrong guess with no hearts</span></div><button class="play" data-k="nope" aria-label="Play nope">Play</button></div>
+<div class="row"><div class="txt"><b>yourturn</b><span>Your turn starts with the first question</span></div><button class="play" data-k="yourturn" aria-label="Play yourturn">Play</button></div>
+<div class="row"><div class="txt"><b>babble1</b><span>Typing digits in the ask screen and the babble burst, voice 1</span></div><button class="play" data-k="babble1" aria-label="Play babble1">Play</button></div>
+<div class="row"><div class="txt"><b>babble2</b><span>Typing digits in the ask screen and the babble burst, voice 2</span></div><button class="play" data-k="babble2" aria-label="Play babble2">Play</button></div>
+<div class="row"><div class="txt"><b>babble3</b><span>Typing digits in the ask screen and the babble burst, voice 3</span></div><button class="play" data-k="babble3" aria-label="Play babble3">Play</button></div>
+<div class="row"><div class="txt"><b>hint</b><span>A tip bubble shows for the first time</span></div><button class="play" data-k="hint" aria-label="Play hint">Play</button></div>
+<div class="row"><div class="txt"><b>heart</b><span>Heartbeat while the target is in the guess zone</span></div><button class="play" data-k="heart" aria-label="Play heart">Play</button></div>
+<h2>Wheel</h2>
+<div class="row"><div class="txt"><b>spin</b><span>The who goes first wheel starts spinning</span></div><button class="play" data-k="spin" aria-label="Play spin">Play</button></div>
+<div class="row"><div class="txt"><b>tick</b><span>The wheel crosses a wedge boundary</span></div><button class="play" data-k="tick" aria-label="Play tick">Play</button></div>
+<div class="row"><div class="txt"><b>wheelland</b><span>The wheel stops and shows who goes first</span></div><button class="play" data-k="wheelland" aria-label="Play wheelland">Play</button></div>
+<h2>Deaths</h2>
+<div class="row"><div class="txt"><b>bonk</b><span>A wrong guess costs a heart (flowerpot bonk)</span></div><button class="play" data-k="bonk" aria-label="Play bonk">Play</button></div>
+<div class="row"><div class="txt"><b>sad</b><span>Sad sting 2.4 seconds after any death scene starts</span></div><button class="play" data-k="sad" aria-label="Play sad">Play</button></div>
+<div class="row"><div class="txt"><b>anvil</b><span>Anvil death, the thud</span></div><button class="play" data-k="anvil" aria-label="Play anvil">Play</button></div>
+<div class="row"><div class="txt"><b>anvil2</b><span>Anvil death, the second hit</span></div><button class="play" data-k="anvil2" aria-label="Play anvil2">Play</button></div>
+<div class="row"><div class="txt"><b>zap</b><span>Lightning death, three zaps</span></div><button class="play" data-k="zap" aria-label="Play zap">Play</button></div>
+<div class="row"><div class="txt"><b>whoosh</b><span>Rocket death, played slower</span></div><button class="play" data-k="whoosh" aria-label="Play whoosh">Play</button></div>
+<div class="row"><div class="txt"><b>chomp</b><span>Monster death, three chomps</span></div><button class="play" data-k="chomp" aria-label="Play chomp">Play</button></div>
+<div class="row"><div class="txt"><b>melt</b><span>Melt death</span></div><button class="play" data-k="melt" aria-label="Play melt">Play</button></div>
+<div class="row"><div class="txt"><b>pop</b><span>Pop death, the bang</span></div><button class="play" data-k="pop" aria-label="Play pop">Play</button></div>
+<div class="row"><div class="txt"><b>pop2</b><span>Pop death, the confetti layer</span></div><button class="play" data-k="pop2" aria-label="Play pop2">Play</button></div>
+<h2>Voice</h2>
+<div class="row"><div class="txt"><b>vo_ready</b><span>The wheel starts, a short get ready call</span></div><button class="play" data-k="vo_ready" aria-label="Play vo_ready">Play</button></div>
+<div class="row"><div class="txt"><b>vo_go</b><span>The very first question of the game</span></div><button class="play" data-k="vo_go" aria-label="Play vo_go">Play</button></div>
+<div class="row"><div class="txt"><b>vo_youwin</b><span>You win the game</span></div><button class="play" data-k="vo_youwin" aria-label="Play vo_youwin">Play</button></div>
+<div class="row"><div class="txt"><b>vo_gameover</b><span>Someone else wins the game</span></div><button class="play" data-k="vo_gameover" aria-label="Play vo_gameover">Play</button></div>
+<div class="row"><div class="txt"><b>vo_final</b><span>Only two players are left in a game of three or more</span></div><button class="play" data-k="vo_final" aria-label="Play vo_final">Play</button></div>
+<div class="row"><div class="txt"><b>vo_hurry</b><span>5 seconds left on your timed turn</span></div><button class="play" data-k="vo_hurry" aria-label="Play vo_hurry">Play</button></div>
+<div class="row"><div class="txt"><b>vo_timeover</b><span>Your timer hits zero</span></div><button class="play" data-k="vo_timeover" aria-label="Play vo_timeover">Play</button></div>
+<div class="row"><div class="txt"><b>vo_wrong</b><span>Right after bonk on a wrong guess</span></div><button class="play" data-k="vo_wrong" aria-label="Play vo_wrong">Play</button></div>
+<div class="row"><div class="txt"><b>vo_correct</b><span>Reserved, not played yet</span></div><button class="play" data-k="vo_correct" aria-label="Play vo_correct">Play</button></div>
+<h2>Other</h2>
+<div class="row"><div class="txt"><b>join</b><span>A player joins the lobby</span></div><button class="play" data-k="join" aria-label="Play join">Play</button></div>
+<div class="row"><div class="txt"><b>leave</b><span>A player leaves the lobby</span></div><button class="play" data-k="leave" aria-label="Play leave">Play</button></div>
+<div class="row"><div class="txt"><b>win</b><span>The winner overlay appears</span></div><button class="play" data-k="win" aria-label="Play win">Play</button></div>
+</main>
+<script>
+document.querySelectorAll('.play').forEach(function(b){b.onclick=function(){try{var a=new Audio('sfx/'+b.dataset.k+'.mp3');a.play().catch(function(){})}catch(e){}}});
+</script></body></html>

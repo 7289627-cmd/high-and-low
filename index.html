@@ -432,6 +432,25 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 .award .aw-txt b{font-family:var(--display);font-weight:400;font-size:16px}
 .award .aw-txt span{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .award .aw-stat{font-size:12px;text-align:right;max-width:110px}
+
+/* Smart slots, range ruler, left counts */
+.slot.fixed{color:var(--muted);border-bottom-color:var(--muted)}
+.ruler{margin:8px 0 4px;display:grid;gap:4px}
+.rl-ends{display:flex;justify-content:space-between;font-family:var(--display);font-size:18px;line-height:1}
+.rl-bar{display:flex;height:22px;background:var(--white);border:3px solid var(--ink);border-radius:12px;overflow:hidden}
+.rl-bar i{display:block;height:100%;min-width:0;overflow:hidden;position:relative}
+.rl-bar i.plain{background:var(--sky-deep)}
+.rl-bar i.yes{background:var(--green)}
+.rl-bar i.no{background:var(--red)}
+.rl-bar i+i{border-left:3px solid var(--ink)}
+.rl-bar i em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--display);font-size:13px;line-height:1;color:var(--white);white-space:nowrap}
+.rl-txt{margin:0;text-align:center;font-size:14px;color:var(--ink)}
+.rng b{font-weight:900}
+.left b{color:var(--ink)}
+.left-line{margin:2px 0 4px;font-size:15px;text-align:center}
+.askv .ruler{flex:none}
+.askv .say{min-height:132px}
+.askv .ask-hint{display:none}
 </style>
 </head><body>
 <div id="app"></div>
@@ -895,7 +914,7 @@ function deathSfx(k){
 
 /* ---------- Host engine ---------- */
 function newLobby(){
-  return{gid:uid(),phase:'lobby',max:10000,lives:3,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''},myLook()||{})],st:{},
+  return{gid:uid(),phase:'lobby',max:10000,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],a:1,d:''},myLook()||{})],st:{},
     turn:0,seq:0,stage:'await',q:null,ev:null,en:0,asked:0,win:null};
 }
 function publishG(){
@@ -924,7 +943,7 @@ function hostTick(){
       const nm=clean(v.pres.name)||'Player';
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
-      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''};if(l)np.k=l.k;G.players.push(np);ch=true}
+      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,lo:1,hi:G.max,x:[],a:1,d:''};if(l)np.k=l.k;G.players.push(np);ch=true}
     }
     const before=G.players.length;
     G.players=G.players.filter(p=>p.bot||p.pid===PID||peerMap.has(p.pid));
@@ -1008,11 +1027,7 @@ function resolve(res){
     t.a=0;t.d=pickDeath();G.ev={id,t:'hit',a:a.pid,tg:t.pid,n:q.n,k:t.d};delay=4200;
   } else {
     t.x.push(q.n);
-    if(G.lives>0){
-      a.h--;
-      if(a.h<=0){a.a=0;a.d=pickDeath();G.ev={id,t:'out',a:a.pid,tg:t.pid,n:q.n,k:a.d};delay=4200}
-      else{G.ev={id,t:'bonk',a:a.pid,tg:t.pid,n:q.n};delay=2800}
-    } else {G.ev={id,t:'miss',a:a.pid,tg:t.pid,n:q.n};delay=1900}
+    G.ev={id,t:'miss',a:a.pid,tg:t.pid,n:q.n};delay=1900;
   }
   if(G.ev.t==='hit')sa[1]++;else if(G.ev.t!=='ask')sa[2]++;
   if(t.a){const lf=left(t);stt[3]=stt[3]==null?lf:Math.min(stt[3],lf)}
@@ -1058,7 +1073,7 @@ function botChoose(me){
 function hostStart(){
   G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;G.st={};
   botSecrets={};
-  for(const p of G.players){Object.assign(p,{lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
+  for(const p of G.players){Object.assign(p,{lo:1,hi:G.max,x:[],a:1,d:''});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
   publishG();
 }
 
@@ -1159,7 +1174,7 @@ function startSolo(){
 function addBot(){
   if(G.players.length>=6)return;
   const used=G.players.map(p=>p.name);const nm=BOT_NAMES.find(n=>!used.includes(n))||'Bot';
-  G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''});
+  G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,lo:1,hi:G.max,x:[],a:1,d:''});
 }
 async function leaveGame(){
   clearTimers();clearInterval(tickTimer);closeOv();
@@ -1175,8 +1190,8 @@ function lockSecret(n){
 function sendAct(act){setP({act:{gid:G.gid,seq:G.seq,...act}})}
 function doAsk(){
   const t=curTarget();if(!t||!askViewOn())return;
-  const x=Number(ui.num);
-  const lo=ui.dir==='l'?t.lo+1:t.lo, hi=ui.dir==='l'?t.hi:t.hi-1;
+  const sl=askSlots(t),x=Number(sl.prefix+ui.num);
+  const lo=sl.lo, hi=sl.hi;
   if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick a whole number from ${fmt(lo)} to ${fmt(hi)}.`;sfx('error');render(true);return}
   ui.err='';sfx('send');sendAct({tg:t.pid,t:'ask',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
 }
@@ -1190,7 +1205,13 @@ function render(force){
   if(!force&&sig===lastSig)return;lastSig=sig;
   const ae=document.activeElement,keepId=ae&&ae.id,selS=ae&&ae.selectionStart;
   const app=$('#app');
+  // keep scroll position of scrollable areas across re-renders (taps used to jump back to the top)
+  const SCROLLERS=['.scroll','.cast','.picker'];
+  const keepScroll=SCROLLERS.map(s=>{const el=app.querySelector(s);return el?el.scrollTop:0});
+  const winY=window.scrollY;
   app.innerHTML=view==='home'?homeHTML():gameHTML();
+  SCROLLERS.forEach((s,i)=>{const el=app.querySelector(s);if(el&&keepScroll[i])el.scrollTop=keepScroll[i]});
+  if(winY)window.scrollTo(0,winY);
   bind();
   if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
@@ -1270,6 +1291,28 @@ function padHTML(extra,rise){
   const k=n=>`<button class="key" data-k="${n}">${n}</button>`;
   return `<div class="pad ${rise?'rise':''}">${[1,2,3,4,5,6,7,8,9].map(k).join('')}<button class="key del" data-k="del" aria-label="Delete">${BKSP}</button>${k(0)}${extra}</div>`;
 }
+function askSlots(t){
+  const lo=ui.dir==='l'?t.lo+1:t.lo,hi=ui.dir==='l'?t.hi:t.hi-1;
+  const a=String(lo),b=String(hi),n=b.length;let prefix='';
+  if(a.length===n){let i=0;while(i<n&&a[i]===b[i])i++;prefix=a.slice(0,i)}
+  if(prefix.length>=n)prefix=prefix.slice(0,n-1);
+  return{lo,hi,n,prefix,open:n-prefix.length};
+}
+function rulerHTML(t,sl){
+  const tot=sl.hi-sl.lo+1;let x=null;
+  if(ui.num){
+    const full=sl.prefix?Number((sl.prefix+ui.num).padEnd(sl.n,'0')):Number(ui.num);
+    x=Math.min(sl.hi,Math.max(sl.lo,full));
+  }
+  const ends=`<div class="rl-ends"><span>${fmt(sl.lo)}</span><span>${fmt(sl.hi)}</span></div>`;
+  if(x===null)return `<div class="ruler">${ends}<div class="rl-bar"><i class="plain" style="width:100%"></i></div><p class="rl-txt"><b>${fmt(tot)}</b> number${tot===1?'':'s'} left</p></div>`;
+  const hiMode=ui.dir!=='l';
+  const leftN=hiMode?x-sl.lo+1:x-sl.lo,rightN=tot-leftN;
+  const yes=hiMode?rightN:leftN,no=hiMode?leftN:rightN;
+  const lw=leftN/tot*100,rw=100-lw;
+  const lc=hiMode?'no':'yes',rc=hiMode?'yes':'no';
+  return `<div class="ruler">${ends}<div class="rl-bar"><i class="${lc}" style="width:${lw}%">${lw>=22?`<em>if ${lc}</em>`:''}</i><i class="${rc}" style="width:${rw}%">${rw>=22?`<em>if ${rc}</em>`:''}</i></div><p class="rl-txt">yes: <b>${fmt(yes)}</b> left · no: <b>${fmt(no)}</b> left</p></div>`;
+}
 function askViewHTML(){
   const t=curTarget(),me=byPid(PID);
   const k=(G.subN||1)-G.sub.length+1;
@@ -1286,25 +1329,27 @@ ${timerPill()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','
   }
   const land=ui.land;ui.land=false;
   const word=ui.dir==='l'?'LOWER':'HIGHER';
-  const lo=ui.dir==='l'?t.lo+1:t.lo,hi=ui.dir==='l'?t.hi:t.hi-1;
-  const shown=ui.num?fmt(ui.num):'';
+  const sl=askSlots(t),lo=sl.lo,hi=sl.hi;
   return `<section class="askv">${top}
 <div class="say"><span class="spk-bean ${ui.num?'jit-slow':'jit'}">${charSVG(pv(me),'talk')}</span>
-<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot ${ui.num?'jit':''}">${slotsHTML(ui.num,String(G.max).length)}<span class="qm">?</span></span></div></div>
+<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot ${ui.num?'jit':''}">${slotsHTML(ui.num,sl.n,sl.prefix)}<span class="qm">?</span></span></div></div>
+${rulerHTML(t,sl)}
 ${hint('num','Type a number, then tap Ask!')}<p class="sub ask-hint"><span>Pick from ${fmt(lo)} to ${fmt(hi)}.</span><span>Tap ${word.toLowerCase()} to flip it.</span></p>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 ${padHTML(`<button class="key mid" data-k="mid">MID</button>`,land)}
 <button class="btn primary big full" id="askGo" ${ui.num?'':'disabled'}>Ask ${esc(t.name)}!</button>
 </section>`;
 }
-function slotsHTML(str,n){
-  const pad=Math.max(0,n-str.length);let h='';
+function slotsHTML(str,n,pfx){
+  pfx=pfx||'';const pl=pfx.length,open=n-pl;
+  const pad=pl?0:Math.max(0,n-str.length);let h='';
   for(let i=0;i<n;i++){
-    if(i>0&&(n-i)%3===0)h+=`<i class="sep ${i<=pad?'e':''}">,</i>`;
-    const ch=i<pad?'':str[i-pad];
+    if(i>0&&(n-i)%3===0)h+=`<i class="sep ${!pl&&i<=pad?'e':''}">,</i>`;
+    if(i<pl){h+=`<span class="slot fixed">${pfx[i]}</span>`;continue}
+    const ch=pl?str[i-pl]:(i<pad?'':str[i-pad]);
     h+=`<span class="slot ${ch?'':'e'}">${ch||'&nbsp;'}</span>`;
   }
-  return `<span class="slots" aria-label="${str?fmt(str):'empty'}">${h}</span>`;
+  return `<span class="slots" aria-label="${str||pfx?fmt(pfx+str):'empty'}">${h}</span>`;
 }
 function wheelSVG(){
   const ps=G.players,n=ps.length,R=134,c=140;
@@ -1349,11 +1394,12 @@ function showWheel(){
 }
 function padPress(k){
   const field=G.phase==='secrets'?'sec':'num';
-  const maxLen=String(G.max).length;
+  const sl=field==='num'?askSlots(curTarget()):null;
+  const maxLen=sl?sl.open:String(G.max).length;
   let v=ui[field];
   if(k==='del'){sfx('del');v=v.slice(0,-1)}
-  else if(k==='mid'){sfx('pick');const t=curTarget();if(t)v=String(ui.dir==='l'?Math.ceil((t.lo+t.hi+1)/2):Math.floor((t.lo+t.hi-1)/2))}
-  else if(/^\d$/.test(k)){if(field==='sec')sfx('key');else sfx('babble'+(1+ui.num.length%3),{rate:babRate()+ui.num.length*0.04});if(v.length<maxLen&&!(v===''&&k==='0'))v+=k}
+  else if(k==='mid'){sfx('pick');const t=curTarget();if(t){const ms=String(ui.dir==='l'?Math.ceil((t.lo+t.hi+1)/2):Math.floor((t.lo+t.hi-1)/2));v=sl.prefix&&ms.startsWith(sl.prefix)?ms.slice(sl.prefix.length):ms}}
+  else if(/^\d$/.test(k)){if(field==='sec')sfx('key');else sfx('babble'+(1+ui.num.length%3),{rate:babRate()+ui.num.length*0.04});if(v.length<maxLen&&!(v===''&&k==='0'&&!(sl&&sl.prefix)))v+=k}
   ui[field]=v;ui.err='';render(true);
 }
 function lobbyHTML(){
@@ -1369,9 +1415,6 @@ ${full?'<p class="err">This room is full.</p>':''}</section>
 ${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
 <section class="panel"><h2>Number range</h2>
 ${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
-<h2>Wrong guesses</h2>
-${isHost?`<div class="chips">${[[0,'No penalty'],[1,'1 heart'],[2,'2 hearts'],[3,'3 hearts']].map(([v,l])=>`<button class="chip-btn" data-lives="${v}" aria-pressed="${G.lives===v}">${l}</button>`).join('')}</div>`:''}
-<p class="tip">${G.lives?`Everyone starts with ${G.lives} heart${G.lives>1?'s':''}. A wrong exact guess costs one, and running out takes you out too.`:'A wrong exact guess just crosses that number off.'}</p>
 <h2>Turn timer</h2>
 ${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' seconds per question':'Off'}</p>`}</section>
 ${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host to start…</p>'}
@@ -1414,16 +1457,15 @@ function cardHTML(p,i){
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
   const pick=false;
   const total=G.max,lf=(p.lo-1)/total*100,w=Math.max((p.hi-p.lo+1)/total*100,2);
-  const hearts=G.lives?`<span class="hearts" aria-label="${p.h} hearts">${'♥'.repeat(Math.max(0,p.h))}<span class="lost">${'♥'.repeat(Math.max(0,G.lives-p.h))}</span></span>`:'';
   const ct=curTarget(),z=zone(p),isT=(ct&&ct.pid===p.pid)||(G.q&&G.q.tg===p.pid);
   const bub=ui.bubble&&ui.bubble.pid===p.pid?`<span class="bubble ${ui.bubble.up?'up':'down'}">${esc(ui.bubble.text)}</span>`:'';
   const turnTag='';
   const mine=p.pid===PID;
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
-<span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>${hearts}
-<span class="rng">${fmt(p.lo)} – ${fmt(p.hi)}</span>
+<span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>
+<span class="rng">between <b>${fmt(p.lo)}</b> and <b>${fmt(p.hi)}</b></span>
 <span class="barline ${z?'hot':''}"><i style="left:${lf}%;width:${w}%"></i></span>
-${z?`<span class="zone">GUESS ZONE · ${left(p)} LEFT</span>`:`<span class="left">${fmt(p.hi-p.lo+1)} possible</span>`}
+${z?`<span class="zone">GUESS ZONE · ${left(p)} LEFT</span>`:`<span class="left"><b>${fmt(p.hi-p.lo+1)} left</b></span>`}
 ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'hide':'show'}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''}">${inner}</div>`;
   return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${p.lo} and ${p.hi}">${inner}</button>`;
@@ -1447,8 +1489,8 @@ function trayInner(){
   const t=curTarget();
   if(!t||!t.a)return head;
   const btns=[];for(let n=t.lo;n<=t.hi;n++){const x=t.x.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
-  return head+hint('guess','Down to 10! Guess their exact number.')+`<p class="q"><b>${esc(t.name)}</b> is in the guess zone. Pick their exact number.</p><div class="guess-grid">${btns.join('')}</div>
-<div class="sub"><span>${G.lives?'Miss and you lose a heart.':'Miss and it gets crossed off.'}</span><span>Question ${(G.subN||1)-G.sub.length+1} of ${G.subN}</span></div>`;
+  return head+hint('guess','Down to 10! Guess their exact number.')+`<p class="q"><b>${esc(t.name)}</b> is in the guess zone. Pick their exact number.</p><p class="left-line"><b>${left(t)}</b> number${left(t)===1?'':'s'} left</p><div class="guess-grid">${btns.join('')}</div>
+<div class="sub"><span>Miss and it gets crossed off.</span><span>Question ${(G.subN||1)-G.sub.length+1} of ${G.subN}</span></div>`;
 }
 
 /* ---------- Bindings ---------- */
@@ -1484,13 +1526,12 @@ function bind(){
   $$('[data-rmbot]').forEach(b=>b.onclick=()=>{G.players=G.players.filter(p=>p.pid!==b.dataset.rmbot);publishG()});
   $$('[data-max]').forEach(b=>b.onclick=()=>{G.max=+b.dataset.max;publishG()});
   $$('[data-timer]').forEach(b=>b.onclick=()=>{G.timer=+b.dataset.timer;publishG()});
-  $$('[data-lives]').forEach(b=>b.onclick=()=>{G.lives=+b.dataset.lives;publishG()});
   on('startBtn',()=>{if(isHost&&G.players.length>=2)hostStart()});
   on('toLobby',toLobby);
   on('lockBtn',lockFromPad);
   on('showBtn',e=>{e.stopPropagation();ui.show=!ui.show;render(true)});
   $$('[data-pickdir]').forEach(b=>b.onclick=()=>{sfx('pick');sfx('land',{delay:0.18});seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
-  on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.land=true;ui.err='';buzz(15);render(true)});
+  on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
   $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   on('askGo',doAsk);

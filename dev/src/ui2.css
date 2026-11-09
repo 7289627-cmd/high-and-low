@@ -32,3 +32,22 @@
 .award .aw-txt b{font-family:var(--display);font-weight:400;font-size:16px}
 .award .aw-txt span{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .award .aw-stat{font-size:12px;text-align:right;max-width:110px}
+
+/* Smart slots, range ruler, left counts */
+.slot.fixed{color:var(--muted);border-bottom-color:var(--muted)}
+.ruler{margin:8px 0 4px;display:grid;gap:4px}
+.rl-ends{display:flex;justify-content:space-between;font-family:var(--display);font-size:18px;line-height:1}
+.rl-bar{display:flex;height:22px;background:var(--white);border:3px solid var(--ink);border-radius:12px;overflow:hidden}
+.rl-bar i{display:block;height:100%;min-width:0;overflow:hidden;position:relative}
+.rl-bar i.plain{background:var(--sky-deep)}
+.rl-bar i.yes{background:var(--green)}
+.rl-bar i.no{background:var(--red)}
+.rl-bar i+i{border-left:3px solid var(--ink)}
+.rl-bar i em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--display);font-size:13px;line-height:1;color:var(--white);white-space:nowrap}
+.rl-txt{margin:0;text-align:center;font-size:14px;color:var(--ink)}
+.rng b{font-weight:900}
+.left b{color:var(--ink)}
+.left-line{margin:2px 0 4px;font-size:15px;text-align:center}
+.askv .ruler{flex:none}
+.askv .say{min-height:132px}
+.askv .ask-hint{display:none}

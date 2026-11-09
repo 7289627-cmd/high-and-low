@@ -7,7 +7,8 @@ const uid=()=>Math.random().toString(36).slice(2,10);
 const clean=s=>String(s||'').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g,'').trim().slice(0,12);
 let PID=LS.get('hl-pid'); if(typeof PID!=='string'){PID='p'+uid();LS.set('hl-pid',PID)}
 {const t=(location.hash.match(/player=(\w{1,8})/)||[])[1];if(t)PID+='-'+t;}
-let NAME=clean(LS.get('hl-name'))||'';
+const LSTAG=(location.hash.match(/player=(\w{1,8})/)||[])[1]||'';const LSK=k=>LSTAG?k+'@'+LSTAG:k;
+let NAME=clean(LS.get(LSK('hl-name')))||'';
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';
 const ARROW_UP=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6 8H10v4H6v-4H2z" fill="currentColor"/></svg>`;
 const ARROW_DN=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14l6-8H10V2H6v4H2z" fill="currentColor"/></svg>`;
@@ -31,10 +32,10 @@ function seen(key){LS.set('hl-hint-'+key,1)}
 const hatCount=()=>typeof HAT_NAMES!=='undefined'?HAT_NAMES.length:ACC.length;
 const hatName=i=>typeof HAT_NAMES!=='undefined'?HAT_NAMES[i]:'Hat '+(i+1);
 const HAT_NEED=[0,0,0,0,0,0,1,2,3,5,8,12];
-const winsN=()=>{const w=LS.get('hl-wins');return Number.isInteger(w)&&w>0?w:0};
+const winsN=()=>{const w=LS.get(LSK('hl-wins'));return Number.isInteger(w)&&w>0?w:0};
 const hatUnlocked=i=>i<6||winsN()>=(HAT_NEED[i]||99);
 const validLook=l=>l&&typeof l==='object'&&Number.isInteger(l.c)&&l.c>=0&&l.c<6&&Number.isInteger(l.k)&&l.k>=0&&l.k<hatCount()?{c:l.c,k:l.k}:null;
-function myLook(){const l=validLook(LS.get('hl-look'));if(!l)return null;if(!hatUnlocked(l.k))l.k=l.c;return l}
+function myLook(){const l=validLook(LS.get(LSK('hl-look')));if(!l)return null;if(!hatUnlocked(l.k))l.k=l.c;return l}
 const pv=p=>({color:COLORS[p.c%6],acc:(p.k!=null?p.k:p.c),id:p.c});
 const TAUNTS=['😂','😱','🤔','😈','🙏','🔥'];
 let tnN=Math.floor(Date.now()/1000),tnSeen={},popId=0,newHatIdx=null;
@@ -71,9 +72,9 @@ function tauntBar(){
 }
 function countWin(){
   const key=G.gid+':'+G.en;
-  if(LS.get('hl-lastwin')===key)return;
-  LS.set('hl-lastwin',key);
-  const prev=winsN(),now=prev+1;LS.set('hl-wins',now);
+  if(LS.get(LSK('hl-lastwin'))===key)return;
+  LS.set(LSK('hl-lastwin'),key);
+  const prev=winsN(),now=prev+1;LS.set(LSK('hl-wins'),now);
   newHatIdx=null;
   for(let i=6;i<hatCount();i++){const nd=HAT_NEED[i]||99;if(nd>prev&&nd<=now)newHatIdx=i}
 }
@@ -429,7 +430,7 @@ async function startOnline(asHost,c){
   myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};{const l=myLook();if(l)myPres.look=l}
   if(asHost){const saved=LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
-  LS.set('hl-session',{code,host:asHost,at:Date.now()});
+  LS.set(LSK('hl-session'),{code,host:asHost,at:Date.now()});
   render(true);
   try{await connectRoom()}catch(e){roomState='none'}
   schedule();
@@ -450,7 +451,7 @@ function addBot(){
 async function leaveGame(){
   clearTimers();clearInterval(tickTimer);closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
-  LS.del('hl-session');if(isHost&&code)LS.del('hl-host-'+code);
+  LS.del(LSK('hl-session'));if(isHost&&code)LS.del('hl-host-'+code);
   R=null;view='home';mode=null;G=null;code=null;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,leaveArmed:false,bubble:null};
   render(true);
 }
@@ -481,7 +482,7 @@ function render(force){
   if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
 function homeHTML(){
-  const sess=LS.get('hl-session');const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
+  const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   return `<main class="scroll">
@@ -680,7 +681,7 @@ function setLook(patch){
   const me=byPid(PID);if(!me)return;
   const cur=myLook()||{c:me.c%6,k:me.k!=null?me.k:me.c};
   const nl=validLook({...cur,...patch});if(!nl)return;
-  LS.set('hl-look',nl);setP({look:nl});sfx('pick');render(true);
+  LS.set(LSK('hl-look'),nl);setP({look:nl});sfx('pick');render(true);
 }
 function secretsHTML(){
   const me=byPid(PID);
@@ -742,13 +743,13 @@ function on(id,fn){const el=document.getElementById(id);if(el)el.onclick=fn;retu
 function bind(){
   on('muteBtn',()=>{SFX.setMuted(!SFX.muted);if(!SFX.muted)sfx('pick');render(true)});
   if(view==='home'){
-    const ni=$('#nameIn');ni.oninput=()=>{NAME=clean(ni.value);LS.set('hl-name',NAME)};
+    const ni=$('#nameIn');ni.oninput=()=>{NAME=clean(ni.value);LS.set(LSK('hl-name'),NAME)};
     const ci=$('#codeIn');ci.oninput=()=>{ci.value=ci.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=ci.value};
     const need=()=>{if(!NAME){ui.homeErr='Type your name first.';render(true);$('#nameIn').focus();return false}ui.homeErr='';return true};
     on('hostBtn',()=>{if(!need())return;let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];startOnline(true,c)});
     const join=()=>{if(!need())return;const c=ci.value;if(!/^[A-Z]{4}$/.test(c)){ui.homeErr='Room codes are 4 letters.';render(true);return}startOnline(false,c)};
     on('joinBtn',join);ci.onkeydown=e=>{if(e.key==='Enter')join()};
-    on('rejoinBtn',()=>{const s=LS.get('hl-session');if(s)startOnline(!!s.host,s.code)});
+    on('rejoinBtn',()=>{const s=LS.get(LSK('hl-session'));if(s)startOnline(!!s.host,s.code)});
     on('soloBtn',()=>{if(!NAME){NAME='You'}startSolo()});
     return;
   }
@@ -825,7 +826,7 @@ render(true);
     if(roomState==='ok'&&NAME)startOnline(false,DEEP);
     else{ui.codeIn=DEEP;if(!NAME)ui.homeErr='Type your name, then tap Join.';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}
   }else{
-    const s=LS.get('hl-session');
+    const s=LS.get(LSK('hl-session'));
     if(s&&s.code&&Date.now()-s.at<3*3600e3&&roomState==='ok')startOnline(!!s.host,s.code);
   }
 })();

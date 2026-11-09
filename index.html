@@ -494,6 +494,11 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 .zone{white-space:normal;max-width:100%}
 .card .barline{width:100%}
 @media (max-width:420px){.cast{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{padding:7px}.card .nm{font-size:16px}}
+
+/* Keep every screen inside the phone's width (wide children were stretching the page) */
+.scroll{grid-template-columns:minmax(0,1fr)}
+.scroll>*{min-width:0}
+.join-row input,.field input{min-width:0;width:100%}
 </style>
 </head><body>
 <div id="app"></div>

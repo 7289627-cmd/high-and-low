@@ -8,9 +8,9 @@ HEAD='''<title>High and Low</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 '''
-css=(H/'src/base.css').read_text()+(H/'src/extra.css').read_text()
+css=''.join((H/'src'/f).read_text() for f in ['base.css','extra.css','deaths.css','ui2.css'] if (H/'src'/f).exists())
 snd=(H/'src/sound.js').read_text()
-js=snd+(H/'src/base.js').read_text()+(H/'src/main.js').read_text()
+js=snd+(H/'src/base.js').read_text()+((H/'src/showdown.js').read_text() if (H/'src/showdown.js').exists() else '')+(H/'src/main.js').read_text()
 import sys,json
 if len(sys.argv)>1 and sys.argv[1]=='web':
     cfgp=H/'config.json'

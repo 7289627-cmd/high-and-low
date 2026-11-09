@@ -1,0 +1,55 @@
+/* Worker A: extra death scenes */
+/* piano */
+.d2-piano{position:absolute;left:50%;width:150px;margin-left:-75px;bottom:64px;z-index:4;transform:translateY(-440px);animation:drop .42s cubic-bezier(.55,0,1,.45) .46s forwards}
+.d2-key{position:absolute;left:50%;bottom:70px;width:14px;margin-left:-7px;z-index:5;opacity:0;animation:d2key .9s ease-out .9s both}
+@keyframes d2key{0%{opacity:0;transform:translate(0,0) rotate(0)}1%{opacity:1}45%{opacity:1;transform:translate(calc(var(--dx)*.6),-80px) rotate(calc(var(--r)*.5))}100%{opacity:1;transform:translate(var(--dx),-6px) rotate(var(--r))}}
+/* banana */
+.d2-peel{position:absolute;left:50%;bottom:36px;width:70px;margin-left:-35px;z-index:1;animation:d2peelIn .6s ease-out both}
+@keyframes d2peelIn{from{transform:translateX(170px) rotate(25deg);opacity:0}25%{opacity:1}to{transform:translateX(0) rotate(0)}}
+.d2-slip{transform-origin:50% 50%;animation:d2slip 2s cubic-bezier(.4,0,.8,.7) forwards}
+@keyframes d2slip{0%{transform:translateX(-95px)}34%{transform:translateX(0)}44%{transform:translate(8px,-6px) rotate(-18deg)}60%{transform:translate(22px,-70px) rotate(-130deg)}72%{transform:translate(30px,-30px) rotate(-180deg)}100%{transform:translate(30px,250px) rotate(-180deg)}}
+.d2-cover{position:absolute;left:0;right:0;bottom:0;height:40px;background:var(--ground);border-top:3px solid var(--ink);z-index:3}
+.d2-hole{position:absolute;left:calc(50% + 6px);bottom:30px;width:96px;height:18px;margin-left:-20px;border-radius:50%;background:var(--ink);z-index:3;transform:scale(0);animation:d2hole .35s ease-out 1.15s forwards}
+.d2-hole.top{bottom:30px}
+@keyframes d2hole{to{transform:scale(1)}}
+/* bees */
+.d2-puffbean{animation:d2bean 2.7s ease-in-out both}
+@keyframes d2bean{
+0%,6%{transform:translate(0,0)}
+10%{transform:translate(-4px,0)}14%{transform:translate(4px,0)}18%{transform:translate(-4px,1px)}22%{transform:translate(4px,0)}26%{transform:translate(-4px,0)}30%{transform:translate(4px,1px)}34%{transform:translate(-4px,0)}38%{transform:translate(4px,0)}42%{transform:translate(-3px,0)}46%{transform:translate(0,0) scale(1)}
+62%,70%{transform:translate(0,0) scale(1.3,1.25)}
+100%{transform:translate(10px,-440px) scale(1.3,1.25) rotate(10deg)}}
+.d2-welts{pointer-events:none;z-index:3;opacity:0;animation:d2bean 2.7s ease-in-out both,appear .3s linear 1.15s both}
+.d2-swarm{position:absolute;left:50%;bottom:117px;width:0;height:0;z-index:4;animation:d2swarm 2.7s ease-in-out both}
+@keyframes d2swarm{0%,70%{transform:translateY(0)}100%{transform:translateY(-440px)}}
+.d2-orb{position:absolute;left:0;top:0;width:0;height:0;transform:rotate(var(--a));animation:d2orbit var(--t) linear infinite}
+@keyframes d2orbit{from{transform:rotate(var(--a))}to{transform:rotate(calc(var(--a) + 360deg))}}
+.d2-bee{position:absolute;left:0;top:0;width:28px;margin:-11px 0 0 -14px;transform:translateX(var(--r));animation:d2bz .16s ease-in-out infinite alternate}
+@keyframes d2bz{from{margin-top:-14px}to{margin-top:-8px}}
+/* calc */
+.d2-calc{position:absolute;left:50%;width:124px;margin-left:-62px;bottom:64px;z-index:4;transform:translateY(-460px);animation:drop .42s cubic-bezier(.55,0,1,.45) .46s forwards,d2cshake .1s linear .92s 4}
+.d2-calc svg{display:block;width:100%;height:auto}
+.d2-calc .d2-err{opacity:0;animation:appear .01s linear .9s forwards}
+.d2-calc .d2-num{animation:vanish .01s linear .9s forwards}
+@keyframes d2cshake{0%,100%{margin-left:-62px}25%{margin-left:-65px}75%{margin-left:-59px}}
+
+@media (prefers-reduced-motion:reduce){
+  .d2-puffbean,.d2-orb,.d2-bee,.d2-swarm,.d2-slip{animation:none!important}
+  .d2-welts{opacity:1}
+  .d2-slip{transform:translate(30px,0) rotate(-180deg)}
+}
+
+/* final showdown */
+body.showdown{background:linear-gradient(to top,#0E1128 0 58px,#080A1C 58px 62px,transparent 62px),linear-gradient(to bottom,#22284A,#121530)}
+body.showdown::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 38% 70% at 50% 40%,rgba(255,255,255,.22),rgba(255,255,255,.07) 55%,transparent 75%);
+  animation:d2sweep 4s ease-in-out infinite alternate}
+@keyframes d2sweep{from{transform:translateX(-32%)}to{transform:translateX(32%)}}
+body.showdown #app{position:relative;z-index:1}
+body.showdown .card.dead{opacity:.25;transform:scale(.92)}
+body.showdown .card:not(.dead){border-color:#FFD23F;border-width:4px;transform:scale(1.04);box-shadow:0 0 22px 6px rgba(255,255,255,.55),0 0 60px 14px rgba(255,255,255,.18),0 4px 0 var(--ink)}
+body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align:center;font-family:var(--display);font-size:30px;line-height:1.1;color:var(--yellow);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;animation:d2pulse 1.4s ease-in-out infinite alternate}
+@keyframes d2pulse{from{transform:scale(1)}to{transform:scale(1.07)}}
+@media (prefers-reduced-motion:reduce){
+  body.showdown::after,body.showdown .cast::before{animation:none}
+}

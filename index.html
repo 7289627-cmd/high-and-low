@@ -343,6 +343,95 @@ button{font:inherit;color:inherit}
 .mute-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
 .hero{position:relative}
 .hero .mute-btn{position:absolute;top:0;right:0}
+/* Worker A: extra death scenes */
+/* piano */
+.d2-piano{position:absolute;left:50%;width:150px;margin-left:-75px;bottom:64px;z-index:4;transform:translateY(-440px);animation:drop .42s cubic-bezier(.55,0,1,.45) .46s forwards}
+.d2-key{position:absolute;left:50%;bottom:70px;width:14px;margin-left:-7px;z-index:5;opacity:0;animation:d2key .9s ease-out .9s both}
+@keyframes d2key{0%{opacity:0;transform:translate(0,0) rotate(0)}1%{opacity:1}45%{opacity:1;transform:translate(calc(var(--dx)*.6),-80px) rotate(calc(var(--r)*.5))}100%{opacity:1;transform:translate(var(--dx),-6px) rotate(var(--r))}}
+/* banana */
+.d2-peel{position:absolute;left:50%;bottom:36px;width:70px;margin-left:-35px;z-index:1;animation:d2peelIn .6s ease-out both}
+@keyframes d2peelIn{from{transform:translateX(170px) rotate(25deg);opacity:0}25%{opacity:1}to{transform:translateX(0) rotate(0)}}
+.d2-slip{transform-origin:50% 50%;animation:d2slip 2s cubic-bezier(.4,0,.8,.7) forwards}
+@keyframes d2slip{0%{transform:translateX(-95px)}34%{transform:translateX(0)}44%{transform:translate(8px,-6px) rotate(-18deg)}60%{transform:translate(22px,-70px) rotate(-130deg)}72%{transform:translate(30px,-30px) rotate(-180deg)}100%{transform:translate(30px,250px) rotate(-180deg)}}
+.d2-cover{position:absolute;left:0;right:0;bottom:0;height:40px;background:var(--ground);border-top:3px solid var(--ink);z-index:3}
+.d2-hole{position:absolute;left:calc(50% + 6px);bottom:30px;width:96px;height:18px;margin-left:-20px;border-radius:50%;background:var(--ink);z-index:3;transform:scale(0);animation:d2hole .35s ease-out 1.15s forwards}
+.d2-hole.top{bottom:30px}
+@keyframes d2hole{to{transform:scale(1)}}
+/* bees */
+.d2-puffbean{animation:d2bean 2.7s ease-in-out both}
+@keyframes d2bean{
+0%,6%{transform:translate(0,0)}
+10%{transform:translate(-4px,0)}14%{transform:translate(4px,0)}18%{transform:translate(-4px,1px)}22%{transform:translate(4px,0)}26%{transform:translate(-4px,0)}30%{transform:translate(4px,1px)}34%{transform:translate(-4px,0)}38%{transform:translate(4px,0)}42%{transform:translate(-3px,0)}46%{transform:translate(0,0) scale(1)}
+62%,70%{transform:translate(0,0) scale(1.3,1.25)}
+100%{transform:translate(10px,-440px) scale(1.3,1.25) rotate(10deg)}}
+.d2-welts{pointer-events:none;z-index:3;opacity:0;animation:d2bean 2.7s ease-in-out both,appear .3s linear 1.15s both}
+.d2-swarm{position:absolute;left:50%;bottom:117px;width:0;height:0;z-index:4;animation:d2swarm 2.7s ease-in-out both}
+@keyframes d2swarm{0%,70%{transform:translateY(0)}100%{transform:translateY(-440px)}}
+.d2-orb{position:absolute;left:0;top:0;width:0;height:0;transform:rotate(var(--a));animation:d2orbit var(--t) linear infinite}
+@keyframes d2orbit{from{transform:rotate(var(--a))}to{transform:rotate(calc(var(--a) + 360deg))}}
+.d2-bee{position:absolute;left:0;top:0;width:28px;margin:-11px 0 0 -14px;transform:translateX(var(--r));animation:d2bz .16s ease-in-out infinite alternate}
+@keyframes d2bz{from{margin-top:-14px}to{margin-top:-8px}}
+/* calc */
+.d2-calc{position:absolute;left:50%;width:124px;margin-left:-62px;bottom:64px;z-index:4;transform:translateY(-460px);animation:drop .42s cubic-bezier(.55,0,1,.45) .46s forwards,d2cshake .1s linear .92s 4}
+.d2-calc svg{display:block;width:100%;height:auto}
+.d2-calc .d2-err{opacity:0;animation:appear .01s linear .9s forwards}
+.d2-calc .d2-num{animation:vanish .01s linear .9s forwards}
+@keyframes d2cshake{0%,100%{margin-left:-62px}25%{margin-left:-65px}75%{margin-left:-59px}}
+
+@media (prefers-reduced-motion:reduce){
+  .d2-puffbean,.d2-orb,.d2-bee,.d2-swarm,.d2-slip{animation:none!important}
+  .d2-welts{opacity:1}
+  .d2-slip{transform:translate(30px,0) rotate(-180deg)}
+}
+
+/* final showdown */
+body.showdown{background:linear-gradient(to top,#0E1128 0 58px,#080A1C 58px 62px,transparent 62px),linear-gradient(to bottom,#22284A,#121530)}
+body.showdown::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 38% 70% at 50% 40%,rgba(255,255,255,.22),rgba(255,255,255,.07) 55%,transparent 75%);
+  animation:d2sweep 4s ease-in-out infinite alternate}
+@keyframes d2sweep{from{transform:translateX(-32%)}to{transform:translateX(32%)}}
+body.showdown #app{position:relative;z-index:1}
+body.showdown .card.dead{opacity:.25;transform:scale(.92)}
+body.showdown .card:not(.dead){border-color:#FFD23F;border-width:4px;transform:scale(1.04);box-shadow:0 0 22px 6px rgba(255,255,255,.55),0 0 60px 14px rgba(255,255,255,.18),0 4px 0 var(--ink)}
+body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align:center;font-family:var(--display);font-size:30px;line-height:1.1;color:var(--yellow);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;animation:d2pulse 1.4s ease-in-out infinite alternate}
+@keyframes d2pulse{from{transform:scale(1)}to{transform:scale(1.07)}}
+@media (prefers-reduced-motion:reduce){
+  body.showdown::after,body.showdown .cast::before{animation:none}
+}
+/* Worker B: bean picker, taunts, awards, hats */
+
+.lpic{position:relative;display:block}
+.prow2 .btn.sm{white-space:nowrap}
+.picker{display:grid;gap:10px;background:var(--paper-2);border:3px solid var(--ink);border-radius:16px;padding:10px;margin-top:4px}
+.pk-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pk-sw,.pk-hat{position:relative;font:inherit;color:var(--ink);background:var(--white);border:3px solid var(--ink);border-radius:14px;box-shadow:0 3px 0 var(--ink);padding:4px;cursor:pointer;display:grid;justify-items:center;gap:2px;min-width:0}
+.pk-sw svg{width:100%;max-width:38px;height:auto;aspect-ratio:100/140}
+.pk-sw:disabled{opacity:.35;cursor:not-allowed}
+.pk-sw.sel,.pk-hat.sel{outline:4px solid var(--ink);outline-offset:2px}
+.pk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pk-hat{padding:6px 4px}
+.pk-hat .hb svg{width:44px;height:auto;aspect-ratio:100/140;display:block}
+.pk-hat .hn{font-family:var(--display);font-size:14px;line-height:1.1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.pk-hat.locked{background:var(--paper);cursor:not-allowed}
+.pk-hat.locked .hb{opacity:.45;filter:grayscale(.6)}
+.pk-hat .lockb{position:absolute;top:4px;right:4px;background:var(--yellow);border:2px solid var(--ink);border-radius:50%;width:22px;height:22px;display:grid;place-items:center;z-index:1}
+.taunt-bar{display:flex;justify-content:center;gap:8px;margin-top:2px}
+.taunt-wrap{display:flex;justify-content:center}
+.taunt-btn{width:40px;height:40px;flex:0 0 40px;border-radius:50%;background:var(--white);border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink);font-size:20px;line-height:1;padding:0;cursor:pointer;display:grid;place-items:center}
+.taunt-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.taunt-btn:disabled{opacity:.45;cursor:default}
+.taunt-pop{position:absolute;left:50%;top:-6px;margin-left:-14px;font-size:26px;line-height:1;pointer-events:none;z-index:5;animation:tauntfloat 1.6s ease-out both}
+@keyframes tauntfloat{0%{transform:translateY(0) scale(.6);opacity:0}12%{transform:translateY(-5px) scale(1.15);opacity:1}70%{opacity:1}100%{transform:translateY(-40px) scale(1);opacity:0}}
+.wins-pill{justify-self:center;margin:8px auto 0;display:inline-block;font-family:var(--display);font-size:15px;background:var(--yellow);border:3px solid var(--ink);border-radius:999px;padding:2px 12px;box-shadow:0 3px 0 var(--ink)}
+.newhat{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0;padding:8px 12px;background:var(--yellow);border:3px solid var(--ink);border-radius:16px;font-family:var(--display);font-weight:400}
+.newhat .nh-bean svg{width:44px;height:auto;display:block}
+.awards{display:grid;gap:6px;margin:10px 0;text-align:left}
+.award{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--paper-2);border:3px solid var(--ink);border-radius:14px;padding:4px 8px}
+.award .aw-bean svg{width:30px;height:auto;display:block}
+.award .aw-txt{display:grid;min-width:0}
+.award .aw-txt b{font-family:var(--display);font-weight:400;font-size:16px}
+.award .aw-txt span{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.award .aw-stat{font-size:12px;text-align:right;max-width:110px}
 </style>
 </head><body>
 <div id="app"></div>
@@ -472,7 +561,7 @@ window.makeSupabaseRoom=function(cfg){
 };
 /* ---------- Sound (recorded sfx, lazy AudioContext) ---------- */
 const SFX={
-  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct'],
+  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam'],
   muted:false,ctx:null,master:null,buf:{},
   play(key,opts){
     try{
@@ -521,9 +610,9 @@ try{SFX.muted=localStorage.getItem('hl-mute')==='1'}catch(e){}
 })();
 const COLORS=['#EE4B3B','#3D7BFF','#2FA36B','#A35BFF','#FF8A2B','#FF5FA8'];
 const BOT_NAMES=['Bean','Pickle','Noodle','Biscuit','Waffle','Turnip'];
-const DEATHS=['anvil','zap','rocket','chomp','melt','pop'];
-const CAPTION={anvil:'got flattened by a falling anvil.',zap:'got struck by lightning.',rocket:'rode a firework straight into space.',chomp:'got eaten by the number monster.',melt:'melted into a sad little puddle.',pop:'panicked so hard they popped.'};
-const SHORT={anvil:'Flattened',zap:'Fried',rocket:'Launched',chomp:'Eaten',melt:'Melted',pop:'Popped'};
+const DEATHS=['anvil','zap','rocket','chomp','melt','pop','piano','banana','bees','calc'];
+const CAPTION={anvil:'got flattened by a falling anvil.',zap:'got struck by lightning.',rocket:'rode a firework straight into space.',chomp:'got eaten by the number monster.',melt:'melted into a sad little puddle.',pop:'panicked so hard they popped.',piano:'got flattened by a falling grand piano.',banana:'slipped on a banana peel into the void.',bees:'got chased off by angry bees.',calc:'got crushed by a giant calculator. ERROR.'};
+const SHORT={anvil:'Flattened',zap:'Fried',rocket:'Launched',chomp:'Eaten',melt:'Melted',pop:'Popped',piano:'Pianoed',banana:'Slipped',bees:'Stung',calc:'Calculated'};
 const INK='#1E2240';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -541,8 +630,15 @@ const ACC=[
  ()=>`<path d="M24 27a26 23 0 0 1 52 0z" fill="${INK}"/><path d="M70 25h20" stroke="${INK}" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="5" r="3" fill="#FFD23F"/>`,
  ()=>`<path d="M68 14l-12-9v18zM68 14l12-9v18z" fill="#FF5FA8" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="68" cy="14" r="4" fill="#FF5FA8" stroke="${INK}" stroke-width="2.5"/>`,
  ()=>`<path d="M44 16q-3-10 1-17M50 15q0-12 6-17M56 16q4-9 11-11" stroke="${INK}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
- ()=>`<g fill="none" stroke="${INK}" stroke-width="3"><circle cx="37" cy="47" r="14"/><circle cx="63" cy="47" r="14"/><path d="M49 46h2M23 44l-5-3M77 44l5-3"/></g>`
+ ()=>`<g fill="none" stroke="${INK}" stroke-width="3"><circle cx="37" cy="47" r="14"/><circle cx="63" cy="47" r="14"/><path d="M49 46h2M23 44l-5-3M77 44l5-3"/></g>`,
+ ()=>`<path d="M24 16L26 -4L38 7L50 -8L62 7L74 -4L76 16z" fill="#FFD23F" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M25 10h50" stroke="${INK}" stroke-width="2"/><circle cx="50" cy="3" r="3.5" fill="#EE4B3B" stroke="${INK}" stroke-width="1.5"/><circle cx="26" cy="-4" r="3" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="74" cy="-4" r="3" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="50" cy="-8" r="3" fill="#fff" stroke="${INK}" stroke-width="2"/>`,
+ ()=>`<rect x="30" y="-12" width="40" height="26" rx="4" fill="#2B2F4A" stroke="${INK}" stroke-width="2.5"/><rect x="30" y="3" width="40" height="7" fill="#EE4B3B" stroke="${INK}" stroke-width="2"/><rect x="17" y="11" width="66" height="8" rx="4" fill="#2B2F4A" stroke="${INK}" stroke-width="2.5"/>`,
+ ()=>`<path d="M26 20a24 22 0 0 1 48 0z" fill="#3D7BFF" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M50 -2v22M38 2q-4 8-5 16M62 2q4 8 5 16" stroke="${INK}" stroke-width="2" fill="none"/><path d="M50 -2V-8" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><ellipse cx="36" cy="-10" rx="13" ry="3.2" fill="#FFD23F" stroke="${INK}" stroke-width="2"/><ellipse cx="64" cy="-10" rx="13" ry="3.2" fill="#EE4B3B" stroke="${INK}" stroke-width="2"/><circle cx="50" cy="-9" r="3.5" fill="#fff" stroke="${INK}" stroke-width="2"/>`,
+ ()=>`<circle cx="35" cy="0" r="12" fill="#fff" stroke="${INK}" stroke-width="2.5"/><circle cx="65" cy="0" r="12" fill="#fff" stroke="${INK}" stroke-width="2.5"/><circle cx="50" cy="-1" r="13" fill="#fff" stroke="${INK}" stroke-width="2.5"/><rect x="29" y="5" width="42" height="14" rx="3" fill="#fff" stroke="${INK}" stroke-width="2.5"/><path d="M38 9v7M50 9v7M62 9v7" stroke="#C9CCD8" stroke-width="2.5" stroke-linecap="round"/>`,
+ ()=>`<path d="M28 14Q8 14 5 -8Q20 0 36 2z" fill="#F6EBD0" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M72 14Q92 14 95 -8Q80 0 64 2z" fill="#F6EBD0" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M22 24a28 22 0 0 1 56 0z" fill="#9AA0B8" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M21 24h58" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M38 8q-2 6 0 12" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>`,
+ ()=>`<ellipse cx="50" cy="0" rx="27" ry="7" fill="none" stroke="${INK}" stroke-width="9"/><ellipse cx="50" cy="0" rx="27" ry="7" fill="none" stroke="#FFD23F" stroke-width="4.5"/>`
 ];
+const HAT_NAMES=['Party hat','Antenna','Cap','Bow','Hair tuft','Glasses','Crown','Top hat','Propeller','Chef hat','Viking horns','Halo'];
 function charSVG(p,mood='idle',cls=''){
   const c=p.color, d=((p.id||0)*.43).toFixed(2);
   let eyes;
@@ -578,6 +674,16 @@ const POT=`<svg viewBox="0 0 56 64"><path d="M22 22q-8-14 4-22q0 12 4 22M30 22q4
 const MON_EYES=`<svg class="mon-eyes" viewBox="0 0 120 40"><circle cx="30" cy="22" r="15" fill="#fff" stroke="${INK}" stroke-width="3"/><circle cx="90" cy="22" r="15" fill="#fff" stroke="${INK}" stroke-width="3"/><circle cx="34" cy="26" r="6" fill="${INK}"/><circle cx="86" cy="26" r="6" fill="${INK}"/><path d="M12 5l34 11M108 5L74 16" stroke="${INK}" stroke-width="5" stroke-linecap="round"/></svg>`;
 function teeth(down){let d='';for(let i=0;i<10;i++){const x=i*20;d+=down?`M${x} 0L${x+10} 26L${x+20} 0z`:`M${x} 26L${x+10} 0L${x+20} 26z`}
   return `<svg class="teeth" viewBox="0 0 200 26" preserveAspectRatio="none"><path d="${d}" fill="#fff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/></svg>`}
+
+const PIANO=`<svg viewBox="0 0 160 104"><path d="M8 34Q8 12 34 12H112Q152 12 156 44L152 66H8z" fill="#2B2F4A" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M20 22H108" stroke="#fff" stroke-width="3" opacity=".25" stroke-linecap="round"/><rect x="10" y="62" width="142" height="14" rx="2" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M26 62v14M42 62v14M58 62v14M74 62v14M90 62v14M106 62v14M122 62v14M138 62v14" stroke="${INK}" stroke-width="2"/><path d="M22 62v8M38 62v8M62 62v8M78 62v8M94 62v8M110 62v8M126 62v8" stroke="${INK}" stroke-width="5"/><rect x="16" y="76" width="9" height="24" rx="2" fill="#2B2F4A" stroke="${INK}" stroke-width="3"/><rect x="136" y="76" width="9" height="24" rx="2" fill="#2B2F4A" stroke="${INK}" stroke-width="3"/></svg>`;
+const PKEY=`<svg viewBox="0 0 14 34"><rect x="1.5" y="1.5" width="11" height="31" rx="2" fill="#fff" stroke="${INK}" stroke-width="2.5"/></svg>`;
+const PEEL=`<svg viewBox="0 0 80 34"><path d="M6 24Q4 12 22 12Q40 10 58 12Q76 12 74 24Q60 18 40 20Q20 18 6 24z" fill="#FFD23F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M14 22Q8 30 12 32Q20 28 26 22zM66 22Q74 30 68 32Q60 28 54 22z" fill="#FFE98A" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M26 18q14-4 28 0" stroke="${INK}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+const BEE=`<svg viewBox="0 0 30 22"><ellipse cx="11" cy="5" rx="6" ry="4" fill="#fff" stroke="${INK}" stroke-width="1.5" transform="rotate(-25 11 5)"/><ellipse cx="19" cy="5" rx="6" ry="4" fill="#fff" stroke="${INK}" stroke-width="1.5" transform="rotate(25 19 5)"/><ellipse cx="14" cy="14" rx="11" ry="7" fill="#FFD23F" stroke="${INK}" stroke-width="2"/><path d="M10 8v12M16 8v12" stroke="${INK}" stroke-width="3"/><path d="M25 14l4 1" stroke="${INK}" stroke-width="2" stroke-linecap="round"/><circle cx="7" cy="12" r="1.6" fill="${INK}"/></svg>`;
+const CALC=`<svg viewBox="0 0 120 150"><rect x="4" y="4" width="112" height="142" rx="12" fill="#6B7194" stroke="${INK}" stroke-width="3.5"/><rect x="14" y="14" width="92" height="34" rx="5" fill="#BFE9D0" stroke="${INK}" stroke-width="3"/><text class="d2-num" x="100" y="40" text-anchor="end" font-family="Lilita One, sans-serif" font-size="24" fill="${INK}">88888</text><text class="d2-err" x="60" y="40" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="21" fill="#EE4B3B">ERROR</text><g fill="#fff" stroke="${INK}" stroke-width="2.5"><rect x="14" y="58" width="20" height="16" rx="4"/><rect x="40" y="58" width="20" height="16" rx="4"/><rect x="66" y="58" width="20" height="16" rx="4"/><rect x="14" y="80" width="20" height="16" rx="4"/><rect x="40" y="80" width="20" height="16" rx="4"/><rect x="66" y="80" width="20" height="16" rx="4"/><rect x="14" y="102" width="20" height="16" rx="4"/><rect x="40" y="102" width="20" height="16" rx="4"/><rect x="66" y="102" width="20" height="16" rx="4"/><rect x="14" y="124" width="46" height="16" rx="4"/></g><g stroke="${INK}" stroke-width="2.5"><rect x="92" y="58" width="14" height="38" rx="4" fill="#FF8A2B"/><rect x="92" y="102" width="14" height="38" rx="4" fill="#EE4B3B"/><rect x="66" y="124" width="20" height="16" rx="4" fill="#fff"/></g></svg>`;
+function swarm(){let b='';const n=10;for(let i=0;i<n;i++){const a=Math.round(i*360/n),r=48+(i%3)*14,t=(0.9+(i%4)*.15).toFixed(2);
+  b+=`<div class="d2-orb" style="--a:${a}deg;--t:${t}s"><div class="d2-bee" style="--r:${r}px;animation-delay:-${(i*.13).toFixed(2)}s">${BEE}</div></div>`}
+  return `<div class="d2-swarm">${b}</div>`}
+const WELTS=`<div class="actor d2-puffbean d2-welts"><svg viewBox="0 -14 100 140"><rect x="18" y="14" width="64" height="92" rx="32" fill="#EE4B3B" opacity=".55"/><g fill="#EE4B3B" stroke="${INK}" stroke-width="1.8"><circle cx="30" cy="30" r="4"/><circle cx="68" cy="26" r="3.5"/><circle cx="24" cy="62" r="3.5"/><circle cx="76" cy="58" r="4"/><circle cx="50" cy="92" r="4"/><circle cx="34" cy="98" r="3"/><circle cx="66" cy="96" r="3.5"/><circle cx="50" cy="22" r="3"/></g></svg></div>`;
 function actor(p,deadAt,cls=''){
   return `<div class="actor ${cls}">${charSVG(p,'scared')}<div class="layer-dead" style="animation-delay:${deadAt}s">${charSVG(p,'dead')}</div></div>`;
 }
@@ -591,9 +697,20 @@ const SCENES={
     for(let i=0;i<28;i++){const a=Math.random()*Math.PI*2,dist=110+Math.random()*110;
       bits+=`<i class="bit" style="--dx:${Math.round(Math.cos(a)*dist)}px;--dy:${Math.round(Math.sin(a)*dist)}px;--r:${rnd(-400,400)}deg;background:${cols[i%4]}"></i>`}
     return `${actor(p,99,'a-pop')}${bits}<div class="pow">POP!</div>`},
-  bonk:p=>`${actor(p,99,'a-bonk')}<div class="pot">${POT}</div><div class="stars">★ ★ ★</div>`
+  bonk:p=>`${actor(p,99,'a-bonk')}<div class="pot">${POT}</div><div class="stars">★ ★ ★</div>`,
+  piano:p=>`${actor(p,.9,'a-squash')}<div class="d2-piano">${PIANO}</div><div class="d2-key" style="--dx:-90px;--r:-200deg">${PKEY}</div><div class="d2-key" style="--dx:80px;--r:240deg;animation-delay:.94s">${PKEY}</div><div class="d2-key" style="--dx:-30px;--r:120deg;animation-delay:.98s">${PKEY}</div><div class="puff" style="left:14%;--dx:-34px"></div><div class="puff" style="left:68%;--dx:34px"></div>`,
+  banana:p=>`<div class="d2-peel">${PEEL}</div>${actor(p,1.05,'d2-slip')}<div class="d2-cover"></div><div class="d2-hole top"></div>`,
+  bees:p=>`${actor(p,1.9,'d2-puffbean')}${WELTS}${swarm()}`,
+  calc:p=>`${actor(p,.9,'a-squash')}<div class="d2-calc">${CALC}</div><div class="puff" style="left:16%;--dx:-34px"></div><div class="puff" style="left:66%;--dx:34px"></div>`
 };
+window.EXTRA_DEATH_SFX={piano:[['d_piano',.86],['bonk',1.0,.8]],banana:[['d_slip',.45],['whoosh',1.3,1.7]],bees:[['d_buzz',.05],['d_buzz',1.3,1.15]],calc:[['d_slam',.86],['error',1.0,1.4]]};
 
+/* Worker A: final showdown. Defines window.showdownTick, called from update() in main.js */
+window.showdownTick=function(){
+  let on=false;
+  try{on=view==='game'&&!!G&&G.phase==='play'&&G.players.length>=3&&G.players.filter(p=>p.a).length===2}catch(e){}
+  document.body.classList.toggle('showdown',on);
+};
 
 /* ---------- Storage + identity ---------- */
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
@@ -614,7 +731,7 @@ let roomNS=null, roomState='checking', R=null, connected=false, joinedAt=0;
 let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
 let lastEv=null, evPrimed=null, winShown=null;
-let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0};
+let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, qSched=0, tickTimer=null, wheelSched=null;
 
@@ -624,7 +741,66 @@ const sfxSeen={hint:new Set(),seq:new Set(),go:new Set(),burst:new Set(),final:n
 let hbTimer=null,hbPeriod=0;
 function hint(key,text){if(LS.get('hl-hint-'+key))return '';if(!sfxSeen.hint.has(key)){sfxSeen.hint.add(key);sfx('hint')}return `<div class="hint-pop"><span>${text}</span></div>`}
 function seen(key){LS.set('hl-hint-'+key,1)}
-const pv=p=>({color:COLORS[p.c%6],acc:p.c,id:p.c});
+const hatCount=()=>typeof HAT_NAMES!=='undefined'?HAT_NAMES.length:ACC.length;
+const hatName=i=>typeof HAT_NAMES!=='undefined'?HAT_NAMES[i]:'Hat '+(i+1);
+const HAT_NEED=[0,0,0,0,0,0,1,2,3,5,8,12];
+const winsN=()=>{const w=LS.get('hl-wins');return Number.isInteger(w)&&w>0?w:0};
+const hatUnlocked=i=>i<6||winsN()>=(HAT_NEED[i]||99);
+const validLook=l=>l&&typeof l==='object'&&Number.isInteger(l.c)&&l.c>=0&&l.c<6&&Number.isInteger(l.k)&&l.k>=0&&l.k<hatCount()?{c:l.c,k:l.k}:null;
+function myLook(){const l=validLook(LS.get('hl-look'));if(!l)return null;if(!hatUnlocked(l.k))l.k=l.c;return l}
+const pv=p=>({color:COLORS[p.c%6],acc:(p.k!=null?p.k:p.c),id:p.c});
+const TAUNTS=['😂','😱','🤔','😈','🙏','🔥'];
+let tnN=Math.floor(Date.now()/1000),tnSeen={},popId=0,newHatIdx=null;
+function addPop(pid,e){
+  const id=++popId;ui.pops.push({pid,e,id,until:Date.now()+1600});
+  later(()=>{ui.pops=ui.pops.filter(x=>x.until>Date.now());render(true)},1660);
+}
+function popHTML(pid){
+  const now=Date.now();
+  return ui.pops.filter(x=>x.pid===pid&&x.until>now).map(x=>`<span class="taunt-pop" style="animation-delay:-${((1600-(x.until-now))/1000).toFixed(2)}s">${x.e}</span>`).join('');
+}
+function trackTaunts(){
+  for(const [pid,v] of peerMap){
+    const tn=v.pres.tn,n=tn&&Number.isInteger(tn.n)?tn.n:0;
+    if(!(pid in tnSeen)){tnSeen[pid]=n;continue}
+    if(n>tnSeen[pid]){
+      tnSeen[pid]=n;
+      if(Number.isInteger(tn.e)&&tn.e>=0&&tn.e<TAUNTS.length){
+        addPop(pid,TAUNTS[tn.e]);
+        const p=byPid(pid);sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07});
+      }
+    }
+  }
+}
+function tauntSend(e){
+  if(Date.now()<ui.tauntUntil||!G)return;
+  tnN++;setP({tn:{n:tnN,e}});addPop(PID,TAUNTS[e]);
+  sfx('babble'+rnd(1,3),{rate:babRate()});
+  ui.tauntUntil=Date.now()+1500;later(()=>render(true),1530);render(true);
+}
+function tauntBar(){
+  const dis=Date.now()<ui.tauntUntil;
+  return `<div class="taunt-bar" role="group" aria-label="Taunts">${TAUNTS.map((e,i)=>`<button class="taunt-btn" data-tn="${i}" ${dis?'disabled':''}>${e}</button>`).join('')}</div>`;
+}
+function countWin(){
+  const key=G.gid+':'+G.en;
+  if(LS.get('hl-lastwin')===key)return;
+  LS.set('hl-lastwin',key);
+  const prev=winsN(),now=prev+1;LS.set('hl-wins',now);
+  newHatIdx=null;
+  for(let i=6;i<hatCount();i++){const nd=HAT_NEED[i]||99;if(nd>prev&&nd<=now)newHatIdx=i}
+}
+const AWARD_DEFS=[['Most Deadly',1,'kills'],['Worst Guesser',2,'misses'],['Closest Call',3,'closest'],['Most Curious',0,'questions']];
+function awardsHTML(){
+  const st=G.st||{},rows=[];
+  const best=(i,min)=>{let b=null,bv=null;for(const p of G.players){const a=st[p.pid];if(!a||a[i]==null)continue;const v=a[i];if(bv===null||(min?v<bv:v>bv)){b=p;bv=v}}return b?{p:b,v:bv}:null};
+  const add=(name,r,txt)=>{if(r)rows.push(`<div class="award"><span class="aw-bean">${charSVG(pv(r.p),'idle')}</span><span class="aw-txt"><b>${name}</b><span>${esc(r.p.name)}</span></span><span class="aw-stat">${txt}</span></div>`)};
+  let r=best(1);if(r&&r.v>0)add('Most Deadly',r,r.v+(r.v>1?' kills':' kill'));
+  r=best(2);if(r&&r.v>0)add('Worst Guesser',r,r.v+(r.v>1?' misses':' miss'));
+  r=best(3,true);if(r)add('Closest Call',r,'survived down to '+fmt(r.v)+(r.v===1?' number':' numbers'));
+  r=best(0);if(r&&r.v>0)add('Most Curious',r,r.v+(r.v>1?' questions':' question'));
+  return rows.length?`<div class="awards">${rows.slice(0,4).join('')}</div>`:'';
+}
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
 const zone=p=>p.hi-p.lo+1<=10;
 const left=p=>{let n=p.hi-p.lo+1;if(n<=10)n-=p.x.filter(v=>v>=p.lo&&v<=p.hi).length;return n};
@@ -664,10 +840,12 @@ function update(){
       G=h?h.pres.game:null;
       if(G&&!Array.isArray(G.players))G=null;
     } else hostTick();
-    syncSecret();answerIfAsked();playNewEvent();stateSounds();
+    syncSecret();answerIfAsked();playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
     if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
+    if(G&&G.phase==='over'&&G.win===PID)try{countWin()}catch(e){}
+    try{trackTaunts()}catch(e){}
     if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;later(showWinner,900)}
   }
   render();
@@ -709,19 +887,30 @@ function heartCheck(){
   hbTimer=setInterval(beat,per);beat();
 }
 function deathSfx(k){
-  const d={anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]}[k]||[];
+  const d=Object.assign({anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]},window.EXTRA_DEATH_SFX||{})[k]||[];
   d.forEach(x=>sfx(x[0],x[2]?{delay:x[1],rate:x[2]}:{delay:x[1]}));
   sfx('sad',{delay:2.4});
 }
 
 /* ---------- Host engine ---------- */
 function newLobby(){
-  return{gid:uid(),phase:'lobby',max:10000,lives:3,timer:0,players:[{pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''}],
+  return{gid:uid(),phase:'lobby',max:10000,lives:3,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''},myLook()||{})],st:{},
     turn:0,seq:0,stage:'await',q:null,ev:null,en:0,asked:0,win:null};
 }
 function publishG(){
   setP({game:JSON.parse(JSON.stringify(G))});
   LS.set('hl-host-'+code,{G,botSecrets,at:Date.now()});
+}
+function applyLooks(){
+  let ch=false;
+  for(const p of G.players){
+    if(p.bot)continue;
+    const l=p.pid===PID?myLook():validLook((getPres(p.pid)||{}).look);
+    if(!l)continue;
+    if(p.k!==l.k){p.k=l.k;ch=true}
+    if(p.c!==l.c&&!G.players.some(q=>q!==p&&q.c===l.c)){p.c=l.c;ch=true}
+  }
+  return ch;
 }
 function freeColor(){for(let c=0;c<6;c++)if(!G.players.some(p=>p.c===c))return c;return 0}
 function hostTick(){
@@ -734,12 +923,13 @@ function hostTick(){
       const nm=clean(v.pres.name)||'Player';
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
-      else if(G.players.length<6){G.players.push({pid,name:nm,c:freeColor(),bot:0,lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''});ch=true}
+      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''};if(l)np.k=l.k;G.players.push(np);ch=true}
     }
     const before=G.players.length;
     G.players=G.players.filter(p=>p.bot||p.pid===PID||peerMap.has(p.pid));
     if(G.players.length!==before)ch=true;
   }
+  if(G.phase==='lobby'&&applyLooks())ch=true;
   if((G.phase==='secrets'||G.phase==='play')&&mode==='online'){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
@@ -805,6 +995,9 @@ function pickDeath(){const recent=G.players.map(p=>p.d).filter(Boolean).slice(-3
 function resolve(res){
   const q=G.q;const a=byPid(q.a),t=byPid(q.tg);if(!a||!t)return;
   G.asked++;let delay=1900;const id=++G.en;
+  if(!G.st)G.st={};
+  const sa=G.st[a.pid]||(G.st[a.pid]=[0,0,0,null]),stt=G.st[t.pid]||(G.st[t.pid]=[0,0,0,null]);
+  sa[0]++;
   if(q.t==='ask'){
     const yes=!!res.ans;
     if(q.dir==='h'){if(yes)t.lo=q.x+1;else t.hi=q.x}
@@ -820,6 +1013,8 @@ function resolve(res){
       else{G.ev={id,t:'bonk',a:a.pid,tg:t.pid,n:q.n};delay=2800}
     } else {G.ev={id,t:'miss',a:a.pid,tg:t.pid,n:q.n};delay=1900}
   }
+  if(G.ev.t==='hit')sa[1]++;else if(G.ev.t!=='ask')sa[2]++;
+  if(t.a){const lf=left(t);stt[3]=stt[3]==null?lf:Math.min(stt[3],lf)}
   G.sub=(G.sub||[]).filter(pid=>pid!==q.tg);
   G.q=null;G.stage='show';publishG();
   const s=G.seq;later(()=>advance(s),delay);
@@ -860,7 +1055,7 @@ function botChoose(me){
   return{...base,tg:t.pid,t:'ask',dir,x};
 }
 function hostStart(){
-  G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;
+  G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;G.st={};
   botSecrets={};
   for(const p of G.players){Object.assign(p,{lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
   publishG();
@@ -931,7 +1126,9 @@ function showWinner(){
   let conf='';for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
   sfx('win');sfx(w&&w.pid===PID?'vo_youwin':'vo_gameover',{delay:0.9});
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
-  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>
+  let hatBlock='';const nh=newHatIdx;newHatIdx=null;
+  if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
+  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>${hatBlock}${awardsHTML()}
 <div class="btn-row">${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);
   $('#ovClose').onclick=closeOv;
   const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();toLobby()};
@@ -941,8 +1138,8 @@ function toLobby(){if(!isHost||!G)return;G.phase='lobby';G.q=null;G.ev=null;G.gi
 /* ---------- Actions ---------- */
 async function startOnline(asHost,c){
   if(!roomNS)return;
-  mode='online';isHost=asHost;code=c;view='game';
-  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};
+  mode='online';isHost=asHost;code=c;view='game';tnSeen={};
+  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};{const l=myLook();if(l)myPres.look=l}
   if(asHost){const saved=LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
   LS.set('hl-session',{code,host:asHost,at:Date.now()});
@@ -955,7 +1152,7 @@ function startSolo(){
   mode='solo';isHost=true;code='solo';view='game';R=null;peerMap=new Map();
   G=newLobby();
   for(let i=0;i<2;i++)addBot();
-  myPres={pid:PID,name:NAME||'You',code,role:'host'};
+  myPres={pid:PID,name:NAME||'You',code,role:'host'};tnSeen={};
   schedule();
 }
 function addBot(){
@@ -986,6 +1183,7 @@ function doAsk(){
 /* ---------- Render ---------- */
 function render(force){
   trackConn();
+  if(ui.pops.length)ui.pops=ui.pops.filter(x=>x.until>Date.now());
   const sig=JSON.stringify([view,mode,roomState,connected,connBanner(),timerLeft()!==null,G,{...ui,land:0},mySecret,myPres.act,myPres.ready,
     G&&G.players.map(p=>[(getPres(p.pid)||{}).ready,peerMap.has(p.pid)]),NAME,!!(G||Date.now()-joinedAt>7000)]);
   if(!force&&sig===lastSig)return;lastSig=sig;
@@ -1000,7 +1198,7 @@ function homeHTML(){
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   return `<main class="scroll">
-<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div></section>
+<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}</section>
 <section class="panel">
  <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="12" autocomplete="nickname" value="${esc(NAME)}" placeholder="Type your name"></div>
  ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
@@ -1158,14 +1356,16 @@ function padPress(k){
   ui[field]=v;ui.err='';render(true);
 }
 function lobbyHTML(){
-  const rows=G.players.map(p=>`<div class="prow2"><span>${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${p.pid===G.players[0].pid&&!p.bot&&mode==='online'?'<span class="tag">HOST</span>':''}</span>
-${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:'<span></span>'}</div>`).join('');
+  const rows=G.players.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${p.pid===G.players[0].pid&&!p.bot&&mode==='online'?'<span class="tag">HOST</span>':''}</span>
+${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:(p.pid===PID?`<button class="btn sm" id="lookBtn" aria-expanded="${!!ui.picker}">Change look</button>`:'<span></span>')}</div>`).join('');
   const full=!byPid(PID)&&G.players.length>=6;
   return `<main class="scroll">
 ${mode==='online'?`<section class="panel center"><div class="code-label">Room code</div><div class="code">${esc(code)}</div>${qrHTML()}<p class="tip">Friends scan this with their camera, or tap Join and type the code.</p>${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Link copied!':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}</section>`:''}
 <section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
+${ui.picker&&byPid(PID)?pickerHTML():''}
 ${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" style="justify-self:start">+ Add a bot</button>':''}
 ${full?'<p class="err">This room is full.</p>':''}</section>
+${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
 <section class="panel"><h2>Number range</h2>
 ${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
 <h2>Wrong guesses</h2>
@@ -1175,6 +1375,25 @@ ${isHost?`<div class="chips">${[[0,'No penalty'],[1,'1 heart'],[2,'2 hearts'],[3
 ${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' seconds per question':'Off'}</p>`}</section>
 ${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host to start…</p>'}
 </main>`;
+}
+const LOCK_SVG='<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1E2240"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#1E2240" stroke-width="2"/></svg>';
+function pickerHTML(){
+  const me=byPid(PID),l=myLook();
+  const curC=me.c%6,curK=l?l.k:(me.k!=null?me.k:me.c);
+  const sw=COLORS.map((c,i)=>{const taken=G.players.some(q=>q.pid!==PID&&q.c===i);
+    return `<button class="pk-sw ${i===curC?'sel':''}" data-lc="${i}" ${taken?'disabled':''} aria-label="Color ${i+1}" aria-pressed="${i===curC}">${charSVG({color:c,acc:curK,id:i},'idle')}</button>`}).join('');
+  let hats='';
+  for(let i=0;i<hatCount();i++){
+    const ok=hatUnlocked(i);
+    hats+=`<button class="pk-hat ${i===curK?'sel':''} ${ok?'':'locked'}" data-lk="${i}" ${ok?'':'disabled'} aria-pressed="${i===curK}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[curC],acc:i,id:curC},'idle')}</span><span class="hn">${ok?esc(hatName(i)):'Win '+(HAT_NEED[i]||99)}</span></button>`;
+  }
+  return `<div class="picker"><div class="pk-row">${sw}</div><div class="pk-grid">${hats}</div></div>`;
+}
+function setLook(patch){
+  const me=byPid(PID);if(!me)return;
+  const cur=myLook()||{c:me.c%6,k:me.k!=null?me.k:me.c};
+  const nl=validLook({...cur,...patch});if(!nl)return;
+  LS.set('hl-look',nl);setP({look:nl});sfx('pick');render(true);
 }
 function secretsHTML(){
   const me=byPid(PID);
@@ -1189,7 +1408,7 @@ ${padHTML(`<button class="key mid" data-k="rand">RND</button>`,false)}
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
 }
 function cardHTML(p,i){
-  if(!p.a)return `<div class="card dead"><span class="pic">${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="rip">${SHORT[p.d]||'Out'}</span></span></div>`;
+  if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="rip">${SHORT[p.d]||'Out'}</span></span></div>`;
   const cur=G.players[G.turn];
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
   const pick=false;
@@ -1199,7 +1418,7 @@ function cardHTML(p,i){
   const bub=ui.bubble&&ui.bubble.pid===p.pid?`<span class="bubble ${ui.bubble.up?'up':'down'}">${esc(ui.bubble.text)}</span>`:'';
   const turnTag='';
   const mine=p.pid===PID;
-  const inner=`<span class="pic">${bub}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
+  const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>${hearts}
 <span class="rng">${fmt(p.lo)} – ${fmt(p.hi)}</span>
 <span class="barline ${z?'hot':''}"><i style="left:${lf}%;width:${w}%"></i></span>
@@ -1208,7 +1427,8 @@ ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''}">${inner}</div>`;
   return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${p.lo} and ${p.hi}">${inner}</button>`;
 }
-function trayHTML(){
+function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
+function trayInner(){
   if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID;
   const evLine=G.ev?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
@@ -1255,6 +1475,10 @@ function bind(){
       navigator.clipboard.writeText(url).then(()=>{ui.inviteCopied=true;ui.inviteUrl='';render(true);later(()=>{ui.inviteCopied=false;render(true)},2000)},fail);
     }catch(e){fail()}
   });
+  on('lookBtn',()=>{sfx('pick');ui.picker=!ui.picker;render(true)});
+  $$('[data-lc]').forEach(b=>b.onclick=()=>setLook({c:+b.dataset.lc}));
+  $$('[data-lk]').forEach(b=>b.onclick=()=>setLook({k:+b.dataset.lk}));
+  $$('[data-tn]').forEach(b=>b.onclick=()=>tauntSend(+b.dataset.tn));
   on('addBot',()=>{addBot();publishG()});
   $$('[data-rmbot]').forEach(b=>b.onclick=()=>{G.players=G.players.filter(p=>p.pid!==b.dataset.rmbot);publishG()});
   $$('[data-max]').forEach(b=>b.onclick=()=>{G.max=+b.dataset.max;publishG()});

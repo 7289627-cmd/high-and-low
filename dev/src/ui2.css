@@ -1,0 +1,34 @@
+/* Worker B: bean picker, taunts, awards, hats */
+
+.lpic{position:relative;display:block}
+.prow2 .btn.sm{white-space:nowrap}
+.picker{display:grid;gap:10px;background:var(--paper-2);border:3px solid var(--ink);border-radius:16px;padding:10px;margin-top:4px}
+.pk-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pk-sw,.pk-hat{position:relative;font:inherit;color:var(--ink);background:var(--white);border:3px solid var(--ink);border-radius:14px;box-shadow:0 3px 0 var(--ink);padding:4px;cursor:pointer;display:grid;justify-items:center;gap:2px;min-width:0}
+.pk-sw svg{width:100%;max-width:38px;height:auto;aspect-ratio:100/140}
+.pk-sw:disabled{opacity:.35;cursor:not-allowed}
+.pk-sw.sel,.pk-hat.sel{outline:4px solid var(--ink);outline-offset:2px}
+.pk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pk-hat{padding:6px 4px}
+.pk-hat .hb svg{width:44px;height:auto;aspect-ratio:100/140;display:block}
+.pk-hat .hn{font-family:var(--display);font-size:14px;line-height:1.1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.pk-hat.locked{background:var(--paper);cursor:not-allowed}
+.pk-hat.locked .hb{opacity:.45;filter:grayscale(.6)}
+.pk-hat .lockb{position:absolute;top:4px;right:4px;background:var(--yellow);border:2px solid var(--ink);border-radius:50%;width:22px;height:22px;display:grid;place-items:center;z-index:1}
+.taunt-bar{display:flex;justify-content:center;gap:8px;margin-top:2px}
+.taunt-wrap{display:flex;justify-content:center}
+.taunt-btn{width:40px;height:40px;flex:0 0 40px;border-radius:50%;background:var(--white);border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink);font-size:20px;line-height:1;padding:0;cursor:pointer;display:grid;place-items:center}
+.taunt-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.taunt-btn:disabled{opacity:.45;cursor:default}
+.taunt-pop{position:absolute;left:50%;top:-6px;margin-left:-14px;font-size:26px;line-height:1;pointer-events:none;z-index:5;animation:tauntfloat 1.6s ease-out both}
+@keyframes tauntfloat{0%{transform:translateY(0) scale(.6);opacity:0}12%{transform:translateY(-5px) scale(1.15);opacity:1}70%{opacity:1}100%{transform:translateY(-40px) scale(1);opacity:0}}
+.wins-pill{justify-self:center;margin:8px auto 0;display:inline-block;font-family:var(--display);font-size:15px;background:var(--yellow);border:3px solid var(--ink);border-radius:999px;padding:2px 12px;box-shadow:0 3px 0 var(--ink)}
+.newhat{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0;padding:8px 12px;background:var(--yellow);border:3px solid var(--ink);border-radius:16px;font-family:var(--display);font-weight:400}
+.newhat .nh-bean svg{width:44px;height:auto;display:block}
+.awards{display:grid;gap:6px;margin:10px 0;text-align:left}
+.award{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--paper-2);border:3px solid var(--ink);border-radius:14px;padding:4px 8px}
+.award .aw-bean svg{width:30px;height:auto;display:block}
+.award .aw-txt{display:grid;min-width:0}
+.award .aw-txt b{font-family:var(--display);font-weight:400;font-size:16px}
+.award .aw-txt span{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.award .aw-stat{font-size:12px;text-align:right;max-width:110px}

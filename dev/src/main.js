@@ -18,7 +18,7 @@ let roomNS=null, roomState='checking', R=null, connected=false, joinedAt=0;
 let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
 let lastEv=null, evPrimed=null, winShown=null;
-let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0};
+let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, qSched=0, tickTimer=null, wheelSched=null;
 
@@ -28,7 +28,66 @@ const sfxSeen={hint:new Set(),seq:new Set(),go:new Set(),burst:new Set(),final:n
 let hbTimer=null,hbPeriod=0;
 function hint(key,text){if(LS.get('hl-hint-'+key))return '';if(!sfxSeen.hint.has(key)){sfxSeen.hint.add(key);sfx('hint')}return `<div class="hint-pop"><span>${text}</span></div>`}
 function seen(key){LS.set('hl-hint-'+key,1)}
-const pv=p=>({color:COLORS[p.c%6],acc:p.c,id:p.c});
+const hatCount=()=>typeof HAT_NAMES!=='undefined'?HAT_NAMES.length:ACC.length;
+const hatName=i=>typeof HAT_NAMES!=='undefined'?HAT_NAMES[i]:'Hat '+(i+1);
+const HAT_NEED=[0,0,0,0,0,0,1,2,3,5,8,12];
+const winsN=()=>{const w=LS.get('hl-wins');return Number.isInteger(w)&&w>0?w:0};
+const hatUnlocked=i=>i<6||winsN()>=(HAT_NEED[i]||99);
+const validLook=l=>l&&typeof l==='object'&&Number.isInteger(l.c)&&l.c>=0&&l.c<6&&Number.isInteger(l.k)&&l.k>=0&&l.k<hatCount()?{c:l.c,k:l.k}:null;
+function myLook(){const l=validLook(LS.get('hl-look'));if(!l)return null;if(!hatUnlocked(l.k))l.k=l.c;return l}
+const pv=p=>({color:COLORS[p.c%6],acc:(p.k!=null?p.k:p.c),id:p.c});
+const TAUNTS=['😂','😱','🤔','😈','🙏','🔥'];
+let tnN=Math.floor(Date.now()/1000),tnSeen={},popId=0,newHatIdx=null;
+function addPop(pid,e){
+  const id=++popId;ui.pops.push({pid,e,id,until:Date.now()+1600});
+  later(()=>{ui.pops=ui.pops.filter(x=>x.until>Date.now());render(true)},1660);
+}
+function popHTML(pid){
+  const now=Date.now();
+  return ui.pops.filter(x=>x.pid===pid&&x.until>now).map(x=>`<span class="taunt-pop" style="animation-delay:-${((1600-(x.until-now))/1000).toFixed(2)}s">${x.e}</span>`).join('');
+}
+function trackTaunts(){
+  for(const [pid,v] of peerMap){
+    const tn=v.pres.tn,n=tn&&Number.isInteger(tn.n)?tn.n:0;
+    if(!(pid in tnSeen)){tnSeen[pid]=n;continue}
+    if(n>tnSeen[pid]){
+      tnSeen[pid]=n;
+      if(Number.isInteger(tn.e)&&tn.e>=0&&tn.e<TAUNTS.length){
+        addPop(pid,TAUNTS[tn.e]);
+        const p=byPid(pid);sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07});
+      }
+    }
+  }
+}
+function tauntSend(e){
+  if(Date.now()<ui.tauntUntil||!G)return;
+  tnN++;setP({tn:{n:tnN,e}});addPop(PID,TAUNTS[e]);
+  sfx('babble'+rnd(1,3),{rate:babRate()});
+  ui.tauntUntil=Date.now()+1500;later(()=>render(true),1530);render(true);
+}
+function tauntBar(){
+  const dis=Date.now()<ui.tauntUntil;
+  return `<div class="taunt-bar" role="group" aria-label="Taunts">${TAUNTS.map((e,i)=>`<button class="taunt-btn" data-tn="${i}" ${dis?'disabled':''}>${e}</button>`).join('')}</div>`;
+}
+function countWin(){
+  const key=G.gid+':'+G.en;
+  if(LS.get('hl-lastwin')===key)return;
+  LS.set('hl-lastwin',key);
+  const prev=winsN(),now=prev+1;LS.set('hl-wins',now);
+  newHatIdx=null;
+  for(let i=6;i<hatCount();i++){const nd=HAT_NEED[i]||99;if(nd>prev&&nd<=now)newHatIdx=i}
+}
+const AWARD_DEFS=[['Most Deadly',1,'kills'],['Worst Guesser',2,'misses'],['Closest Call',3,'closest'],['Most Curious',0,'questions']];
+function awardsHTML(){
+  const st=G.st||{},rows=[];
+  const best=(i,min)=>{let b=null,bv=null;for(const p of G.players){const a=st[p.pid];if(!a||a[i]==null)continue;const v=a[i];if(bv===null||(min?v<bv:v>bv)){b=p;bv=v}}return b?{p:b,v:bv}:null};
+  const add=(name,r,txt)=>{if(r)rows.push(`<div class="award"><span class="aw-bean">${charSVG(pv(r.p),'idle')}</span><span class="aw-txt"><b>${name}</b><span>${esc(r.p.name)}</span></span><span class="aw-stat">${txt}</span></div>`)};
+  let r=best(1);if(r&&r.v>0)add('Most Deadly',r,r.v+(r.v>1?' kills':' kill'));
+  r=best(2);if(r&&r.v>0)add('Worst Guesser',r,r.v+(r.v>1?' misses':' miss'));
+  r=best(3,true);if(r)add('Closest Call',r,'survived down to '+fmt(r.v)+(r.v===1?' number':' numbers'));
+  r=best(0);if(r&&r.v>0)add('Most Curious',r,r.v+(r.v>1?' questions':' question'));
+  return rows.length?`<div class="awards">${rows.slice(0,4).join('')}</div>`:'';
+}
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
 const zone=p=>p.hi-p.lo+1<=10;
 const left=p=>{let n=p.hi-p.lo+1;if(n<=10)n-=p.x.filter(v=>v>=p.lo&&v<=p.hi).length;return n};
@@ -68,10 +127,12 @@ function update(){
       G=h?h.pres.game:null;
       if(G&&!Array.isArray(G.players))G=null;
     } else hostTick();
-    syncSecret();answerIfAsked();playNewEvent();stateSounds();
+    syncSecret();answerIfAsked();playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
     if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
+    if(G&&G.phase==='over'&&G.win===PID)try{countWin()}catch(e){}
+    try{trackTaunts()}catch(e){}
     if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;later(showWinner,900)}
   }
   render();
@@ -113,19 +174,30 @@ function heartCheck(){
   hbTimer=setInterval(beat,per);beat();
 }
 function deathSfx(k){
-  const d={anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]}[k]||[];
+  const d=Object.assign({anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]},window.EXTRA_DEATH_SFX||{})[k]||[];
   d.forEach(x=>sfx(x[0],x[2]?{delay:x[1],rate:x[2]}:{delay:x[1]}));
   sfx('sad',{delay:2.4});
 }
 
 /* ---------- Host engine ---------- */
 function newLobby(){
-  return{gid:uid(),phase:'lobby',max:10000,lives:3,timer:0,players:[{pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''}],
+  return{gid:uid(),phase:'lobby',max:10000,lives:3,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],h:3,a:1,d:''},myLook()||{})],st:{},
     turn:0,seq:0,stage:'await',q:null,ev:null,en:0,asked:0,win:null};
 }
 function publishG(){
   setP({game:JSON.parse(JSON.stringify(G))});
   LS.set('hl-host-'+code,{G,botSecrets,at:Date.now()});
+}
+function applyLooks(){
+  let ch=false;
+  for(const p of G.players){
+    if(p.bot)continue;
+    const l=p.pid===PID?myLook():validLook((getPres(p.pid)||{}).look);
+    if(!l)continue;
+    if(p.k!==l.k){p.k=l.k;ch=true}
+    if(p.c!==l.c&&!G.players.some(q=>q!==p&&q.c===l.c)){p.c=l.c;ch=true}
+  }
+  return ch;
 }
 function freeColor(){for(let c=0;c<6;c++)if(!G.players.some(p=>p.c===c))return c;return 0}
 function hostTick(){
@@ -138,12 +210,13 @@ function hostTick(){
       const nm=clean(v.pres.name)||'Player';
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
-      else if(G.players.length<6){G.players.push({pid,name:nm,c:freeColor(),bot:0,lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''});ch=true}
+      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''};if(l)np.k=l.k;G.players.push(np);ch=true}
     }
     const before=G.players.length;
     G.players=G.players.filter(p=>p.bot||p.pid===PID||peerMap.has(p.pid));
     if(G.players.length!==before)ch=true;
   }
+  if(G.phase==='lobby'&&applyLooks())ch=true;
   if((G.phase==='secrets'||G.phase==='play')&&mode==='online'){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
@@ -209,6 +282,9 @@ function pickDeath(){const recent=G.players.map(p=>p.d).filter(Boolean).slice(-3
 function resolve(res){
   const q=G.q;const a=byPid(q.a),t=byPid(q.tg);if(!a||!t)return;
   G.asked++;let delay=1900;const id=++G.en;
+  if(!G.st)G.st={};
+  const sa=G.st[a.pid]||(G.st[a.pid]=[0,0,0,null]),stt=G.st[t.pid]||(G.st[t.pid]=[0,0,0,null]);
+  sa[0]++;
   if(q.t==='ask'){
     const yes=!!res.ans;
     if(q.dir==='h'){if(yes)t.lo=q.x+1;else t.hi=q.x}
@@ -224,6 +300,8 @@ function resolve(res){
       else{G.ev={id,t:'bonk',a:a.pid,tg:t.pid,n:q.n};delay=2800}
     } else {G.ev={id,t:'miss',a:a.pid,tg:t.pid,n:q.n};delay=1900}
   }
+  if(G.ev.t==='hit')sa[1]++;else if(G.ev.t!=='ask')sa[2]++;
+  if(t.a){const lf=left(t);stt[3]=stt[3]==null?lf:Math.min(stt[3],lf)}
   G.sub=(G.sub||[]).filter(pid=>pid!==q.tg);
   G.q=null;G.stage='show';publishG();
   const s=G.seq;later(()=>advance(s),delay);
@@ -264,7 +342,7 @@ function botChoose(me){
   return{...base,tg:t.pid,t:'ask',dir,x};
 }
 function hostStart(){
-  G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;
+  G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;G.st={};
   botSecrets={};
   for(const p of G.players){Object.assign(p,{lo:1,hi:G.max,x:[],h:G.lives,a:1,d:''});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
   publishG();
@@ -335,7 +413,9 @@ function showWinner(){
   let conf='';for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
   sfx('win');sfx(w&&w.pid===PID?'vo_youwin':'vo_gameover',{delay:0.9});
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
-  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>
+  let hatBlock='';const nh=newHatIdx;newHatIdx=null;
+  if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
+  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>${hatBlock}${awardsHTML()}
 <div class="btn-row">${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);
   $('#ovClose').onclick=closeOv;
   const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();toLobby()};
@@ -345,8 +425,8 @@ function toLobby(){if(!isHost||!G)return;G.phase='lobby';G.q=null;G.ev=null;G.gi
 /* ---------- Actions ---------- */
 async function startOnline(asHost,c){
   if(!roomNS)return;
-  mode='online';isHost=asHost;code=c;view='game';
-  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};
+  mode='online';isHost=asHost;code=c;view='game';tnSeen={};
+  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};{const l=myLook();if(l)myPres.look=l}
   if(asHost){const saved=LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
   LS.set('hl-session',{code,host:asHost,at:Date.now()});
@@ -359,7 +439,7 @@ function startSolo(){
   mode='solo';isHost=true;code='solo';view='game';R=null;peerMap=new Map();
   G=newLobby();
   for(let i=0;i<2;i++)addBot();
-  myPres={pid:PID,name:NAME||'You',code,role:'host'};
+  myPres={pid:PID,name:NAME||'You',code,role:'host'};tnSeen={};
   schedule();
 }
 function addBot(){
@@ -390,6 +470,7 @@ function doAsk(){
 /* ---------- Render ---------- */
 function render(force){
   trackConn();
+  if(ui.pops.length)ui.pops=ui.pops.filter(x=>x.until>Date.now());
   const sig=JSON.stringify([view,mode,roomState,connected,connBanner(),timerLeft()!==null,G,{...ui,land:0},mySecret,myPres.act,myPres.ready,
     G&&G.players.map(p=>[(getPres(p.pid)||{}).ready,peerMap.has(p.pid)]),NAME,!!(G||Date.now()-joinedAt>7000)]);
   if(!force&&sig===lastSig)return;lastSig=sig;
@@ -404,7 +485,7 @@ function homeHTML(){
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   return `<main class="scroll">
-<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div></section>
+<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}</section>
 <section class="panel">
  <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="12" autocomplete="nickname" value="${esc(NAME)}" placeholder="Type your name"></div>
  ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
@@ -562,14 +643,16 @@ function padPress(k){
   ui[field]=v;ui.err='';render(true);
 }
 function lobbyHTML(){
-  const rows=G.players.map(p=>`<div class="prow2"><span>${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${p.pid===G.players[0].pid&&!p.bot&&mode==='online'?'<span class="tag">HOST</span>':''}</span>
-${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:'<span></span>'}</div>`).join('');
+  const rows=G.players.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${p.pid===G.players[0].pid&&!p.bot&&mode==='online'?'<span class="tag">HOST</span>':''}</span>
+${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:(p.pid===PID?`<button class="btn sm" id="lookBtn" aria-expanded="${!!ui.picker}">Change look</button>`:'<span></span>')}</div>`).join('');
   const full=!byPid(PID)&&G.players.length>=6;
   return `<main class="scroll">
 ${mode==='online'?`<section class="panel center"><div class="code-label">Room code</div><div class="code">${esc(code)}</div>${qrHTML()}<p class="tip">Friends scan this with their camera, or tap Join and type the code.</p>${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Link copied!':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}</section>`:''}
 <section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
+${ui.picker&&byPid(PID)?pickerHTML():''}
 ${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" style="justify-self:start">+ Add a bot</button>':''}
 ${full?'<p class="err">This room is full.</p>':''}</section>
+${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
 <section class="panel"><h2>Number range</h2>
 ${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
 <h2>Wrong guesses</h2>
@@ -579,6 +662,25 @@ ${isHost?`<div class="chips">${[[0,'No penalty'],[1,'1 heart'],[2,'2 hearts'],[3
 ${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' seconds per question':'Off'}</p>`}</section>
 ${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host to start…</p>'}
 </main>`;
+}
+const LOCK_SVG='<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1E2240"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#1E2240" stroke-width="2"/></svg>';
+function pickerHTML(){
+  const me=byPid(PID),l=myLook();
+  const curC=me.c%6,curK=l?l.k:(me.k!=null?me.k:me.c);
+  const sw=COLORS.map((c,i)=>{const taken=G.players.some(q=>q.pid!==PID&&q.c===i);
+    return `<button class="pk-sw ${i===curC?'sel':''}" data-lc="${i}" ${taken?'disabled':''} aria-label="Color ${i+1}" aria-pressed="${i===curC}">${charSVG({color:c,acc:curK,id:i},'idle')}</button>`}).join('');
+  let hats='';
+  for(let i=0;i<hatCount();i++){
+    const ok=hatUnlocked(i);
+    hats+=`<button class="pk-hat ${i===curK?'sel':''} ${ok?'':'locked'}" data-lk="${i}" ${ok?'':'disabled'} aria-pressed="${i===curK}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[curC],acc:i,id:curC},'idle')}</span><span class="hn">${ok?esc(hatName(i)):'Win '+(HAT_NEED[i]||99)}</span></button>`;
+  }
+  return `<div class="picker"><div class="pk-row">${sw}</div><div class="pk-grid">${hats}</div></div>`;
+}
+function setLook(patch){
+  const me=byPid(PID);if(!me)return;
+  const cur=myLook()||{c:me.c%6,k:me.k!=null?me.k:me.c};
+  const nl=validLook({...cur,...patch});if(!nl)return;
+  LS.set('hl-look',nl);setP({look:nl});sfx('pick');render(true);
 }
 function secretsHTML(){
   const me=byPid(PID);
@@ -593,7 +695,7 @@ ${padHTML(`<button class="key mid" data-k="rand">RND</button>`,false)}
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
 }
 function cardHTML(p,i){
-  if(!p.a)return `<div class="card dead"><span class="pic">${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="rip">${SHORT[p.d]||'Out'}</span></span></div>`;
+  if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="rip">${SHORT[p.d]||'Out'}</span></span></div>`;
   const cur=G.players[G.turn];
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
   const pick=false;
@@ -603,7 +705,7 @@ function cardHTML(p,i){
   const bub=ui.bubble&&ui.bubble.pid===p.pid?`<span class="bubble ${ui.bubble.up?'up':'down'}">${esc(ui.bubble.text)}</span>`:'';
   const turnTag='';
   const mine=p.pid===PID;
-  const inner=`<span class="pic">${bub}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
+  const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>${hearts}
 <span class="rng">${fmt(p.lo)} – ${fmt(p.hi)}</span>
 <span class="barline ${z?'hot':''}"><i style="left:${lf}%;width:${w}%"></i></span>
@@ -612,7 +714,8 @@ ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''}">${inner}</div>`;
   return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${p.lo} and ${p.hi}">${inner}</button>`;
 }
-function trayHTML(){
+function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
+function trayInner(){
   if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID;
   const evLine=G.ev?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
@@ -659,6 +762,10 @@ function bind(){
       navigator.clipboard.writeText(url).then(()=>{ui.inviteCopied=true;ui.inviteUrl='';render(true);later(()=>{ui.inviteCopied=false;render(true)},2000)},fail);
     }catch(e){fail()}
   });
+  on('lookBtn',()=>{sfx('pick');ui.picker=!ui.picker;render(true)});
+  $$('[data-lc]').forEach(b=>b.onclick=()=>setLook({c:+b.dataset.lc}));
+  $$('[data-lk]').forEach(b=>b.onclick=()=>setLook({k:+b.dataset.lk}));
+  $$('[data-tn]').forEach(b=>b.onclick=()=>tauntSend(+b.dataset.tn));
   on('addBot',()=>{addBot();publishG()});
   $$('[data-rmbot]').forEach(b=>b.onclick=()=>{G.players=G.players.filter(p=>p.pid!==b.dataset.rmbot);publishG()});
   $$('[data-max]').forEach(b=>b.onclick=()=>{G.max=+b.dataset.max;publishG()});

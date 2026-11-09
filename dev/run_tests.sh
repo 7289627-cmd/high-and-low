@@ -19,5 +19,7 @@ echo "${T:-FAIL timer auto-ask: no output}"
 P=$(timeout 500 node powers.js 2>&1 | grep -E "PASS|FAIL")
 echo "${P:-FAIL powers: no output}"
 node sfx_check.js
+node bots_check.js
 cd ..
 python3 build.py >/dev/null
+cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null

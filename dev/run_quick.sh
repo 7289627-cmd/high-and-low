@@ -6,3 +6,4 @@ node --check test/_built.js && node --check test/_built_web.js && echo "PASS syn
 cd test && node sfx_check.js 2>&1 | grep -E "PASS|FAIL"
 S=$(timeout 300 node sim.js 2>&1 | grep -E "END|STUCK|timeout|errors")
 echo "$S" | grep -q "END" && echo "$S" | grep -q "errors \[\]" && echo "PASS solo game" || echo "FAIL solo game: $S"
+node bots_check.js 2>&1 | grep -E "PASS|FAIL"

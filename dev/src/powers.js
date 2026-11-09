@@ -196,7 +196,7 @@ function pwSheetHTML(){
     if(why==='Pick another player')why=G.players.some(p=>p.a&&p.pid!==PID)?'':'Nobody to peek at';
     return `<div class="pw-card ${why?'off':''}"><span class="pw-ic">${d.icon}</span><span class="pw-tx"><span class="pw-nm"><b>${d.name}</b><span class="pw-cost">${pwCoinSVG(13)}${d.cost}</span></span><span class="pw-ds">${d.desc}</span>${why?`<em class="pw-why">${esc(why)}</em>`:''}</span><button class="btn sm go" data-pw="${d.id}" ${why?'disabled':''}>Use</button></div>`;
   }).join('');
-  return `<div class="sheet pw-sheet"><h2>⚡ Powers</h2><div class="pw-have">${pwCoinPill(me)}<span>You have ${myCoins()} coin${myCoins()===1?'':'s'}. One power per turn.</span></div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">Close</button></div></div>`;
+  return `<div class="sheet pw-sheet"><h2>⚡ Powers</h2><div class="pw-have">${pwCoinPill(me)}</div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">Close</button></div></div>`;
 }
 function pwPeekHTML(){
   const others=G.players.filter(p=>p.a&&p.pid!==PID);

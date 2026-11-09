@@ -451,6 +451,49 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 .askv .ruler{flex:none}
 .askv .say{min-height:132px}
 .askv .ask-hint{display:none}
+
+/* Coins and powers */
+.coin-pill{display:inline-flex;align-items:center;gap:3px;flex:none;font-family:var(--display);font-weight:400;font-size:13px;line-height:1;background:var(--white);border:2px solid var(--ink);border-radius:999px;padding:1px 7px 1px 3px;color:var(--ink)}
+.coin-pill b{font-weight:400}
+.coin-pill svg{display:block;flex:none}
+.pw-ic-sm{flex:none;font-size:15px;line-height:1}
+.pw-par{flex:none;font-family:var(--body);font-weight:800;font-size:10px;letter-spacing:.06em;line-height:1.4;border:2px solid var(--ink);border-radius:6px;padding:0 4px;background:var(--sky)}
+.pw-par.even{background:var(--yellow)}
+.pw-bits{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:2px 0}
+.pw-btn{background:var(--yellow);flex:none;white-space:nowrap}
+.pw-row{display:flex;justify-content:flex-end}
+.pw-row:empty{display:none}
+.ask-top{flex-wrap:wrap}
+.pw-sheet{text-align:left;gap:10px}
+.pw-sheet h2{text-align:center}
+.pw-have{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:14px}
+.pw-list{display:grid;gap:8px}
+.pw-card{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--white);border:3px solid var(--ink);border-radius:16px;padding:6px 8px}
+.pw-card.off{background:var(--paper-2)}
+.pw-card.off .pw-ic{opacity:.5}
+.pw-ic{font-size:28px;line-height:1;text-align:center}
+.pw-tx{display:grid;gap:1px;min-width:0}
+.pw-nm{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pw-nm b{font-family:var(--display);font-weight:400;font-size:17px;line-height:1.1}
+.pw-cost{display:inline-flex;align-items:center;gap:2px;font-family:var(--display);font-size:14px}
+.pw-ds{font-size:13px;font-weight:600;color:var(--ink);line-height:1.2}
+.pw-why{font-style:normal;font-size:12px;font-weight:800;color:var(--red);line-height:1.2}
+.pw-targets{display:grid;gap:8px}
+.pw-tg{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:20px;color:var(--ink);background:var(--white);border:3px solid var(--ink);border-radius:16px;box-shadow:0 3px 0 var(--ink);padding:6px 12px;cursor:pointer;text-align:left}
+.pw-tg .mini{width:34px;flex:none}
+.pw-tg b{font-weight:400;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pw-stage{min-height:150px}
+.pw-stage.stage{height:200px}
+.coins-home{display:flex;align-items:center;justify-content:center;gap:5px;width:fit-content;margin-top:6px}
+
+/* Card fit on phones: let the range wrap, keep every line inside the card */
+.cast{grid-auto-rows:max-content}
+.card{min-width:0;overflow:hidden}
+.card .info>*{min-width:0;max-width:100%}
+.rng{white-space:normal;line-height:1.2;overflow-wrap:anywhere}
+.zone{white-space:normal;max-width:100%}
+.card .barline{width:100%}
+@media (max-width:420px){.cast{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{padding:7px}.card .nm{font-size:16px}}
 </style>
 </head><body>
 <div id="app"></div>
@@ -730,6 +773,275 @@ window.showdownTick=function(){
   try{on=view==='game'&&!!G&&G.phase==='play'&&G.players.length>=3&&G.players.filter(p=>p.a).length===2}catch(e){}
   document.body.classList.toggle('showdown',on);
 };
+/* Coins and powerups. Function declarations only at top level (this file is concatenated BEFORE main.js in one script). */
+
+/* ---------- Data ---------- */
+function pwDefs(){return [
+  {id:'snap',icon:'🎯',name:'Instant Showdown',cost:8,desc:'Pulls everyone into the guess zone.'},
+  {id:'peek',icon:'👀',name:'Peek',cost:2,desc:'Learn if a player’s number is odd or even.'},
+  {id:'double',icon:'✌️',name:'Double Down',cost:3,desc:'Question the same player twice.'},
+  {id:'shield',icon:'🛡️',name:'Shield',cost:3,desc:'Blocks the next question or guess at you.'},
+  {id:'freeze',icon:'🧊',name:'Freeze',cost:4,desc:'The next player skips their turn.'}
+]}
+function pwDef(id){return pwDefs().find(d=>d.id===id)||null}
+function myCoins(){const c=LS.get(LSK('hl-coins'));return Number.isInteger(c)&&c>0?c:0}
+function pwCoins(p){if(!p||p.bot)return 0;if(p.pid===PID)return myCoins();const c=(getPres(p.pid)||{}).co;return Number.isInteger(c)&&c>0?c:0}
+function pwEarn(){LS.set(LSK('hl-coins'),myCoins()+5);window.__pwWon=1}
+function pwWinBlock(){
+  if(!window.__pwWon)return '';
+  window.__pwWon=0;sfx('lock',{delay:0.3});
+  return `<div class="newhat pw-won">${pwCoinSVG(26)}<b>+5 coins</b></div>`;
+}
+function pwHomePill(){const c=myCoins();return c>0?`<div class="wins-pill coins-home">${pwCoinSVG(16)} Coins: ${c}</div>`:''}
+function pwSpend(ev){
+  if(!G||ev.a!==PID)return;
+  const d=pwDef(ev.t);if(!d)return;
+  const key=G.gid+':'+G.turnNo;
+  if(LS.get(LSK('hl-pwspent'))===key)return;
+  LS.set(LSK('hl-pwspent'),key);
+  LS.set(LSK('hl-coins'),Math.max(0,myCoins()-d.cost));
+}
+function pwCoinSVG(s){return `<svg viewBox="0 0 16 16" width="${s||14}" height="${s||14}" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="#FFD23F" stroke="#1E2240" stroke-width="2"/><circle cx="8" cy="8" r="3" fill="none" stroke="#1E2240" stroke-width="1.5"/></svg>`}
+function pwCoinPill(p){if(p&&p.bot)return '';return `<span class="coin-pill" title="Coins">${pwCoinSVG(14)}<b>${pwCoins(p)}</b></span>`}
+
+/* ---------- Shared validation (host and client). Returns '' when OK, else a short reason ---------- */
+function pwCan(p,id,tg){
+  const d=pwDef(id);if(!d||!p||!p.a)return 'Not available';
+  if(G.pwTurn===G.turnNo)return 'Already used a power this turn';
+  const alive=G.players.filter(x=>x.a);
+  if(id==='double'&&!(G.sub&&G.sub.length>0))return 'Nobody left to question';
+  if(id==='shield'&&p.sh)return 'Shield is already up';
+  if(id==='freeze'&&alive.length<3)return 'Needs 3 or more players';
+  if(id==='peek'){const t=byPid(tg);if(!t||!t.a||t.pid===p.pid)return 'Pick another player'}
+  return '';
+}
+
+/* ---------- Host side ---------- */
+function pwReset(){
+  G.bx={};G.pk={};G.pr=null;G.turnNo=0;G.pwTurn=-1;
+  for(const p of G.players){p.sh=0;p.fz=0}
+}
+function pwPassTurn(){
+  G.turn=nextAlive(G.turn);
+  const alive=G.players.filter(p=>p.a).length;
+  for(let k=0;k<G.players.length;k++){
+    const p=G.players[G.turn];
+    if(!p.fz)break;
+    p.fz=0;
+    if(alive>=3){G.ev={id:++G.en,t:'frozen',tg:p.pid};G.turn=nextAlive(G.turn)}
+  }
+  beginTurn();
+}
+function pwHostTick(){
+  if(!G||G.phase!=='play')return false;
+  if(G.stage==='power')return pwFinish();
+  if(G.stage!=='await'||G.q)return false;
+  const cur=G.players[G.turn];
+  if(!cur||!cur.a||cur.bot)return false;
+  const r=(getPres(cur.pid)||{}).pw;
+  if(!r||typeof r!=='object'||r.gid!==G.gid||r.turn!==G.turnNo)return false;
+  if(pwCan(cur,r.id,r.tg))return false;
+  return pwApply(cur,r.id,r.tg);
+}
+function pwWindow(p,secret,isUser){
+  let lo=p.lo,hi=p.hi;
+  if(hi-lo+1>10&&Number.isInteger(secret)){
+    const a=Math.max(lo,secret-9),b=Math.min(secret,hi-9);
+    if(b>=a){const s=a+Math.floor(Math.random()*(b-a+1));lo=s;hi=s+9}
+  }
+  let dec=null;
+  if(!isUser&&Number.isInteger(secret)){
+    const c=[];for(let n=lo;n<=hi;n++)if(n!==secret&&!p.x.includes(n))c.push(n);
+    if(c.length)dec=c[Math.floor(Math.random()*c.length)];
+  }
+  return{lo,hi,dec};
+}
+function pwApply(cur,id,tg){
+  G.pwTurn=G.turnNo;
+  if(id==='double'){
+    G.sub.unshift(G.sub[0]);G.subN=(G.subN||0)+1;
+    G.ev={id:++G.en,t:'double',a:cur.pid,tg:G.sub[0]};
+  } else if(id==='shield'){
+    cur.sh=1;G.ev={id:++G.en,t:'shield',a:cur.pid};
+  } else if(id==='freeze'){
+    const n=G.players[nextAlive(G.turn)];n.fz=1;
+    G.ev={id:++G.en,t:'freeze',a:cur.pid,tg:n.pid};
+  } else if(id==='peek'){
+    const t=byPid(tg);
+    if(t.bot){
+      if(!G.pk[cur.pid])G.pk[cur.pid]={};
+      G.pk[cur.pid][t.pid]=botSecrets[t.pid]%2===1?'odd':'even';
+      G.ev={id:++G.en,t:'peek',a:cur.pid,tg:t.pid};
+    } else {
+      G.pr={id:uid(),k:'peek',by:cur.pid,tg:t.pid,need:[t.pid],until:Date.now()+8000};
+      G.stage='power';pwWake();
+    }
+  } else if(id==='snap'){
+    const need=[],res={};
+    for(const p of G.players){
+      if(!p.a)continue;
+      if(p.bot)res[p.pid]=pwWindow(p,botSecrets[p.pid],p.pid===cur.pid);else need.push(p.pid);
+    }
+    G.pr={id:uid(),k:'snap',by:cur.pid,need,res,until:Date.now()+8000};
+    G.stage='power';pwWake();
+  }
+  return true;
+}
+function pwWake(){later(()=>schedule(),8300)}
+function pwAnswerOf(pid){
+  const r=(getPres(pid)||{}).prr;
+  return r&&typeof r==='object'&&r.gid===G.gid&&r.id===G.pr.id?r:null;
+}
+function pwFinish(){
+  const pr=G.pr;
+  if(!pr||!Array.isArray(pr.need)){G.pr=null;G.stage='await';return true}
+  const waiting=pr.need.filter(pid=>{const p=byPid(pid);return p&&p.a&&!pwAnswerOf(pid)});
+  if(waiting.length&&Date.now()<pr.until)return false;
+  if(pr.k==='snap'){
+    const bx={};
+    for(const p of G.players){
+      if(!p.a)continue;
+      const r=p.bot?(pr.res||{})[p.pid]:pwAnswerOf(p.pid);
+      if(!r)continue;
+      if(p.hi-p.lo+1>10&&Number.isInteger(r.lo)&&Number.isInteger(r.hi)&&r.hi-r.lo===9&&r.lo>=p.lo&&r.hi<=p.hi){p.lo=r.lo;p.hi=r.hi}
+      if(p.pid!==pr.by&&Number.isInteger(r.dec)&&r.dec>=p.lo&&r.dec<=p.hi&&!p.x.includes(r.dec))bx[p.pid]=r.dec;
+    }
+    G.bx[pr.by]=bx;
+    G.ev={id:++G.en,t:'snap',a:pr.by};
+  } else {
+    const r=pwAnswerOf(pr.tg);
+    if(r&&typeof r.odd==='boolean'){if(!G.pk[pr.by])G.pk[pr.by]={};G.pk[pr.by][pr.tg]=r.odd?'odd':'even'}
+    G.ev={id:++G.en,t:'peek',a:pr.by,tg:pr.tg};
+  }
+  G.pr=null;G.stage='await';timerSched='';
+  return true;
+}
+
+/* ---------- Every phone: answer power requests about my secret ---------- */
+function pwAnswer(){
+  if(G&&myPres.co!==myCoins())setP({co:myCoins()});
+  if(!G||G.phase!=='play'||G.stage!=='power'||!G.pr||!mySecret||!Array.isArray(G.pr.need))return;
+  if(!G.pr.need.includes(PID))return;
+  const r=myPres.prr;if(r&&r.gid===G.gid&&r.id===G.pr.id)return;
+  const prr={gid:G.gid,id:G.pr.id};
+  if(G.pr.k==='peek')prr.odd=mySecret.n%2===1;
+  else{
+    const me=byPid(PID);if(!me)return;
+    const w=pwWindow(me,mySecret.n,G.pr.by===PID);
+    prr.lo=w.lo;prr.hi=w.hi;prr.dec=w.dec;
+  }
+  setP({prr});
+}
+
+/* ---------- Display helpers (my phone only) ---------- */
+function myXs(t){
+  const o=t.x.slice();
+  const b=G&&G.bx&&G.bx[PID];
+  if(b&&Number.isInteger(b[t.pid]))o.push(b[t.pid]);
+  const pk=G&&G.pk&&G.pk[PID]&&G.pk[PID][t.pid];
+  if(pk&&zone(t)){for(let n=t.lo;n<=t.hi;n++)if((pk==='odd')!==(n%2===1))o.push(n)}
+  return o;
+}
+function leftX(p){
+  if(!zone(p))return left(p);
+  const xs=myXs(p);let n=0;
+  for(let k=p.lo;k<=p.hi;k++)if(!xs.includes(k))n++;
+  return n;
+}
+function pwBits(p){
+  let h=pwCoinPill(p);
+  if(p.a&&p.sh)h+='<span class="pw-ic-sm" title="Shield" aria-label="Shielded">🛡️</span>';
+  if(p.a&&p.fz)h+='<span class="pw-ic-sm" title="Frozen" aria-label="Frozen">❄️</span>';
+  const pk=G&&G.pk&&G.pk[PID]&&G.pk[PID][p.pid];
+  if(p.a&&pk)h+=`<span class="pw-par ${pk}">${pk==='odd'?'ODD':'EVEN'}</span>`;
+  return h?`<span class="pw-bits">${h}</span>`:'';
+}
+function pwBtnHTML(){
+  const me=byPid(PID);
+  return me&&me.a&&canAct()?'<button class="btn sm pw-btn" id="pwBtn">⚡ Powers</button>':'';
+}
+
+/* ---------- Powers sheet ---------- */
+function pwClose(){ui.pwOpen=false;closeOv()}
+function pwSheetHTML(){
+  const me=byPid(PID);
+  const cards=pwDefs().map(d=>{
+    let why=pwCan(me,d.id,d.id==='peek'?'x':null);
+    if(!why&&myCoins()<d.cost)why='Not enough coins';
+    if(why==='Pick another player')why=G.players.some(p=>p.a&&p.pid!==PID)?'':'Nobody to peek at';
+    return `<div class="pw-card ${why?'off':''}"><span class="pw-ic">${d.icon}</span><span class="pw-tx"><span class="pw-nm"><b>${d.name}</b><span class="pw-cost">${pwCoinSVG(13)}${d.cost}</span></span><span class="pw-ds">${d.desc}</span>${why?`<em class="pw-why">${esc(why)}</em>`:''}</span><button class="btn sm go" data-pw="${d.id}" ${why?'disabled':''}>Use</button></div>`;
+  }).join('');
+  return `<div class="sheet pw-sheet"><h2>⚡ Powers</h2><div class="pw-have">${pwCoinPill(me)}<span>You have ${myCoins()} coin${myCoins()===1?'':'s'}. One power per turn.</span></div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">Close</button></div></div>`;
+}
+function pwPeekHTML(){
+  const others=G.players.filter(p=>p.a&&p.pid!==PID);
+  return `<div class="sheet pw-sheet"><h2>👀 Peek at who?</h2><div class="pw-targets">${others.map(p=>`<button class="pw-tg" data-pwtg="${esc(p.pid)}"><span class="mini">${charSVG(pv(p),'idle')}</span><b>${esc(p.name)}</b></button>`).join('')}</div><div class="btn-row"><button class="btn" id="pwBack">Back</button><button class="btn" id="pwClose">Close</button></div></div>`;
+}
+function pwShow(html){
+  openOv(html,e=>{if(e.target===document.getElementById('ov'))pwClose()});
+  const g=id=>document.getElementById(id);
+  if(g('pwClose'))g('pwClose').onclick=()=>{sfx('pick');pwClose()};
+  if(g('pwBack'))g('pwBack').onclick=()=>{sfx('pick');pwShow(pwSheetHTML())};
+  document.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>{
+    sfx('pick');
+    if(b.dataset.pw==='peek')pwShow(pwPeekHTML());else pwSend(b.dataset.pw,null);
+  });
+  document.querySelectorAll('[data-pwtg]').forEach(b=>b.onclick=()=>{sfx('pick');pwSend('peek',b.dataset.pwtg)});
+}
+function pwOpen(){
+  if(!G||!canAct())return;
+  sfx('pick');ui.pwOpen=true;pwShow(pwSheetHTML());
+}
+function pwSend(id,tg){
+  if(!G||!canAct())return;
+  const d=pwDef(id);if(!d||myCoins()<d.cost)return;
+  setP({pw:{gid:G.gid,turn:G.turnNo,id,tg:tg||null}});
+  pwClose();
+}
+function pwBind(){
+  const b=document.getElementById('pwBtn');if(b)b.onclick=pwOpen;
+  if(ui.pwOpen){
+    const ov=document.getElementById('ov');
+    if(!ov||ov.hidden||!ov.querySelector('.pw-sheet'))ui.pwOpen=false;
+    else if(!G||!canAct())pwClose();
+  }
+}
+
+/* ---------- Events ---------- */
+function pwBubble(ev,pid,text){
+  ui.bubble={pid,id:ev.id,up:true,text};
+  later(()=>{if(ui.bubble&&ui.bubble.id===ev.id){ui.bubble=null;render(true)}},1800);
+  render(true);
+}
+function pwEvent(ev){
+  const A=byPid(ev.a);
+  pwSpend(ev);
+  if(ev.t==='snap'){
+    const id=++sceneSeq,t0=Date.now();
+    const who=A?(A.pid===PID?'You':esc(A.name)):'Someone';
+    openOv(`<div class="sheet center"><div class="stage pw-stage">${A?`<div class="actor a-dance">${charSVG(pv(A),'happy')}</div>`:''}</div><h2>INSTANT SHOWDOWN!</h2><p>${who} pulled everyone into the guess zone!</p></div>`,()=>{if(id===sceneSeq&&Date.now()-t0>500)closeOv()});
+    later(()=>{if(id===sceneSeq)closeOv()},2600);
+    sfx('vo_final');sfx('wheelland',{delay:0.2});
+  }
+  else if(ev.t==='peek'){pwBubble(ev,ev.tg,'👀');sfx('pick')}
+  else if(ev.t==='double')sfx('land');
+  else if(ev.t==='shield'){pwBubble(ev,ev.a,'🛡️');sfx('lock')}
+  else if(ev.t==='blocked'){pwBubble(ev,ev.tg,'Blocked!');sfx('bonk')}
+  else if(ev.t==='freeze'||ev.t==='frozen'){pwBubble(ev,ev.tg,'❄️');sfx('zap')}
+}
+function pwEvText(ev,a,t){
+  const T=byPid(ev.tg);
+  switch(ev.t){
+    case 'snap':return `${a} pulled everyone into the guess zone!`;
+    case 'peek':return `${a} peeked at ${t}.`;
+    case 'double':return `${a} doubled down on ${t}.`;
+    case 'shield':return `${a} raised a shield.`;
+    case 'blocked':return `${T&&T.pid===PID?'Your':t+'’s'} shield blocked ${a==='You'?'you':a}!`;
+    case 'freeze':return `${a} froze ${t}.`;
+    case 'frozen':return `${T&&T.pid===PID?'You are':t+' is'} frozen and ${T&&T.pid===PID?'skip':'skips'} a turn.`;
+  }
+  return '';
+}
 
 /* ---------- Storage + identity ---------- */
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
@@ -806,6 +1118,7 @@ function countWin(){
   const key=G.gid+':'+G.en;
   if(LS.get(LSK('hl-lastwin'))===key)return;
   LS.set(LSK('hl-lastwin'),key);
+  pwEarn();
   const prev=winsN(),now=prev+1;LS.set(LSK('hl-wins'),now);
   newHatIdx=null;
   for(let i=6;i<hatCount();i++){const nd=HAT_NEED[i]||99;if(nd>prev&&nd<=now)newHatIdx=i}
@@ -860,7 +1173,7 @@ function update(){
       G=h?h.pres.game:null;
       if(G&&!Array.isArray(G.players))G=null;
     } else hostTick();
-    syncSecret();answerIfAsked();playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
+    syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
     if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
@@ -965,6 +1278,7 @@ function hostTick(){
     const g=G.gid;wheelSched=g;
     later(()=>{if(G&&G.gid===g&&G.phase==='play'&&G.stage==='wheel'){beginTurn();publishG()}},6000);
   }
+  if(pwHostTick())ch=true;
   if(G.phase==='play'&&G.stage==='await'){
     const cur=G.players[G.turn];
     if(!G.q){
@@ -990,6 +1304,7 @@ function hostTick(){
     if(G.q){
       const tg=byPid(G.q.tg);
       if(!tg||!tg.a){G.q=null;ch=true}
+      else if(tg.sh){resolve({blocked:1});return}
       else if(tg.bot){
         if(qSched!==G.seq){const s=G.seq;qSched=s;later(()=>{if(G&&G.q&&G.q.seq===s){const b=botSecrets[tg.pid];resolve(G.q.t==='ask'?{ans:G.q.dir==='h'?b>G.q.x:b<G.q.x}:{hit:b===G.q.n})}},800)}
       } else {
@@ -1018,7 +1333,9 @@ function resolve(res){
   if(!G.st)G.st={};
   const sa=G.st[a.pid]||(G.st[a.pid]=[0,0,0,null]),stt=G.st[t.pid]||(G.st[t.pid]=[0,0,0,null]);
   sa[0]++;
-  if(q.t==='ask'){
+  if(res.blocked){
+    t.sh=0;G.ev={id,t:'blocked',a:a.pid,tg:t.pid};
+  } else if(q.t==='ask'){
     const yes=!!res.ans;
     if(q.dir==='h'){if(yes)t.lo=q.x+1;else t.hi=q.x}
     else{if(yes)t.hi=q.x-1;else t.lo=q.x}
@@ -1029,9 +1346,9 @@ function resolve(res){
     t.x.push(q.n);
     G.ev={id,t:'miss',a:a.pid,tg:t.pid,n:q.n};delay=1900;
   }
-  if(G.ev.t==='hit')sa[1]++;else if(G.ev.t!=='ask')sa[2]++;
+  if(G.ev.t==='hit')sa[1]++;else if(G.ev.t!=='ask'&&G.ev.t!=='blocked')sa[2]++;
   if(t.a){const lf=left(t);stt[3]=stt[3]==null?lf:Math.min(stt[3],lf)}
-  G.sub=(G.sub||[]).filter(pid=>pid!==q.tg);
+  {const si=(G.sub||[]).indexOf(q.tg);if(si>=0)G.sub.splice(si,1)}
   G.q=null;G.stage='show';publishG();
   const s=G.seq;later(()=>advance(s),delay);
 }
@@ -1040,7 +1357,7 @@ function advance(s){
   const alive=G.players.filter(p=>p.a);
   if(alive.length<=1){G.phase='over';G.win=alive[0]?alive[0].pid:null;publishG();return}
   G.sub=(G.sub||[]).filter(pid=>{const p=byPid(pid);return p&&p.a});
-  if(!G.players[G.turn].a||!G.sub.length){G.turn=nextAlive(G.turn);beginTurn()}
+  if(!G.players[G.turn].a||!G.sub.length){pwPassTurn()}
   else{G.seq++;G.stage='await';G.q=null}
   publishG();
 }
@@ -1049,7 +1366,7 @@ function beginTurn(){
   if(!G.players[G.turn].a)G.turn=nextAlive(G.turn);
   const n=G.players.length,o=[];
   for(let k=1;k<n;k++){const p=G.players[(G.turn+k)%n];if(p.a)o.push(p.pid)}
-  G.sub=o;G.subN=o.length;G.seq++;G.stage='await';G.q=null;
+  G.sub=o;G.subN=o.length;G.seq++;G.turnNo=(G.turnNo||0)+1;G.stage='await';G.q=null;
 }
 function markLeft(p){
   p.a=0;p.d=pickDeath();G.ev={id:++G.en,t:'left',tg:p.pid,k:p.d};
@@ -1074,6 +1391,7 @@ function hostStart(){
   G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;G.st={};
   botSecrets={};
   for(const p of G.players){Object.assign(p,{lo:1,hi:G.max,x:[],a:1,d:''});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
+  pwReset();
   publishG();
 }
 
@@ -1096,6 +1414,7 @@ function playNewEvent(){
   if(!G.ev||G.ev.id===lastEv)return;
   lastEv=G.ev.id;const ev=G.ev;
   const A=byPid(ev.a),T=byPid(ev.tg);
+  try{pwEvent(ev)}catch(e){}
   if(ev.t==='ask')sfx(ev.ans?'yes':'nope');
   else if(ev.t==='miss')sfx('nope');
   else if(ev.t==='bonk'){sfx('bonk');sfx('vo_wrong',{delay:0.45})}
@@ -1113,6 +1432,7 @@ function playNewEvent(){
 }
 function evText(ev){
   const A=byPid(ev.a),T=byPid(ev.tg);const a=A?(A.pid===PID?'You':A.name):'',t=T?(T.pid===PID?'you':T.name):'';
+  {const pt=pwEvText(ev,a,t);if(pt)return pt}
   switch(ev.t){
     case 'ask':return `${a} asked ${t}: ${ev.dir==='l'?'lower':'higher'} than ${fmt(ev.x)}? ${ev.ans?'Yes.':'No.'}`;
     case 'hit':return `${a} guessed ${fmt(ev.n)}. ${T&&T.pid===PID?'You are':t+' is'} out.`;
@@ -1144,7 +1464,7 @@ function showWinner(){
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
   let hatBlock='';const nh=newHatIdx;newHatIdx=null;
   if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
-  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>${hatBlock}${awardsHTML()}
+  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2><p>Last bean standing after ${G.asked} questions and guesses.</p>${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${awardsHTML()}
 <div class="btn-row">${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);
   $('#ovClose').onclick=closeOv;
   const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();toLobby()};
@@ -1220,7 +1540,7 @@ function homeHTML(){
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   return `<main class="scroll">
-<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}</section>
+<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><label for="nameIn">Your name</label><input id="nameIn" maxlength="12" autocomplete="nickname" value="${esc(NAME)}" placeholder="Type your name"></div>
  ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
@@ -1317,7 +1637,7 @@ function askViewHTML(){
   const t=curTarget(),me=byPid(PID);
   const k=(G.subN||1)-G.sub.length+1;
   const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':`<span class="qcount">Question ${k} of ${G.subN}</span>`}
-${timerPill()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(t.lo)} – ${fmt(t.hi)}</span></div></div></div>`;
+${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(t.lo)} – ${fmt(t.hi)}</span></div></div></div>`;
   if(ui.step!=='num'){
     const bk=G.gid+':'+G.seq;
     if(!sfxSeen.burst.has(bk)){sfxSeen.burst.add(bk);[0,0.14,0.28,0.42].forEach(d=>sfx('babble'+rnd(1,3),{delay:d,rate:babRate()+(Math.random()-.5)*0.16}))}
@@ -1452,7 +1772,7 @@ ${padHTML(`<button class="key mid" data-k="rand">RND</button>`,false)}
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
 }
 function cardHTML(p,i){
-  if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="rip">${SHORT[p.d]||'Out'}</span></span></div>`;
+  if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span>${pwBits(p)}<span class="rip">${SHORT[p.d]||'Out'}</span></span></div>`;
   const cur=G.players[G.turn];
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
   const pick=false;
@@ -1462,10 +1782,10 @@ function cardHTML(p,i){
   const turnTag='';
   const mine=p.pid===PID;
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
-<span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>
+<span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
 <span class="rng">between <b>${fmt(p.lo)}</b> and <b>${fmt(p.hi)}</b></span>
 <span class="barline ${z?'hot':''}"><i style="left:${lf}%;width:${w}%"></i></span>
-${z?`<span class="zone">GUESS ZONE · ${left(p)} LEFT</span>`:`<span class="left"><b>${fmt(p.hi-p.lo+1)} left</b></span>`}
+${z?`<span class="zone">GUESS ZONE · ${leftX(p)} LEFT</span>`:`<span class="left"><b>${fmt(p.hi-p.lo+1)} left</b></span>`}
 ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'hide':'show'}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''}">${inner}</div>`;
   return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${p.lo} and ${p.hi}">${inner}</button>`;
@@ -1485,11 +1805,11 @@ function trayInner(){
     return head+body;
   }
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
-  if(G.stage!=='await'||G.q||sent)return head+`<p class="hint">${G.q?esc(qText(G.q)):(G.stage==='await'?'Sending…':'')}</p>`;
+  if(G.stage!=='await'||G.q||sent)return head+`<p class="hint">${G.q?esc(qText(G.q)):(G.stage==='await'?'Sending…':(G.stage==='power'?'Using a power…':''))}</p>`;
   const t=curTarget();
   if(!t||!t.a)return head;
-  const btns=[];for(let n=t.lo;n<=t.hi;n++){const x=t.x.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
-  return head+hint('guess','Down to 10! Guess their exact number.')+`<p class="q"><b>${esc(t.name)}</b> is in the guess zone. Pick their exact number.</p><p class="left-line"><b>${left(t)}</b> number${left(t)===1?'':'s'} left</p><div class="guess-grid">${btns.join('')}</div>
+  const xs=myXs(t),btns=[];for(let n=t.lo;n<=t.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
+  return head+hint('guess','Down to 10! Guess their exact number.')+`<div class="pw-row">${pwBtnHTML()}</div>`+`<p class="q"><b>${esc(t.name)}</b> is in the guess zone. Pick their exact number.</p><p class="left-line"><b>${leftX(t)}</b> number${leftX(t)===1?'':'s'} left</p><div class="guess-grid">${btns.join('')}</div>
 <div class="sub"><span>Miss and it gets crossed off.</span><span>Question ${(G.subN||1)-G.sub.length+1} of ${G.subN}</span></div>`;
 }
 
@@ -1535,6 +1855,7 @@ function bind(){
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
   $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   on('askGo',doAsk);
+  pwBind();
   $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sfx('send');sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});
 }
 

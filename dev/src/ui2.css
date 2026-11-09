@@ -51,3 +51,46 @@
 .askv .ruler{flex:none}
 .askv .say{min-height:132px}
 .askv .ask-hint{display:none}
+
+/* Coins and powers */
+.coin-pill{display:inline-flex;align-items:center;gap:3px;flex:none;font-family:var(--display);font-weight:400;font-size:13px;line-height:1;background:var(--white);border:2px solid var(--ink);border-radius:999px;padding:1px 7px 1px 3px;color:var(--ink)}
+.coin-pill b{font-weight:400}
+.coin-pill svg{display:block;flex:none}
+.pw-ic-sm{flex:none;font-size:15px;line-height:1}
+.pw-par{flex:none;font-family:var(--body);font-weight:800;font-size:10px;letter-spacing:.06em;line-height:1.4;border:2px solid var(--ink);border-radius:6px;padding:0 4px;background:var(--sky)}
+.pw-par.even{background:var(--yellow)}
+.pw-bits{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:2px 0}
+.pw-btn{background:var(--yellow);flex:none;white-space:nowrap}
+.pw-row{display:flex;justify-content:flex-end}
+.pw-row:empty{display:none}
+.ask-top{flex-wrap:wrap}
+.pw-sheet{text-align:left;gap:10px}
+.pw-sheet h2{text-align:center}
+.pw-have{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:14px}
+.pw-list{display:grid;gap:8px}
+.pw-card{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--white);border:3px solid var(--ink);border-radius:16px;padding:6px 8px}
+.pw-card.off{background:var(--paper-2)}
+.pw-card.off .pw-ic{opacity:.5}
+.pw-ic{font-size:28px;line-height:1;text-align:center}
+.pw-tx{display:grid;gap:1px;min-width:0}
+.pw-nm{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pw-nm b{font-family:var(--display);font-weight:400;font-size:17px;line-height:1.1}
+.pw-cost{display:inline-flex;align-items:center;gap:2px;font-family:var(--display);font-size:14px}
+.pw-ds{font-size:13px;font-weight:600;color:var(--ink);line-height:1.2}
+.pw-why{font-style:normal;font-size:12px;font-weight:800;color:var(--red);line-height:1.2}
+.pw-targets{display:grid;gap:8px}
+.pw-tg{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:20px;color:var(--ink);background:var(--white);border:3px solid var(--ink);border-radius:16px;box-shadow:0 3px 0 var(--ink);padding:6px 12px;cursor:pointer;text-align:left}
+.pw-tg .mini{width:34px;flex:none}
+.pw-tg b{font-weight:400;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pw-stage{min-height:150px}
+.pw-stage.stage{height:200px}
+.coins-home{display:flex;align-items:center;justify-content:center;gap:5px;width:fit-content;margin-top:6px}
+
+/* Card fit on phones: let the range wrap, keep every line inside the card */
+.cast{grid-auto-rows:max-content}
+.card{min-width:0;overflow:hidden}
+.card .info>*{min-width:0;max-width:100%}
+.rng{white-space:normal;line-height:1.2;overflow-wrap:anywhere}
+.zone{white-space:normal;max-width:100%}
+.card .barline{width:100%}
+@media (max-width:420px){.cast{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{padding:7px}.card .nm{font-size:16px}}

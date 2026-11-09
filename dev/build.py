@@ -10,7 +10,7 @@ HEAD='''<title>High and Low</title>
 '''
 css=''.join((H/'src'/f).read_text() for f in ['base.css','extra.css','deaths.css','ui2.css'] if (H/'src'/f).exists())
 snd=(H/'src/sound.js').read_text()
-js=snd+(H/'src/base.js').read_text()+((H/'src/showdown.js').read_text() if (H/'src/showdown.js').exists() else '')+(H/'src/main.js').read_text()
+js=snd+(H/'src/base.js').read_text()+((H/'src/showdown.js').read_text() if (H/'src/showdown.js').exists() else '')+((H/'src/powers.js').read_text() if (H/'src/powers.js').exists() else '')+(H/'src/main.js').read_text()
 import sys,json
 if len(sys.argv)>1 and sys.argv[1]=='web':
     cfgp=H/'config.json'

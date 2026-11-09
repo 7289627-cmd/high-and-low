@@ -16,6 +16,8 @@ W=$(timeout 400 node mp_web.js 2>&1 | grep -E "END|errors" )
 echo "$W" | grep -q "errors \[\] \[\]" && echo "PASS web two-phone game (no errors) $(echo "$W"|grep END)" || echo "FAIL web two-phone game: $W"
 T=$(timeout 100 node timer.js 2>&1 | grep -E "PASS|FAIL")
 echo "${T:-FAIL timer auto-ask: no output}"
+P=$(timeout 500 node powers.js 2>&1 | grep -E "PASS|FAIL")
+echo "${P:-FAIL powers: no output}"
 node sfx_check.js
 cd ..
 python3 build.py >/dev/null

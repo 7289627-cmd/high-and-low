@@ -21,6 +21,7 @@ if len(sys.argv)>1 and sys.argv[1]=='web':
     head=('<!doctype html><html lang="en"><head>'
     '<meta charset="utf-8">'
     '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">'
+    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'\">"
     '<meta name="apple-mobile-web-app-capable" content="yes">'
     '<meta name="mobile-web-app-capable" content="yes">'
     '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
@@ -32,8 +33,8 @@ if len(sys.argv)>1 and sys.argv[1]=='web':
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">\n')
     reset=':root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}\n'
     out=(head+'<style>'+reset+css+'</style>\n</head><body>\n<div id="app"></div>\n<div id="ov" hidden></div>\n\n'
-    '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>\n'
-    '<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>\n'
+    '<script src="vendor/supabase-2.118.0.js"></script>\n'
+    '<script src="vendor/qrcode-1.4.4.js"></script>\n'
     '<script>window.HL_CONFIG={url:'+json.dumps(cfg.get('url',''))+',key:'+json.dumps(cfg.get('key',''))+'}</script>\n'
     '<script>\n'+wjs+'</script>\n</body></html>\n')
     (H/'site').mkdir(exist_ok=True)

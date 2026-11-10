@@ -25,3 +25,4 @@ node bots_check.js
 cd ..
 python3 build.py >/dev/null
 cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 400 node leave.js 2>&1 | tail -1); (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 900 node chaos.js 11,29,47 2>/dev/null | tail -1)

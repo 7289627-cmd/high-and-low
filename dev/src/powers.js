@@ -4,13 +4,13 @@
 function pwDefs(){return [
   {id:'snap',icon:'🎯',name:'Instant Showdown',cost:8,desc:'Pulls everyone into the guess zone.'},
   {id:'peek',icon:'👀',name:'Peek',cost:2,desc:'Learn if a player’s number is odd or even.'},
-  {id:'double',icon:'✌️',name:'Double Down',cost:3,desc:'Question the same player twice.'},
+  {id:'double',icon:'✌️',name:'Double Down',cost:3,desc:'Ask twice this turn'},
   {id:'shield',icon:'🛡️',name:'Shield',cost:3,desc:'Blocks the next question or guess at you.'},
   {id:'freeze',icon:'🧊',name:'Freeze',cost:4,desc:'The next player skips their turn.'}
 ]}
 function pwDef(id){return pwDefs().find(d=>d.id===id)||null}
 function myCoins(){const c=LS.get(LSK('hl-coins'));return Number.isInteger(c)&&c>0?c:0}
-function pwCoins(p){if(!p||p.bot)return 0;if(p.pid===PID)return myCoins();const c=(getPres(p.pid)||{}).co;return Number.isInteger(c)&&c>0?c:0}
+function pwCoins(p){if(!p||(p.bot&&!p.hb))return 0;if(p.pid===PID)return myCoins();const c=(getPres(p.pid)||{}).co;return Number.isInteger(c)&&c>0?c:0}
 function pwEarn(){LS.set(LSK('hl-coins'),myCoins()+5);window.__pwWon=1}
 function pwWinBlock(){
   if(!window.__pwWon)return '';
@@ -27,14 +27,14 @@ function pwSpend(ev){
   LS.set(LSK('hl-coins'),Math.max(0,myCoins()-d.cost));
 }
 function pwCoinSVG(s){return `<svg viewBox="0 0 16 16" width="${s||14}" height="${s||14}" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="#FFD23F" stroke="#1E2240" stroke-width="2"/><circle cx="8" cy="8" r="3" fill="none" stroke="#1E2240" stroke-width="1.5"/></svg>`}
-function pwCoinPill(p){if(p&&p.bot)return '';return `<span class="coin-pill" title="Coins">${pwCoinSVG(14)}<b>${pwCoins(p)}</b></span>`}
+function pwCoinPill(p){if(p&&p.bot&&!p.hb)return '';return `<span class="coin-pill" title="Coins">${pwCoinSVG(14)}<b>${pwCoins(p)}</b></span>`}
 
 /* ---------- Shared validation (host and client). Returns '' when OK, else a short reason ---------- */
 function pwCan(p,id,tg){
   const d=pwDef(id);if(!d||!p||!p.a)return 'Not available';
   if(G.pwTurn===G.turnNo)return 'Already used a power this turn';
   const alive=G.players.filter(x=>x.a);
-  if(id==='double'&&!(G.sub&&G.sub.length>0))return 'Nobody left to question';
+  if(id==='double'&&!(G.sub&&G.sub[0]==='*'))return 'Use it before asking';
   if(id==='shield'&&p.sh)return 'Shield is already up';
   if(id==='freeze'&&alive.length<3)return 'Needs 3 or more players';
   if(id==='peek'){const t=byPid(tg);if(!t||!t.a||t.pid===p.pid)return 'Pick another player'}
@@ -86,8 +86,8 @@ function pwWindow(p,secret,isUser,by){
 function pwApply(cur,id,tg){
   G.pwTurn=G.turnNo;
   if(id==='double'){
-    G.sub.unshift(G.sub[0]);G.subN=(G.subN||0)+1;
-    G.ev={id:++G.en,t:'double',a:cur.pid,tg:G.sub[0]};
+    G.sub.splice(1,0,'*');G.subN=(G.subN||0)+1;
+    G.ev={id:++G.en,t:'double',a:cur.pid};
   } else if(id==='shield'){
     cur.sh=1;G.ev={id:++G.en,t:'shield',a:cur.pid};
   } else if(id==='freeze'){
@@ -122,7 +122,7 @@ function pwAnswerOf(pid){
 function pwFinish(){
   const pr=G.pr;
   if(!pr||!Array.isArray(pr.need)){G.pr=null;G.stage='await';return true}
-  const waiting=pr.need.filter(pid=>{const p=byPid(pid);return p&&p.a&&!pwAnswerOf(pid)});
+  const waiting=pr.need.filter(pid=>{const p=byPid(pid);return p&&p.a&&!p.bot&&!pwAnswerOf(pid)});
   if(waiting.length&&Date.now()<pr.until)return false;
   if(pr.k==='snap'){
     const bx={};
@@ -146,7 +146,8 @@ function pwFinish(){
     if(r&&typeof r.odd==='boolean'){if(!G.pk[pr.by])G.pk[pr.by]={};G.pk[pr.by][pr.tg]=r.odd?'odd':'even'}
     G.ev={id:++G.en,t:'peek',a:pr.by,tg:pr.tg};
   }
-  G.pr=null;G.stage='await';timerSched='';
+  G.pr=null;G.stage='await';timerSched='';botSched=-1;
+  try{fixSub()}catch(e){}
   return true;
 }
 
@@ -155,6 +156,7 @@ function pwAnswer(){
   if(G&&myPres.co!==myCoins())setP({co:myCoins()});
   if(!G||G.phase!=='play'||G.stage!=='power'||!G.pr||!mySecret||!Array.isArray(G.pr.need))return;
   if(!G.pr.need.includes(PID))return;
+  {const m=byPid(PID);if(!m||m.bot)return}
   const r=myPres.prr;if(r&&r.gid===G.gid&&r.id===G.pr.id)return;
   const prr={gid:G.gid,id:G.pr.id};
   if(G.pr.k==='peek')prr.odd=mySecret.n%2===1;
@@ -267,7 +269,7 @@ function pwEvText(ev,a,t){
   switch(ev.t){
     case 'snap':return `${a} pulled everyone into the guess zone!`;
     case 'peek':return `${a} peeked at ${t}.`;
-    case 'double':return `${a} doubled down on ${t}.`;
+    case 'double':return `${a} doubled down.`;
     case 'shield':return `${a} raised a shield.`;
     case 'blocked':return `${T&&T.pid===PID?'Your':t+'’s'} shield blocked ${a==='You'?'you':a}!`;
     case 'freeze':return `${a} froze ${t}.`;

@@ -22,7 +22,7 @@ function botRecord(won){
 }
 function botGameDone(){
   if(!G||G.phase!=='over'||!Array.isArray(G.players))return;
-  if(!G.players.some(p=>p.bot)||!G.players.some(p=>p.pid===PID))return;
+  if(!G.players.some(p=>p.bot&&!p.hb)||!G.players.some(p=>p.pid===PID))return;
   const key=G.gid+':'+G.en;
   if(LS.get(LSK('hl-botrec-last'))===key)return;
   LS.set(LSK('hl-botrec-last'),key);
@@ -47,4 +47,12 @@ function botSplit(t,skill,dir,r1,r2){
   f=Math.max(0.05,Math.min(0.95,f));
   const x=t.lo+Math.floor(n*f);
   return dir==='h'?Math.min(t.hi-1,Math.max(t.lo,x)):Math.min(t.hi,Math.max(t.lo+1,x));
+}
+
+/* Ask everyone: same direction, same relative spot inside each opponent's range. Integer math keeps the focus exact. */
+function spreadX(x,fv,ov,dir){
+  const fn=fv.hi-fv.lo+1,on=ov.hi-ov.lo+1;
+  let xo=ov.lo+Math.floor((x-fv.lo)*on/fn);
+  const mn=dir==='h'?ov.lo:ov.lo+1,mx=dir==='h'?ov.hi-1:ov.hi;
+  return Math.max(mn,Math.min(mx,xo));
 }

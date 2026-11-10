@@ -1,6 +1,6 @@
 /* ---------- Sound (recorded sfx, lazy AudioContext) ---------- */
 const SFX={
-  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam'],
+  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam','d_ding','d_splat','d_sweep','d_fuse','d_boing','d_tada'],
   muted:false,ctx:null,master:null,buf:{},
   play(key,opts){
     try{

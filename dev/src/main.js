@@ -15,7 +15,7 @@ const ARROW_DN=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14l6-8H1
 
 /* ---------- App state ---------- */
 let view='home', mode=null, code=null, isHost=false;
-let roomNS=null, roomState='checking', R=null, connected=false, joinedAt=0;
+let isPub=false, roomNS=null, roomState='checking', R=null, connected=false, joinedAt=0;
 let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
 let lastEv=null, evPrimed=null, winShown=null;
@@ -157,7 +157,7 @@ function cleanG(g){
     const str=(v,n)=>typeof v==='string'?v.slice(0,n):'';
     const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
     if(!['lobby','secrets','play','over'].includes(g.phase))return null;
-    g.max=[100,1000,10000,100000].includes(g.max)?g.max:10000;
+    g.max=[100,1000,10000,100000].includes(g.max)?g.max:10000;g.pub=g.pub?1:0;
     const hats=typeof hatCount==='function'?hatCount():12;
     g.players=g.players.slice(0,6).filter(p=>p&&typeof p==='object'&&typeof p.pid==='string'&&p.pid).map(p=>{
       p.pid=p.pid.slice(0,40);p.name=clean(p.name)||'Player';p.c=int(p.c,0,0,5);p.k=p.k==null?null:int(p.k,0,0,hats-1);
@@ -206,9 +206,9 @@ function update(){
   if(view==='game'){
     if(!isHost){
       let h=null;for(const v of peerMap.values())if(v.pres.role==='host'&&v.pres.game&&typeof v.pres.game==='object')h=v;
-      if(h&&h.pres.gone){leaveGame().then(()=>{ui.homeErr='The host left.';render(true)});return}
+      if(h&&h.pres.gone){const wp=G&&G.pub;leaveGame().then(()=>{if(!wp)ui.homeErr='The host left.';render(true)});return}
       if(h){hostSeenAt=Date.now()}
-      else if(hostSeenAt&&Date.now()-hostSeenAt>(window.HL_TEST_HOSTLOST_MS||60000)){hostSeenAt=0;leaveGame().then(()=>{ui.homeErr='Lost the host.';render(true)});return}
+      else if(hostSeenAt&&Date.now()-hostSeenAt>(window.HL_TEST_HOSTLOST_MS||60000)){hostSeenAt=0;const wp=G&&G.pub;leaveGame().then(()=>{if(!wp)ui.homeErr='Lost the host.';render(true)});return}
       G=h?cleanG(h.pres.game):null;
     } else hostTick();
     syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
@@ -275,7 +275,7 @@ function newLobby(){
 function publishG(){
   if(isHost&&G&&G.phase==='play')try{setDanger()}catch(e){}
   setP({game:JSON.parse(JSON.stringify(G))});
-  LS.set('hl-host-'+code,{G,botSecrets,at:Date.now()});
+  if(!G.pub)LS.set('hl-host-'+code,{G,botSecrets,at:Date.now()});
 }
 function applyLooks(){
   let ch=false;
@@ -312,15 +312,36 @@ function watchdog(){
   G.stage='show';const s=G.seq;later(()=>advance(s),300);
   return true;
 }
+const FILL_NAMES=['Mia','Leo','Zoe','Kai','Ava','Max','Ivy','Sam','Noa','Eli','Luna','Theo','Ruby','Finn','Maya','Jude','Nova','Otis','Remy','Cleo'];
+const BAD=['fuck','shit','bitch','cunt','nigg','fagg','whore','slut','bastard','dildo','penis','vagina','rapist','nazi','hitler','retard','twat','wank','porn','pussy','asshole','dickhead','blowjob','kike','chink'];
+function tameName(n){const l=String(n||'').toLowerCase().replace(/[^a-z]/g,'');return BAD.some(w=>l.includes(w))?'Bean':n}
+function addFillBot(){
+  if(G.players.length>=6)return;
+  const used=G.players.map(p=>p.name);const free=FILL_NAMES.filter(n=>!used.includes(n));
+  const nm=free.length?free[rnd(0,free.length-1)]:'Bean';
+  G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,hb:1,a:1,d:'',dg:0});
+}
+/* Public room pacing (host side): fill bots at 1.5, 2.5, 3.5 steps, start 1.5 s after 4 players. Returns true when the game was started. */
+let pubAt=0,pubFills=0,pubFullAt=0;
+function pubTick(){
+  const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
+  if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
+  if(G.players.length<4&&pubFills<3&&now-pubAt>=step*(1.5+pubFills)){pubFills++;addFillBot();publishG()}
+  if(G.players.length>=4){
+    if(!pubFullAt)pubFullAt=now;
+    if(now-pubFullAt>=1500){pubFullAt=0;hostStart();return true}
+  } else pubFullAt=0;
+  return false;
+}
 function hostTick(){
   if(!G)return;
   if(watchdog()){publishG();return}
   let ch=false;
-  const me=byPid(PID);if(me&&me.name!==(NAME||'Host')){me.name=NAME||'Host';ch=true}
+  const me=byPid(PID);const myNm=G.pub?tameName(NAME||'Host'):(NAME||'Host');if(me&&me.name!==myNm){me.name=myNm;ch=true}
   if(G.phase==='lobby'&&mode==='online'){
     for(const [pid,v] of peerMap){
       if(v.pres.role!=='player'||v.pres.gone)continue;
-      const nm=clean(v.pres.name)||'Player';
+      const nm0=clean(v.pres.name)||'Player',nm=G.pub?tameName(nm0):nm0;
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
       else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;G.players.push(np);ch=true}
@@ -330,6 +351,7 @@ function hostTick(){
     if(G.players.length!==before)ch=true;
   }
   if(G.phase==='lobby'&&applyLooks())ch=true;
+  if(G.phase==='lobby'&&G.pub&&pubTick())return;
   if((G.phase==='secrets'||G.phase==='play')&&mode==='online'){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
@@ -668,29 +690,92 @@ function showWinner(){
   let hatBlock='';const nh=newHatIdx;newHatIdx=null;
   if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
   openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${awardsHTML()}
-<div class="btn-row">${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);
-  $('#ovClose').onclick=closeOv;
+<div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>':`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
+  {const c=$('#ovClose');if(c)c.onclick=closeOv}
+  {const a=$('#againBtn');if(a)a.onclick=playAgain}
   const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();toLobby()};
 }
 function toLobby(){if(!isHost||!G)return;G.players=G.players.filter(p=>!p.hb);G.phase='lobby';G.q=null;G.ev=null;G.gid=uid();publishG()}
 
+/* ---------- Play (quick match) ---------- */
+let qp=null,pubTimer=null;
+function pubWake(){clearInterval(pubTimer);pubTimer=setInterval(schedule,250)}
+function quickStop(){
+  clearInterval(pubTimer);pubTimer=null;
+  if(qp){clearInterval(qp.ann);try{qp.q&&qp.q.leave()}catch(e){}qp=null}
+}
+function playAgain(){closeOv();leaveGame().then(quickPlay)}
+function waitHTML(players){
+  let list=players;
+  if(!list){const l=myLook()||{};list=[{pid:PID,name:NAME||'You',c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
+  const rows=list.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}</span><span></span></div>`).join('');
+  return `<main class="scroll waitv"><h1 class="logo small">High<span>&amp;</span>Low</h1><section class="panel"><div class="plist">${rows}</div></section>
+<p class="finding">Finding players<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
+<button class="btn" id="leaveBtn">Leave</button></main>`;
+}
+async function quickPlay(){
+  quickStop();
+  if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
+  if(roomState!=='ok'||!roomNS||!window.makeSupabaseQueue||!window.HL_CONFIG){startSolo(true);return}
+  const my={q:null,ann:0};qp=my;
+  mode='search';view='game';G=null;code=null;isHost=false;isPub=true;myPres={};peerMap=new Map();
+  render(true);
+  const opens=[];
+  try{
+    my.q=window.makeSupabaseQueue(window.HL_CONFIG);
+    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<4&&m.n>=1)opens.push({code:m.code,n:m.n,t:Date.now()})});
+    my.q.join();
+  }catch(e){my.q=null}
+  const qms=window.HL_TEST_Q_MS||2000;
+  await new Promise(r=>setTimeout(r,qms));
+  if(qp!==my)return;
+  const now=Date.now();
+  const best=opens.filter(o=>now-o.t<5000).sort((a,b)=>b.n-a.n)[0];
+  const host=()=>{
+    if(qp!==my)return;
+    let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];
+    pubAt=Date.now();pubFills=0;pubFullAt=0;
+    startOnline(true,c,true);
+    G.pub=1;publishG();pubWake();
+    if(my.q){
+      const ann=()=>{
+        if(qp!==my)return;
+        if(!G||!isHost||!G.pub||G.phase!=='lobby'){quickStop();return}
+        if(G.players.length<4)my.q.announce({code,n:G.players.length,at:Date.now()});
+      };
+      my.ann=setInterval(ann,Math.min(1500,Math.round(qms*0.75)));ann();
+    }
+  };
+  if(!best||!my.q){host();return}
+  try{my.q.leave()}catch(e){}my.q=null;
+  startOnline(false,best.code,true);
+  await new Promise(r=>setTimeout(r,window.HL_TEST_QJOIN_MS||6000));
+  if(qp!==my)return;
+  if(G&&byPid(PID))return;
+  await leaveGame();
+  qp=my;mode='search';view='game';isPub=true;render(true);
+  if(qp!==my)return;
+  try{my.q=window.makeSupabaseQueue(window.HL_CONFIG);my.q.join()}catch(e){my.q=null}
+  host();
+}
 /* ---------- Actions ---------- */
-async function startOnline(asHost,c){
+async function startOnline(asHost,c,pub){
   if(!roomNS)return;
-  mode='online';isHost=asHost;code=c;view='game';tnSeen={};
+  mode='online';isHost=asHost;code=c;view='game';tnSeen={};isPub=!!pub;
   myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};{const l=myLook();if(l)myPres.look=l}
-  if(asHost){const saved=LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
+  if(asHost){const saved=pub?null:LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
-  LS.set(LSK('hl-session'),{code,host:asHost,at:Date.now()});
+  if(!pub)LS.set(LSK('hl-session'),{code,host:asHost,at:Date.now()});
   render(true);
   try{await connectRoom()}catch(e){roomState='none'}
   schedule();
   clearInterval(tickTimer);tickTimer=setInterval(schedule,4000);
 }
-function startSolo(){
-  mode='solo';isHost=true;code='solo';view='game';R=null;peerMap=new Map();
+function startSolo(pub){
+  mode='solo';isHost=true;code='solo';view='game';R=null;peerMap=new Map();isPub=!!pub;
   G=newLobby();
-  for(let i=0;i<2;i++)addBot();
+  if(pub){G.pub=1;pubAt=Date.now();pubFills=0;pubFullAt=0;pubWake()}
+  else for(let i=0;i<2;i++)addBot();
   myPres={pid:PID,name:NAME||'You',code,role:'host'};tnSeen={};
   schedule();
 }
@@ -700,11 +785,11 @@ function addBot(){
   G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
 async function leaveGame(){
-  hostSeenAt=0;
+  hostSeenAt=0;quickStop();isPub=false;
   clearTimers();clearInterval(tickTimer);closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
   LS.del(LSK('hl-session'));if(isHost&&code)LS.del('hl-host-'+code);
-  R=null;view='home';mode=null;G=null;code=null;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,leaveArmed:false,bubble:null};
+  R=null;view='home';mode=null;G=null;code=null;pubAt=0;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,leaveArmed:false,bubble:null};
   render(true);
 }
 function lockSecret(n){
@@ -743,21 +828,21 @@ function homeHTML(){
   const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
+  if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
   return `<main class="scroll">
-<section class="hero">${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}${pwHomePill()}</section>
+<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
- ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
- <div class="home-actions">
-  <button class="btn primary big full" id="hostBtn" ${online?'':'disabled'}>Host a game</button>
-  <div class="or">OR</div>
+ <button id="playBtn" class="btn primary big full">Play</button>
+ <button id="friendsBtn" class="btn full" aria-expanded="${!!ui.friends}">Play with friends</button>
+ <div class="friends ${ui.friends?'':'closed'}">
+  ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
+  <button class="btn primary full" id="hostBtn" ${online?'':'disabled'}>Host a game</button>
   <div class="join-row"><input id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Room code"><button class="btn" id="joinBtn" ${online?'':'disabled'}>Join</button></div>
   ${ui.homeErr?`<p class="err">${esc(ui.homeErr)}</p>`:''}
+  <button class="btn full" id="soloBtn">Practice</button>
  </div>
- <div class="or">OR</div>
- <button class="btn full" id="soloBtn">Practice vs bots</button>
  ${roomState==='checking'?'<p class="tip">Connecting to rooms…</p>':''}
- ${roomState==='none'?'<div class="warn">Rooms only work when everyone opens this game in Claude while signed in, and the game has been shared with them. You can still practice against bots.</div>':''}
 </section>
 </main>`;
 }
@@ -787,15 +872,16 @@ function muteHTML(){
 function headerHTML(){
   const st=mode==='solo'?'<span class="status solo"><i></i>Practice</span>':(connected?'<span class="status"><i></i>Live</span>':'<span class="status off"><i></i>Connecting</span>');
   const ban=connBanner()?'<div class="conn-banner">Reconnecting…</div>':'';
-  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>${ban}`;
+  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>${ban}`;
 }
 function gameHTML(){
+  if(mode==='search'||(isPub&&!G))return waitHTML(null);
   if(!G){
     const long=Date.now()-joinedAt>7000;
     return headerHTML()+`<main class="scroll"><section class="panel center"><div class="big-bean">${charSVG({color:COLORS[2],acc:4,id:2},'scared','bob')}</div><h2>Looking for room ${esc(code)}…</h2>
 ${long?'<p class="tip">Make sure the host has the game open on their phone and the code is right. The host may also need to share this game with you in Claude.</p>':'<p class="tip">Hang tight.</p>'}</section></main>`;
   }
-  if(G.phase==='lobby')return headerHTML()+lobbyHTML();
+  if(G.phase==='lobby')return G.pub?waitHTML(G.players):headerHTML()+lobbyHTML();
   if(G.phase==='secrets')return headerHTML()+secretsHTML();
   if(!byPid(PID)&&G.phase!=='over')return headerHTML()+`<main class="cast">${G.players.map(cardHTML).join('')}</main><section class="tray"><p class="hint">A round is already going. You're watching, and you'll be in the next one.</p></section>`;
   if(askViewOn())return headerHTML()+askViewHTML();
@@ -1006,7 +1092,7 @@ ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••
 }
 function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
 function trayInner(){
-  if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
+  if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID&&!(me&&me.bot);
   const evLine=G.ev?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
   const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${timerPill()}</div>${evLine}</div></div>`;
@@ -1039,9 +1125,12 @@ function bind(){
     on('joinBtn',join);ci.onkeydown=e=>{if(e.key==='Enter')join()};
     on('rejoinBtn',()=>{const s=LS.get(LSK('hl-session'));if(s)startOnline(!!s.host,s.code)});
     on('soloBtn',()=>{if(!NAME){NAME='You'}startSolo()});
+    on('friendsBtn',()=>{ui.friends=!ui.friends;render(true)});
+    on('playBtn',()=>{ui.homeErr='';quickPlay()});
+    on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><div class="btn-row"><button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv});
     return;
   }
-  on('leaveBtn',()=>{if(ui.leaveArmed){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
+  on('leaveBtn',()=>{if(ui.leaveArmed||mode==='search'||(G&&G.pub&&G.phase==='lobby')||(isPub&&!G)){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
   if(!G)return;
   on('inviteBtn',()=>{
     const url=inviteURL();
@@ -1112,7 +1201,7 @@ render(true);
   roomState=roomNS?'ok':'none';render(true);
   if(DEEP){
     if(roomState==='ok'&&NAME)startOnline(false,DEEP);
-    else{ui.codeIn=DEEP;if(!NAME)ui.homeErr='Type your name, then tap Join.';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}
+    else{ui.codeIn=DEEP;ui.friends=true;if(!NAME)ui.homeErr='Type your name, then tap Join.';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}
   }else{
     const s=LS.get(LSK('hl-session'));
     if(s&&s.code&&Date.now()-s.at<3*3600e3&&roomState==='ok')startOnline(!!s.host,s.code);

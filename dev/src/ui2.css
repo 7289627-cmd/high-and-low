@@ -127,3 +127,20 @@ html,body{overscroll-behavior:none}
 body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 input,.invite-url{-webkit-user-select:text;user-select:text}
 button{touch-action:manipulation}
+
+/* Worker C: Play button, friends block, waiting view */
+.btn.primary.big#playBtn{min-height:76px;font-size:34px;border-radius:20px;padding:10px 22px}
+#friendsBtn{min-height:48px}
+.friends{display:grid;gap:10px}
+.friends.closed{display:none}
+.hero .info-btn{position:absolute;top:0;left:0;width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:var(--white);color:var(--ink);border:3px solid var(--ink);border-radius:50%;box-shadow:0 3px 0 var(--ink);cursor:pointer;font-family:var(--display);font-size:22px;line-height:1}
+.hero .info-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.waitv{justify-items:center;align-content:start;gap:14px;padding-top:14px}
+.waitv .panel{width:100%}
+.finding{margin:0;font-family:var(--display);font-size:24px;color:var(--ink)}
+.dots i{font-style:normal;display:inline-block;animation:dotb 1.2s infinite both}
+.dots i:nth-child(2){animation-delay:.2s}
+.dots i:nth-child(3){animation-delay:.4s}
+@keyframes dotb{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-5px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none}}
+@media (max-width:360px){.hero .logo.big{font-size:36px;-webkit-text-stroke:4px var(--ink)}.hero .lineup .lu{width:40px}.hero .lineup{gap:4px}.btn.primary.big#playBtn{font-size:32px}}

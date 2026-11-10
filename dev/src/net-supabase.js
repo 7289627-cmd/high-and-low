@@ -118,3 +118,38 @@ window.makeSupabaseRoom=function(cfg){
     }
   };
 };
+window.makeSupabaseQueue=function(cfg){
+  var client=null;
+  function getClient(){if(!client)client=window.supabase.createClient(cfg.url,cfg.key);return client}
+  var ch=null,cbs=[],subscribed=false,left=false,pending=null;
+  function rawSend(payload){
+    try{var r=ch.send({type:'broadcast',event:'open',payload:payload});if(r&&r.catch)r.catch(function(){})}catch(e){}
+  }
+  return {
+    join:function(){
+      if(ch||left)return;
+      ch=getClient().channel('hl-queue-v1',{config:{broadcast:{self:false}}});
+      ch.on('broadcast',{event:'open'},function(m){
+        var pl=m&&m.payload;if(!pl||typeof pl!=='object')return;
+        cbs.slice().forEach(function(f){try{f(pl)}catch(e){}});
+      });
+      var mine=ch;
+      ch.subscribe(function(status){
+        if(left||mine!==ch)return;
+        if(status==='SUBSCRIBED'){subscribed=true;if(pending){var p=pending;pending=null;rawSend(p)}}
+        else if(status==='CLOSED'||status==='CHANNEL_ERROR'||status==='TIMED_OUT')subscribed=false;
+      });
+    },
+    announce:function(obj){
+      if(left||!ch)return;
+      if(subscribed)rawSend(obj);else pending=obj;
+    },
+    onOpen:function(cb){cbs.push(cb)},
+    leave:function(){
+      if(left)return;
+      left=true;subscribed=false;cbs=[];pending=null;
+      var old=ch;
+      if(old)setTimeout(function(){try{var r=getClient().removeChannel(old);if(r&&r.catch)r.catch(function(){})}catch(e){}},200);
+    }
+  };
+};

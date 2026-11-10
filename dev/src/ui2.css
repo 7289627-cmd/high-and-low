@@ -99,3 +99,11 @@
 .scroll{grid-template-columns:minmax(0,1fr)}
 .scroll>*{min-width:0}
 .join-row input,.field input{min-width:0;width:100%}
+
+/* Private knowledge: danger meter on my card */
+.dg-dots{display:inline-flex;align-items:center;gap:5px;padding:3px 0}
+.dg-dots i{display:block;width:10px;height:10px;box-sizing:border-box;border:2px solid var(--ink);border-radius:50%;background:transparent}
+.dg-dots i.on{background:var(--red)}
+@keyframes dgshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-1.5px)}75%{transform:translateX(1.5px)}}
+.card.mine.dg3{animation:dgshake .5s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.card.mine.dg3{animation:none}}

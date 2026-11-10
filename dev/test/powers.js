@@ -55,7 +55,7 @@ const PLAN=['freeze','shield','double','peek','snap'];
     const ev=A.eval('G.ev&&JSON.stringify(G.ev)');
     if(ev){const e=JSON.parse(ev);evs[e.t]=(evs[e.t]||0)+1;if(e.t==='snap'&&!snapChecked){
         snapChecked=true;
-        const r=JSON.parse(A.eval('JSON.stringify({ps:G.players.filter(p=>p.a).map(p=>[p.pid,p.hi-p.lo+1]),bx:G.bx})'));
+        const r=JSON.parse(A.eval('JSON.stringify({ps:G.players.filter(p=>p.a).flatMap(a=>G.players.filter(t=>t.a&&t.pid!==a.pid).map(t=>[a.pid+">"+t.pid,G.kn[a.pid][t.pid].hi-G.kn[a.pid][t.pid].lo+1])),bx:G.bx})'));
         if(r.ps.some(x=>x[1]>10))bad.push('range >10 after snap '+JSON.stringify(r.ps));
         const by=e.a,ent=r.bx[by]||{};
         if(Object.keys(ent).length<1)bad.push('no decoys in G.bx');
@@ -65,7 +65,7 @@ const PLAN=['freeze','shield','double','peek','snap'];
     const full=A.eval('JSON.stringify({ph:G.phase,tn:G.turnNo,pt:G.pwTurn,st:G.stage})');
     const g=JSON.parse(full);
     if(g.ph==='over'){won=true;break}
-    if(idx>=PLAN.length&&!b0){b0=[A,B].map(P=>P.eval("myCoins()"))}
+    if(idx>=PLAN.length&&!b0){const now=[A,B].map(P=>P.eval("myCoins()"));if(!global.__t0)global.__t0=Date.now();if(now[0]+now[1]===80||Date.now()-global.__t0>3000)b0=now}
     for(const P of [A,B]){
       const ov=P.$('#ov');
       if(ov&&!ov.hidden&&ov.querySelector('.pw-sheet')){

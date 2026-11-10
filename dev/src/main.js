@@ -91,6 +91,26 @@ function awardsHTML(){
   return rows.length?`<div class="awards">${rows.slice(0,4).join('')}</div>`:'';
 }
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
+function kn(aPid,tPid){
+  if(!G)return{lo:1,hi:10000,x:[]};
+  const m=G.kn&&G.kn[aPid],k=m&&m[tPid];
+  if(k)return k;
+  const f={lo:1,hi:G.max,x:[]};
+  if(isHost){if(!G.kn)G.kn={};if(!G.kn[aPid])G.kn[aPid]={};G.kn[aPid][tPid]=f}
+  return f;
+}
+function vw(aPid,t){const k=kn(aPid,t.pid);return Object.assign({},t,{lo:k.lo,hi:k.hi,x:k.x})}
+function mv(t){return vw(PID,t)}
+function setDanger(){
+  if(!G)return;
+  const ls=Math.max(50,G.max*0.02);
+  for(const p of G.players){
+    if(!p.a){p.dg=0;continue}
+    let m=Infinity;
+    for(const o of G.players)if(o.a&&o.pid!==p.pid){const l=left(vw(o.pid,p));if(l<m)m=l}
+    p.dg=m<=10?3:m<=ls?2:m<=G.max*0.2?1:0;
+  }
+}
 const zone=p=>p.hi-p.lo+1<=10;
 const left=p=>{let n=p.hi-p.lo+1;if(n<=10)n-=p.x.filter(v=>v>=p.lo&&v<=p.hi).length;return n};
 const candList=p=>{const o=[];for(let n=p.lo;n<=p.hi;n++)if(!p.x.includes(n))o.push(n);return o};
@@ -134,11 +154,22 @@ function cleanG(g){
     const hats=typeof hatCount==='function'?hatCount():12;
     g.players=g.players.slice(0,6).filter(p=>p&&typeof p==='object'&&typeof p.pid==='string'&&p.pid).map(p=>{
       p.pid=p.pid.slice(0,40);p.name=clean(p.name)||'Player';p.c=int(p.c,0,0,5);p.k=p.k==null?null:int(p.k,0,0,hats-1);
-      p.lo=int(p.lo,1,1,g.max);p.hi=int(p.hi,g.max,p.lo,g.max);
-      p.x=Array.isArray(p.x)?p.x.filter(Number.isInteger).slice(0,40):[];
+      p.dg=int(p.dg,0,0,3);
       p.a=p.a?1:0;p.bot=p.bot?1:0;p.sh=p.sh?1:0;p.fz=p.fz?1:0;p.d=DEATHS.includes(p.d)?p.d:'';
       if('co' in p)p.co=int(p.co,0,0,99999);return p});
     if(!g.players.length)return null;
+    {const o={};
+      for(const a in obj(g.kn)){
+        if(a==='__proto__')continue;
+        const m=obj(g.kn[a]),r={};
+        for(const t in m){
+          const k=m[t];if(t==='__proto__'||!k||typeof k!=='object'||!Number.isInteger(k.lo)||!Number.isInteger(k.hi))continue;
+          const lo=int(k.lo,1,1,g.max);
+          r[t.slice(0,40)]={lo,hi:int(k.hi,g.max,lo,g.max),x:Array.isArray(k.x)?k.x.filter(Number.isInteger).slice(0,40):[]};
+        }
+        o[a.slice(0,40)]=r;
+      }
+      g.kn=o}
     g.gid=str(g.gid,24);g.turn=int(g.turn,0,0,g.players.length-1);g.seq=int(g.seq,0,0,1e9);
     g.stage=['await','show','wheel','power'].includes(g.stage)?g.stage:'await';
     g.en=int(g.en,0,0,1e9);g.asked=int(g.asked,0,0,1e9);g.turnNo=int(g.turnNo,0,0,1e9);g.pwTurn=int(g.pwTurn,-1,-1,1e9);
@@ -202,9 +233,11 @@ function stateSounds(){
 }
 function heartOn(){
   if(!G||G.phase!=='play'||G.stage!=='await'||!G.sub||!G.sub.length)return 0;
-  const t=byPid(G.sub[0]);
-  if(!t||!t.a||!zone(t))return 0;
-  return left(t)<=3?600:900;
+  const t=byPid(G.sub[0]),cur=G.players[G.turn];
+  if(!t||!t.a||!cur||(cur.pid!==PID&&t.pid!==PID))return 0;
+  const v=vw(cur.pid,t);
+  if(!zone(v))return 0;
+  return left(v)<=3?600:900;
 }
 function heartCheck(){
   const per=heartOn();
@@ -222,10 +255,11 @@ function deathSfx(k){
 
 /* ---------- Host engine ---------- */
 function newLobby(){
-  return{gid:uid(),phase:'lobby',max:10000,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,lo:1,hi:10000,x:[],a:1,d:''},myLook()||{})],st:{},
+  return{gid:uid(),phase:'lobby',max:10000,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,a:1,d:'',dg:0},myLook()||{})],st:{},
     turn:0,seq:0,stage:'await',q:null,ev:null,en:0,asked:0,win:null};
 }
 function publishG(){
+  if(isHost&&G&&G.phase==='play')try{setDanger()}catch(e){}
   setP({game:JSON.parse(JSON.stringify(G))});
   LS.set('hl-host-'+code,{G,botSecrets,at:Date.now()});
 }
@@ -251,7 +285,7 @@ function hostTick(){
       const nm=clean(v.pres.name)||'Player';
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
-      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,lo:1,hi:G.max,x:[],a:1,d:''};if(l)np.k=l.k;G.players.push(np);ch=true}
+      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;G.players.push(np);ch=true}
     }
     const before=G.players.length;
     G.players=G.players.filter(p=>p.bot||p.pid===PID||peerMap.has(p.pid));
@@ -289,8 +323,9 @@ function hostTick(){
             if(!G||G.gid+':'+G.seq!==key||G.phase!=='play'||G.stage!=='await'||G.q)return;
             const t=byPid(G.sub&&G.sub[0]),c=G.players[G.turn];if(!t||!c)return;
             const base={seq:G.seq,a:c.pid,tg:t.pid};
-            if(zone(t)){const cl=candList(t);if(!cl.length)return;G.q={...base,t:'guess',n:cl[rnd(0,cl.length-1)]}}
-            else G.q={...base,t:'ask',dir:'h',x:Math.floor((t.lo+t.hi-1)/2)};
+            const v=vw(c.pid,t);
+            if(zone(v)){const cl=candList(v);if(!cl.length)return;G.q={...base,t:'guess',n:cl[rnd(0,cl.length-1)]}}
+            else G.q={...base,t:'ask',dir:'h',x:Math.floor((v.lo+v.hi-1)/2)};
             publishG();
           },window.HL_TEST_TIMER_MS||G.timer*1000);
         }
@@ -312,8 +347,9 @@ function hostTick(){
 }
 function validAct(cur,a){
   if(!G.sub||a.tg!==G.sub[0])return false;
-  const t=byPid(a.tg);
-  if(!t||!t.a||t.pid===cur.pid)return false;
+  const t0=byPid(a.tg);
+  if(!t0||!t0.a||t0.pid===cur.pid)return false;
+  const t=vw(cur.pid,t0);
   if(a.t==='ask'){
     if(zone(t)||!Number.isInteger(a.x))return false;
     return a.dir==='l'?(a.x>=t.lo+1&&a.x<=t.hi):(a.x>=t.lo&&a.x<=t.hi-1);
@@ -331,18 +367,18 @@ function resolve(res){
   if(res.blocked){
     t.sh=0;G.ev={id,t:'blocked',a:a.pid,tg:t.pid};
   } else if(q.t==='ask'){
-    const yes=!!res.ans;
-    if(q.dir==='h'){if(yes)t.lo=q.x+1;else t.hi=q.x}
-    else{if(yes)t.hi=q.x-1;else t.lo=q.x}
+    const yes=!!res.ans,k=kn(a.pid,t.pid);
+    if(q.dir==='h'){if(yes)k.lo=q.x+1;else k.hi=q.x}
+    else{if(yes)k.hi=q.x-1;else k.lo=q.x}
     G.ev={id,t:'ask',a:a.pid,tg:t.pid,dir:q.dir,x:q.x,ans:yes?1:0};
   } else if(res.hit){
     t.a=0;t.d=pickDeath();G.ev={id,t:'hit',a:a.pid,tg:t.pid,n:q.n,k:t.d};delay=4200;
   } else {
-    t.x.push(q.n);
+    kn(a.pid,t.pid).x.push(q.n);
     G.ev={id,t:'miss',a:a.pid,tg:t.pid,n:q.n};delay=1900;
   }
   if(G.ev.t==='hit')sa[1]++;else if(G.ev.t!=='ask'&&G.ev.t!=='blocked')sa[2]++;
-  if(t.a){const lf=left(t);stt[3]=stt[3]==null?lf:Math.min(stt[3],lf)}
+  if(t.a){const lf=left(vw(a.pid,t));stt[3]=stt[3]==null?lf:Math.min(stt[3],lf)}
   {const si=(G.sub||[]).indexOf(q.tg);if(si>=0)G.sub.splice(si,1)}
   G.q=null;G.stage='show';publishG();
   const s=G.seq;later(()=>advance(s),delay);
@@ -374,11 +410,11 @@ function markLeft(p){
   }
 }
 function botChoose(me){
-  const t=byPid(G.sub[0]);
+  const t0=byPid(G.sub[0]),t=vw(me.pid,t0);
   const base={seq:G.seq,a:me.pid};
   if(zone(t)){const c=candList(t);return{...base,tg:t.pid,t:'guess',n:c[rnd(0,c.length-1)]}}
   const dir=Math.random()<.5?'h':'l';
-  const sk=Math.max(0.1,Math.min(1,(G.bs==null?0.5:G.bs)+botLeaderBias(t)));
+  const sk=Math.max(0.1,Math.min(1,(G.bs==null?0.5:G.bs)+botLeaderBias(me.pid,t0)));
   const x=botSplit(t,sk,dir,Math.random(),Math.random());
   return{...base,tg:t.pid,t:'ask',dir,x};
 }
@@ -386,7 +422,9 @@ function hostStart(){
   G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;G.st={};
   botSecrets={};
   {const hn=G.players.filter(p=>!p.bot).length;G.bs=hn===1?botSkillBase():0.5}
-  for(const p of G.players){Object.assign(p,{lo:1,hi:G.max,x:[],a:1,d:''});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
+  G.kn={};
+  for(const a of G.players){G.kn[a.pid]={};for(const t of G.players)if(t!==a)G.kn[a.pid][t.pid]={lo:1,hi:G.max,x:[]}}
+  for(const p of G.players){Object.assign(p,{a:1,d:'',dg:0});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
   pwReset();
   publishG();
 }
@@ -411,12 +449,13 @@ function playNewEvent(){
   lastEv=G.ev.id;const ev=G.ev;
   const A=byPid(ev.a),T=byPid(ev.tg);
   try{pwEvent(ev)}catch(e){}
-  if(ev.t==='ask')sfx(ev.ans?'yes':'nope');
-  else if(ev.t==='miss')sfx('nope');
+  const inv=ev.a===PID||ev.tg===PID;
+  if(ev.t==='ask')sfx(inv?(ev.ans?'yes':'nope'):'pick');
+  else if(ev.t==='miss')sfx(inv?'nope':'pick');
   else if(ev.t==='bonk'){sfx('bonk');sfx('vo_wrong',{delay:0.45})}
   else if(ev.t==='hit'||ev.t==='out'||ev.t==='left')deathSfx(ev.k);
   if(ev.t==='ask'||ev.t==='miss'){
-    ui.bubble={pid:ev.tg,id:ev.id,up:ev.t==='ask'&&!!ev.ans,text:ev.t==='miss'?'Wrong!':(ev.ans?'Yes!':'Nope!')};
+    ui.bubble=inv?{pid:ev.tg,id:ev.id,up:ev.t==='ask'&&!!ev.ans,text:ev.t==='miss'?'Wrong!':(ev.ans?'Yes!':'Nope!')}:{pid:ev.tg,id:ev.id,up:false,text:ev.t==='miss'?'Miss!':'…'};
     later(()=>{if(ui.bubble&&ui.bubble.id===ev.id){ui.bubble=null;render(true)}},1800);
     if(ev.t==='ask'&&ev.tg===PID)seen('asked');
     if(navigator.vibrate&&ev.tg===PID)try{navigator.vibrate(30)}catch(e){}
@@ -429,6 +468,9 @@ function playNewEvent(){
 function evText(ev){
   const A=byPid(ev.a),T=byPid(ev.tg);const a=A?(A.pid===PID?'You':A.name):'',t=T?(T.pid===PID?'you':T.name):'';
   {const pt=pwEvText(ev,a,t);if(pt)return pt}
+  const inv=ev.a===PID||ev.tg===PID;
+  if(!inv&&ev.t==='ask')return `${a} asked ${t}.`;
+  if(!inv&&ev.t==='miss')return `${a} guessed at ${t}. Miss.`;
   switch(ev.t){
     case 'ask':return `${a} asked ${t}: ${ev.dir==='l'?'lower':'higher'} than ${fmt(ev.x)}? ${ev.ans?'Yes.':'No.'}`;
     case 'hit':return `${a} guessed ${fmt(ev.n)}. ${T&&T.pid===PID?'You are':t+' is'} out.`;
@@ -440,6 +482,7 @@ function evText(ev){
 }
 function qText(q){
   const A=byPid(q.a),T=byPid(q.tg);const a=A?(A.pid===PID?'You':A.name):'',t=T?(T.pid===PID?'you':T.name):'';
+  if(q.a!==PID&&q.tg!==PID)return q.t==='ask'?`${a} is asking ${t}…`:`${a} is guessing at ${t}…`;
   return q.t==='ask'?`${a} ${A&&A.pid===PID?'are':'is'} asking ${t}: ${q.dir==='l'?'lower':'higher'} than ${fmt(q.x)}?`:`${a} ${A&&A.pid===PID?'are':'is'} guessing ${t} picked ${fmt(q.n)}…`;
 }
 
@@ -490,7 +533,7 @@ function startSolo(){
 function addBot(){
   if(G.players.length>=6)return;
   const used=G.players.map(p=>p.name);const nm=BOT_NAMES.find(n=>!used.includes(n))||'Bot';
-  G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,lo:1,hi:G.max,x:[],a:1,d:''});
+  G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
 async function leaveGame(){
   clearTimers();clearInterval(tickTimer);closeOv();
@@ -506,7 +549,7 @@ function lockSecret(n){
 function sendAct(act){setP({act:{gid:G.gid,seq:G.seq,...act}})}
 function doAsk(){
   const t=curTarget();if(!t||!askViewOn())return;
-  const sl=askSlots(t),x=Number(sl.prefix+ui.num);
+  const sl=askSlots(mv(t)),x=Number(sl.prefix+ui.num);
   const lo=sl.lo, hi=sl.hi;
   if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick a whole number from ${fmt(lo)} to ${fmt(hi)}.`;sfx('error');render(true);return}
   ui.err='';sfx('send');sendAct({tg:t.pid,t:'ask',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
@@ -599,7 +642,7 @@ function canAct(){
   return cur&&cur.pid===PID&&G.stage==='await'&&!G.q&&!sent;
 }
 function curTarget(){return G&&G.phase==='play'&&G.stage!=='wheel'&&G.sub&&G.sub.length?byPid(G.sub[0]):null}
-function askViewOn(){const t=curTarget();return canAct()&&t&&t.a&&!zone(t)}
+function askViewOn(){const t=curTarget();return canAct()&&t&&t.a&&!zone(mv(t))}
 const BIG_UP=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8l40 46H66v38H34V54H10z" fill="#fff" stroke="#1E2240" stroke-width="6" stroke-linejoin="round"/></svg>`;
 const BIG_DN=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 92l40-46H66V8H34v38H10z" fill="#fff" stroke="#1E2240" stroke-width="6" stroke-linejoin="round"/></svg>`;
 const BKSP=`<svg viewBox="0 0 32 24" aria-hidden="true" width="30" height="22"><path d="M10 2h19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H10L1 12z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 8l8 8M23 8l-8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
@@ -630,10 +673,10 @@ function rulerHTML(t,sl){
   return `<div class="ruler">${ends}<div class="rl-bar"><i class="${lc}" style="width:${lw}%">${lw>=22?`<em>${lc}</em>`:''}</i><i class="${rc}" style="width:${rw}%">${rw>=22?`<em>${rc}</em>`:''}</i></div><p class="rl-txt">yes: <b>${fmt(yes)}</b> left · no: <b>${fmt(no)}</b> left</p></div>`;
 }
 function askViewHTML(){
-  const t=curTarget(),me=byPid(PID);
+  const t=curTarget(),me=byPid(PID),tv=mv(t);
   const k=(G.subN||1)-G.sub.length+1;
   const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':`<span class="qcount">${k} / ${G.subN}</span>`}
-${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(t.lo)} – ${fmt(t.hi)}</span></div></div></div>`;
+${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-who"><span class="mini">${charSVG(pv(t),'scared','bob')}</span><div><b>Asking ${esc(t.name)}</b><span>${fmt(tv.lo)} – ${fmt(tv.hi)}</span></div></div></div>`;
   if(ui.step!=='num'){
     const bk=G.gid+':'+G.seq;
     if(!sfxSeen.burst.has(bk)){sfxSeen.burst.add(bk);[0,0.14,0.28,0.42].forEach(d=>sfx('babble'+rnd(1,3),{delay:d,rate:babRate()+(Math.random()-.5)*0.16}))}
@@ -645,11 +688,11 @@ ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-who"><span class=
   }
   const land=ui.land;ui.land=false;
   const word=ui.dir==='l'?'LOWER':'HIGHER';
-  const sl=askSlots(t),lo=sl.lo,hi=sl.hi;
+  const sl=askSlots(tv),lo=sl.lo,hi=sl.hi;
   return `<section class="askv">${top}
 <div class="say"><span class="spk-bean ${ui.num?'jit-slow':'jit'}">${charSVG(pv(me),'talk')}</span>
 <div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot ${ui.num?'jit':''}">${slotsHTML(ui.num,sl.n,sl.prefix)}<span class="qm">?</span></span></div></div>
-${rulerHTML(t,sl)}
+${rulerHTML(tv,sl)}
 ${hint('num','Type a number, then tap Ask!')}<p class="sub ask-hint"><span>Pick from ${fmt(lo)} to ${fmt(hi)}.</span><span>Tap ${word.toLowerCase()} to flip it.</span></p>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 ${padHTML(`<button class="key mid" data-k="mid">MID</button>`,land)}
@@ -710,11 +753,11 @@ function showWheel(){
 }
 function padPress(k){
   const field=G.phase==='secrets'?'sec':'num';
-  const sl=field==='num'?askSlots(curTarget()):null;
+  const sl=field==='num'?askSlots(mv(curTarget())):null;
   const maxLen=sl?sl.open:String(G.max).length;
   let v=ui[field];
   if(k==='del'){sfx('del');v=v.slice(0,-1)}
-  else if(k==='mid'){sfx('pick');const t=curTarget();if(t){const ms=String(ui.dir==='l'?Math.ceil((t.lo+t.hi+1)/2):Math.floor((t.lo+t.hi-1)/2));v=sl.prefix&&ms.startsWith(sl.prefix)?ms.slice(sl.prefix.length):ms}}
+  else if(k==='mid'){sfx('pick');const t=curTarget();if(t){const tv=mv(t),ms=String(ui.dir==='l'?Math.ceil((tv.lo+tv.hi+1)/2):Math.floor((tv.lo+tv.hi-1)/2));v=sl.prefix&&ms.startsWith(sl.prefix)?ms.slice(sl.prefix.length):ms}}
   else if(/^\d$/.test(k)){if(field==='sec')sfx('key');else sfx('babble'+(1+ui.num.length%3),{rate:babRate()+ui.num.length*0.04});if(v.length<maxLen&&!(v===''&&k==='0'&&!(sl&&sl.prefix)))v+=k}
   ui[field]=v;ui.err='';render(true);
 }
@@ -772,19 +815,20 @@ function cardHTML(p,i){
   const cur=G.players[G.turn];
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
   const pick=false;
-  const total=G.max,lf=(p.lo-1)/total*100,w=Math.max((p.hi-p.lo+1)/total*100,2);
-  const ct=curTarget(),z=zone(p),isT=(ct&&ct.pid===p.pid)||(G.q&&G.q.tg===p.pid);
+  const mine=p.pid===PID;
+  const v=mv(p),total=G.max,lf=(v.lo-1)/total*100,w=Math.max((v.hi-v.lo+1)/total*100,2);
+  const ct=curTarget(),z=!mine&&zone(v),isT=(ct&&ct.pid===p.pid)||(G.q&&G.q.tg===p.pid);
+  const dg=mine?(p.dg|0):0;
   const bub=ui.bubble&&ui.bubble.pid===p.pid?`<span class="bubble ${ui.bubble.up?'up':'down'}">${esc(ui.bubble.text)}</span>`:'';
   const turnTag='';
-  const mine=p.pid===PID;
-  const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z?'scared':'idle','bob')}</span>
+  const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
-<span class="rng"><b>${fmt(p.lo)} – ${fmt(p.hi)}</b></span>
+${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`<span class="rng"><b>${fmt(v.lo)} – ${fmt(v.hi)}</b></span>
 <span class="barline ${z?'hot':''}"><i style="left:${lf}%;width:${w}%"></i></span>
-${z?`<span class="zone">${leftX(p)} LEFT</span>`:`<span class="left"><b>${fmt(p.hi-p.lo+1)} left</b></span>`}
+${z?`<span class="zone">${leftX(v)} LEFT</span>`:`<span class="left"><b>${fmt(v.hi-v.lo+1)} left</b></span>`}`}
 ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'hide':'show'}</button></span>`:''}</span>`;
-  if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''}">${inner}</div>`;
-  return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${p.lo} and ${p.hi}">${inner}</button>`;
+  if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''} ${dg>=3?'dg3':''}">${inner}</div>`;
+  return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${v.lo} and ${v.hi}">${inner}</button>`;
 }
 function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
 function trayInner(){
@@ -803,7 +847,7 @@ function trayInner(){
   if(G.stage!=='await'||G.q||sent)return head+`<p class="hint">${G.q?esc(qText(G.q)):(G.stage==='await'?'Sending…':(G.stage==='power'?'Using a power…':''))}</p>`;
   const t=curTarget();
   if(!t||!t.a)return head;
-  const xs=myXs(t),btns=[];for(let n=t.lo;n<=t.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
+  const tv=mv(t),xs=myXs(tv),btns=[];for(let n=tv.lo;n<=tv.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
   return head+hint('guess','Down to 10! Guess their exact number.')+`<div class="pw-row">${pwBtnHTML()}</div>`+`<p class="q">Guess <b>${esc(t.name)}</b>'s number</p><div class="guess-grid">${btns.join('')}</div>
 `;
 }

@@ -28,9 +28,9 @@ function botGameDone(){
   LS.set(LSK('hl-botrec-last'),key);
   botRecord(G.win===PID);
 }
-function botLeaderBias(t){
-  const al=G.players.filter(p=>p.a);
-  if(al.length<3)return 0;
+function botLeaderBias(botPid,t){
+  const al=G.players.filter(p=>p.a&&p.pid!==botPid).map(p=>vw(botPid,p));
+  if(al.length<2)return 0;
   const size=p=>p.hi-p.lo+1;
   let lead=al[0],tr=null;
   for(const p of al){if(size(p)>size(lead))lead=p}

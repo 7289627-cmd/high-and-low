@@ -18,6 +18,8 @@ T=$(timeout 100 node timer.js 2>&1 | grep -E "PASS|FAIL")
 echo "${T:-FAIL timer auto-ask: no output}"
 P=$(timeout 500 node powers.js 2>&1 | grep -E "PASS|FAIL")
 echo "${P:-FAIL powers: no output}"
+V=$(timeout 600 node private.js 2>&1 | grep -E "PASS|FAIL")
+echo "${V:-FAIL private knowledge: no output}"
 node sfx_check.js
 node bots_check.js
 cd ..

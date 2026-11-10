@@ -68,15 +68,17 @@ function pwHostTick(){
   if(pwCan(cur,r.id,r.tg))return false;
   return pwApply(cur,r.id,r.tg);
 }
-function pwWindow(p,secret,isUser){
-  let lo=p.lo,hi=p.hi;
+function pwWindow(p,secret,isUser,by){
+  let lo=1,hi=G.max;
+  for(const o of G.players)if(o.a&&o.pid!==p.pid){const k=kn(o.pid,p.pid);lo=Math.max(lo,k.lo);hi=Math.min(hi,k.hi)}
+  if(lo>hi){lo=1;hi=G.max}
   if(hi-lo+1>10&&Number.isInteger(secret)){
     const a=Math.max(lo,secret-9),b=Math.min(secret,hi-9);
     if(b>=a){const s=a+Math.floor(Math.random()*(b-a+1));lo=s;hi=s+9}
   }
   let dec=null;
   if(!isUser&&Number.isInteger(secret)){
-    const c=[];for(let n=lo;n<=hi;n++)if(n!==secret&&!p.x.includes(n))c.push(n);
+    const bk=by?kn(by,p.pid).x:[],c=[];for(let n=lo;n<=hi;n++)if(n!==secret&&!bk.includes(n))c.push(n);
     if(c.length)dec=c[Math.floor(Math.random()*c.length)];
   }
   return{lo,hi,dec};
@@ -105,7 +107,7 @@ function pwApply(cur,id,tg){
     const need=[],res={};
     for(const p of G.players){
       if(!p.a)continue;
-      if(p.bot)res[p.pid]=pwWindow(p,botSecrets[p.pid],p.pid===cur.pid);else need.push(p.pid);
+      if(p.bot)res[p.pid]=pwWindow(p,botSecrets[p.pid],p.pid===cur.pid,cur.pid);else need.push(p.pid);
     }
     G.pr={id:uid(),k:'snap',by:cur.pid,need,res,until:Date.now()+8000};
     G.stage='power';pwWake();
@@ -128,8 +130,14 @@ function pwFinish(){
       if(!p.a)continue;
       const r=p.bot?(pr.res||{})[p.pid]:pwAnswerOf(p.pid);
       if(!r)continue;
-      if(p.hi-p.lo+1>10&&Number.isInteger(r.lo)&&Number.isInteger(r.hi)&&r.hi-r.lo===9&&r.lo>=p.lo&&r.hi<=p.hi){p.lo=r.lo;p.hi=r.hi}
-      if(p.pid!==pr.by&&Number.isInteger(r.dec)&&r.dec>=p.lo&&r.dec<=p.hi&&!p.x.includes(r.dec))bx[p.pid]=r.dec;
+      if(Number.isInteger(r.lo)&&Number.isInteger(r.hi)&&r.lo<=r.hi&&r.hi-r.lo<=9){
+        for(const a of G.players){
+          if(!a.a||a.pid===p.pid)continue;
+          const k=kn(a.pid,p.pid),nl=Math.max(k.lo,r.lo),nh=Math.min(k.hi,r.hi);
+          if(nl<=nh){k.lo=nl;k.hi=nh}
+        }
+      }
+      if(p.pid!==pr.by){const uk=kn(pr.by,p.pid);if(Number.isInteger(r.dec)&&r.dec>=uk.lo&&r.dec<=uk.hi&&!uk.x.includes(r.dec))bx[p.pid]=r.dec}
     }
     G.bx[pr.by]=bx;
     G.ev={id:++G.en,t:'snap',a:pr.by};
@@ -152,7 +160,7 @@ function pwAnswer(){
   if(G.pr.k==='peek')prr.odd=mySecret.n%2===1;
   else{
     const me=byPid(PID);if(!me)return;
-    const w=pwWindow(me,mySecret.n,G.pr.by===PID);
+    const w=pwWindow(me,mySecret.n,G.pr.by===PID,G.pr.by);
     prr.lo=w.lo;prr.hi=w.hi;prr.dec=w.dec;
   }
   setP({prr});

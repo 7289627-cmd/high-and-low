@@ -580,7 +580,8 @@ window.makeSupabaseRoom=function(cfg){
         });
         ch.on('broadcast',{event:'bye'},function(m){
           var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
-          if(peers.delete(pl.k))notifyPeers();
+          var pv=peers.get(pl.k);
+          if(pv){pv.presence=Object.assign({},pv.presence,{gone:1});pv.updatedAt=Date.now();pv.lastHeard=Date.now()-4000;notifyPeers()}
         });
         var mine=ch;
         ch.subscribe(function(status){
@@ -627,7 +628,8 @@ window.makeSupabaseRoom=function(cfg){
           if(sendTimer){clearTimeout(sendTimer);sendTimer=null}
           clearInterval(hbTimer);clearInterval(sweepTimer);hbTimer=sweepTimer=null;
           connected=false;subscribed=false;
-          try{var r=getClient().removeChannel(ch);if(r&&r.catch)r.catch(function(){})}catch(e){}
+          var old=ch;
+          setTimeout(function(){try{var r=getClient().removeChannel(old);if(r&&r.catch)r.catch(function(){})}catch(e){}},400);
           return Promise.resolve();
         }
       });
@@ -1305,6 +1307,7 @@ function update(){
   if(view==='game'){
     if(!isHost){
       let h=null;for(const v of peerMap.values())if(v.pres.role==='host'&&v.pres.game&&typeof v.pres.game==='object')h=v;
+      if(h&&h.pres.gone){leaveGame().then(()=>{ui.homeErr='The host left.';render(true)});return}
       G=h?cleanG(h.pres.game):null;
     } else hostTick();
     syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
@@ -1390,21 +1393,23 @@ function hostTick(){
   const me=byPid(PID);if(me&&me.name!==(NAME||'Host')){me.name=NAME||'Host';ch=true}
   if(G.phase==='lobby'&&mode==='online'){
     for(const [pid,v] of peerMap){
-      if(v.pres.role!=='player')continue;
+      if(v.pres.role!=='player'||v.pres.gone)continue;
       const nm=clean(v.pres.name)||'Player';
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
       else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;G.players.push(np);ch=true}
     }
     const before=G.players.length;
-    G.players=G.players.filter(p=>p.bot||p.pid===PID||peerMap.has(p.pid));
+    G.players=G.players.filter(p=>p.bot||p.pid===PID||(peerMap.has(p.pid)&&!peerMap.get(p.pid).pres.gone));
     if(G.players.length!==before)ch=true;
   }
   if(G.phase==='lobby'&&applyLooks())ch=true;
   if((G.phase==='secrets'||G.phase==='play')&&mode==='online'){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
-      if(peerMap.has(p.pid))lastSeen[p.pid]=Date.now();
+      const pp=peerMap.get(p.pid);
+      if(pp&&pp.pres.gone){markLeft(p);ch=true}
+      else if(pp)lastSeen[p.pid]=Date.now();
       else if(Date.now()-(lastSeen[p.pid]||Date.now())>90000){markLeft(p);ch=true}
     }
   }
@@ -1419,6 +1424,7 @@ function hostTick(){
   if(pwHostTick())ch=true;
   if(G.phase==='play'&&G.stage==='await'){
     const cur=G.players[G.turn];
+    if(!cur.a&&!G.q){G.stage='show';const s0=G.seq;later(()=>advance(s0),600);publishG();return}
     if(!G.q){
       if(cur.bot){
         if(botSched!==G.seq){const s=G.seq;botSched=s;later(()=>{if(G&&G.seq===s&&G.stage==='await'&&!G.q&&G.phase==='play'){G.q=botChoose(cur);publishG()}},1500)}

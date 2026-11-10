@@ -62,7 +62,8 @@ window.makeSupabaseRoom=function(cfg){
         });
         ch.on('broadcast',{event:'bye'},function(m){
           var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
-          if(peers.delete(pl.k))notifyPeers();
+          var pv=peers.get(pl.k);
+          if(pv){pv.presence=Object.assign({},pv.presence,{gone:1});pv.updatedAt=Date.now();pv.lastHeard=Date.now()-4000;notifyPeers()}
         });
         var mine=ch;
         ch.subscribe(function(status){
@@ -109,7 +110,8 @@ window.makeSupabaseRoom=function(cfg){
           if(sendTimer){clearTimeout(sendTimer);sendTimer=null}
           clearInterval(hbTimer);clearInterval(sweepTimer);hbTimer=sweepTimer=null;
           connected=false;subscribed=false;
-          try{var r=getClient().removeChannel(ch);if(r&&r.catch)r.catch(function(){})}catch(e){}
+          var old=ch;
+          setTimeout(function(){try{var r=getClient().removeChannel(old);if(r&&r.catch)r.catch(function(){})}catch(e){}},400);
           return Promise.resolve();
         }
       });

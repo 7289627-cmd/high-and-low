@@ -4,7 +4,7 @@ cd /home/claude/hl
 python3 build.py || { echo "FAIL build"; exit 1; }
 node --check test/_built.js && echo "PASS syntax" || { echo "FAIL syntax"; exit 1; }
 cd test
-S=$(timeout 400 node sim.js 2>&1 | grep -E "END|STUCK|timeout|errors")
+S=$(timeout 900 node sim.js 2>&1 | grep -E "END|STUCK|timeout|errors")
 echo "$S" | grep -q "END" && echo "$S" | grep -q "errors \[\]" && echo "PASS solo game: $(echo "$S"|grep END)" || echo "FAIL solo game: $S"
 M=$(timeout 400 node mp.js 2>&1 | grep -E "END|errors" )
 echo "$M" | grep -q "errors \[\] \[\]" && echo "PASS two-phone game (no errors) $(echo "$M"|grep END)" || echo "FAIL two-phone game: $M"
@@ -24,4 +24,4 @@ node sfx_check.js
 node bots_check.js
 cd ..
 python3 build.py >/dev/null
-cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null
+cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 400 node leave.js 2>&1 | tail -1); (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null

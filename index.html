@@ -203,7 +203,6 @@ button{font:inherit;color:inherit}
 
 @media (prefers-reduced-motion:reduce){
   .bob,.eyes,.a-dance,.fall,.stars{animation:none!important}
-  .stage *{animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
 @media (max-width:380px){.prow{grid-template-columns:30px minmax(0,1fr) auto auto 26px}.seg{padding:3px 6px}}
 
@@ -317,7 +316,7 @@ button{font:inherit;color:inherit}
 .pointer{position:absolute;top:-20px;left:50%;width:36px;margin-left:-18px;z-index:2;filter:drop-shadow(0 3px 0 var(--ink))}
 .wheel-msg{font-weight:800;color:var(--muted)}
 .wheel-msg.win{font-family:var(--display);font-weight:400;font-size:28px;color:var(--ink);animation:popIn .4s both}
-@media (prefers-reduced-motion:reduce){.wheel{transition-duration:.6s}}
+
 .speech.big .numslot{flex-basis:100%;display:flex;align-items:flex-end;gap:6px;font-size:1.25em;line-height:1}
 .speech.big .numslot .slots{font-size:1em;gap:4px}
 .speech.big .numslot .qm{color:var(--ink)}
@@ -378,11 +377,6 @@ button{font:inherit;color:inherit}
 .d2-calc .d2-num{animation:vanish .01s linear .9s forwards}
 @keyframes d2cshake{0%,100%{margin-left:-62px}25%{margin-left:-65px}75%{margin-left:-59px}}
 
-@media (prefers-reduced-motion:reduce){
-  .d2-puffbean,.d2-orb,.d2-bee,.d2-swarm,.d2-slip{animation:none!important}
-  .d2-welts{opacity:1}
-  .d2-slip{transform:translate(30px,0) rotate(-180deg)}
-}
 
 /* final showdown */
 body.showdown{background:linear-gradient(to top,#0E1128 0 58px,#080A1C 58px 62px,transparent 62px),linear-gradient(to bottom,#22284A,#121530)}
@@ -627,9 +621,6 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 .x3-kb{animation:x3kb 2.8s linear both}
 .x3-kbe{animation:x3kbe 3.2s linear both}
 .x3-kcl{animation:x3kcl 3.2s linear both}
-@media (prefers-reduced-motion:reduce){
-  .x3-shake,.x3-shake *{animation-delay:0s!important;animation-duration:.001s!important;animation-iteration-count:1!important;animation-fill-mode:both!important}
-}
 @keyframes x3anv{0.0%{transform:translateY(0px) rotate(0deg)}9.259%{transform:translateY(0px) rotate(2.5deg)}18.519%{transform:translateY(0px) rotate(-2.5deg)}27.778%{transform:translateY(0px) rotate(2deg)}37.037%{transform:translateY(0px) rotate(0deg)}39.259%{transform:translateY(-10px) rotate(0deg);animation-timing-function:cubic-bezier(.55,0,1,.45)}50.37%{transform:translateY(142px) rotate(0deg);animation-timing-function:ease-out}54.074%{transform:translateY(124px) rotate(0deg);animation-timing-function:ease-in}57.778%{transform:translateY(142px) rotate(0deg)}70.37%{transform:translateY(142px) rotate(0deg);animation-timing-function:ease-in-out}96.296%{transform:translateY(-250px) rotate(0deg)}100.0%{transform:translateY(-250px) rotate(0deg)}}
 @keyframes x3anvb{0.0%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}18.333%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}22.222%{transform:translate(0px,-16px) scale(0.94,1.1) rotate(0deg);animation-timing-function:ease-out}27.778%{transform:translate(0px,0px) scale(1.06,0.94) rotate(0deg)}31.111%{transform:translate(-9px,-6px) scale(1,1) rotate(0deg)}35.556%{transform:translate(-14px,0px) scale(1,1) rotate(0deg)}41.111%{transform:translate(-4px,-5px) scale(1,1) rotate(0deg)}46.667%{transform:translate(8px,0px) scale(1,1) rotate(0deg)}52.222%{transform:translate(0px,-4px) scale(1,1) rotate(0deg)}56.667%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}60.0%{transform:translate(2px,0px) scale(1,1) rotate(0deg)}62.222%{transform:translate(-2px,0px) scale(1,1) rotate(0deg)}64.444%{transform:translate(2px,0px) scale(1,1) rotate(0deg)}66.667%{transform:translate(-2px,0px) scale(1,1) rotate(0deg)}68.889%{transform:translate(2px,0px) scale(1,1) rotate(0deg)}71.111%{transform:translate(-2px,0px) scale(1,1) rotate(0deg)}73.333%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}73.889%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}76.111%{transform:translate(0px,0px) scale(1.75,0.14) rotate(0deg)}78.889%{transform:translate(0px,0px) scale(1.95,0.1) rotate(0deg)}86.111%{transform:translate(0px,0px) scale(1.7,0.15) rotate(0deg)}100.0%{transform:translate(0px,0px) scale(1.7,0.15) rotate(0deg)}}
 @keyframes x3pcw{0.0%{transform:scale(1,1)}25.0%{transform:scale(1.06,.7)}58.333%{transform:scale(.98,1.12)}100.0%{transform:scale(1,1)}}

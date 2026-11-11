@@ -109,7 +109,7 @@
 .pointer{position:absolute;top:-20px;left:50%;width:36px;margin-left:-18px;z-index:2;filter:drop-shadow(0 3px 0 var(--ink))}
 .wheel-msg{font-weight:800;color:var(--muted)}
 .wheel-msg.win{font-family:var(--display);font-weight:400;font-size:28px;color:var(--ink);animation:popIn .4s both}
-@media (prefers-reduced-motion:reduce){.wheel{transition-duration:.6s}}
+
 .speech.big .numslot{flex-basis:100%;display:flex;align-items:flex-end;gap:6px;font-size:1.25em;line-height:1}
 .speech.big .numslot .slots{font-size:1em;gap:4px}
 .speech.big .numslot .qm{color:var(--ink)}

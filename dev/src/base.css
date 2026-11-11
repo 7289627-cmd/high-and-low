@@ -197,6 +197,5 @@ button{font:inherit;color:inherit}
 
 @media (prefers-reduced-motion:reduce){
   .bob,.eyes,.a-dance,.fall,.stars{animation:none!important}
-  .stage *{animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
 @media (max-width:380px){.prow{grid-template-columns:30px minmax(0,1fr) auto auto 26px}.seg{padding:3px 6px}}

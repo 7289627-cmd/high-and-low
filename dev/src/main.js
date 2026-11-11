@@ -919,14 +919,15 @@ function rulerHTML(t,sl){
     const full=sl.prefix?Number((sl.prefix+ui.num).padEnd(sl.n,'0')):Number(ui.num);
     x=Math.min(sl.hi,Math.max(sl.lo,full));
   }
-  const ends=`<div class="rl-ends"><span>${fmt(sl.lo)}</span><span>${fmt(sl.hi)}</span></div>`;
-  if(x===null)return `<div class="ruler">${ends}<div class="rl-bar"><i class="plain" style="width:100%"></i></div><p class="rl-txt"><b>${fmt(tot)}</b> number${tot===1?'':'s'} left</p></div>`;
+  if(x===null)return `<div class="ruler"><div class="rl-bar"><i class="plain" style="flex:1"><em>${fmt(sl.lo)} – ${fmt(sl.hi)}</em></i></div></div>`;
   const hiMode=ui.dir!=='l';
   const leftN=hiMode?x-sl.lo+1:x-sl.lo,rightN=tot-leftN;
-  const yes=hiMode?rightN:leftN,no=hiMode?leftN:rightN;
-  const lw=leftN/tot*100,rw=100-lw;
+  const cut=sl.lo+leftN; // first number of the right part
+  const rg=(a,b)=>a>b?'–':(a===b?fmt(a):fmt(a)+' – '+fmt(b));
   const lc=hiMode?'no':'yes',rc=hiMode?'yes':'no';
-  return `<div class="ruler">${ends}<div class="rl-bar"><i class="${lc}" style="width:${lw}%">${lw>=22?`<em>${lc}</em>`:''}</i><i class="${rc}" style="width:${rw}%">${rw>=22?`<em>${rc}</em>`:''}</i></div><p class="rl-txt">yes: <b>${fmt(yes)}</b> left · no: <b>${fmt(no)}</b> left</p></div>`;
+  let lw=leftN/tot*100;lw=leftN===0?0:rightN===0?100:Math.min(78,Math.max(22,lw));
+  const seg=(c,w,n)=>n?`<i class="${c}" style="flex:${w}"><em>${c.toUpperCase()}</em></i>`:'';
+  return `<div class="ruler cut"><div class="rl-bar">${seg(lc,lw,leftN)}${seg(rc,100-lw,rightN)}</div><div class="rl-caps"><span class="${lc}">${rg(sl.lo,cut-1)}</span><span class="${rc}">${rg(cut,sl.hi)}</span></div></div>`;
 }
 function askRowHTML(f,fv){
   const o=nzOpp(PID).filter(x=>x.pid!==f.pid);
@@ -935,7 +936,7 @@ function askRowHTML(f,fv){
 function askViewHTML(){
   const t=curTarget(),me=byPid(PID),tv=mv(t);
   const k=(G.subN||1)-G.sub.length+1;
-  const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':`<span class="qcount">${k} / ${G.subN}</span>`}
+  const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':''}
 ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-row">${askRowHTML(t,tv)}</div></div>`;
   if(ui.step!=='num'){
     const bk=G.gid+':'+G.seq;
@@ -955,7 +956,7 @@ ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-row">${askRowHTML
 ${rulerHTML(tv,sl)}
 ${hint('num','Type a number, then tap Ask!')}<p class="sub ask-hint"><span>Pick from ${fmt(lo)} to ${fmt(hi)}.</span><span>Tap ${word.toLowerCase()} to flip it.</span></p>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
-${padHTML(`<button class="key mid" data-k="mid">MID</button>`,land)}
+${padHTML(`<button class="key mid" data-k="mid">HALF</button>`,land)}
 <button class="btn primary big full" id="askGo" ${ui.num?'':'disabled'}>Ask!</button>
 </section>`;
 }
@@ -1070,6 +1071,16 @@ ${padHTML(`<button class="key mid" data-k="rand">RND</button>`,false)}
   return `<main class="scroll"><section class="panel center"><div class="secret-big">${ui.show&&mySecret?fmt(mySecret.n):'• • • •'}</div><button class="link" id="showBtn">${ui.show?'Hide':'Show'} it</button></section>
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
 }
+let hpPrev={},hpGid='';
+function hpHTML(pid,v,z){
+  if(hpGid!==G.gid){hpGid=G.gid;hpPrev={}}
+  const n=v.hi-v.lo+1,w=Math.max(7,Math.round(Math.log(n)/Math.log(Math.max(G.max,2))*1000)/10);
+  let st=hpPrev[pid];if(!st)st=hpPrev[pid]={w,n,from:w,cut:0,at:0};
+  if(st.n!==n){st.from=st.w;st.cut=st.n-n;st.w=w;st.n=n;st.at=Date.now()}
+  const el=Date.now()-st.at,live=el<1600&&st.cut>0;
+  const tone=z?'hot':w>66?'ok':w>38?'mid':'low';
+  return `<span class="hp ${tone}">${live?`<u style="width:${st.from}%;animation-delay:-${el}ms"></u>`:''}<i style="width:${w}%;${live?`--from:${st.from}%;animation:hpdrain .7s cubic-bezier(.3,1.4,.5,1) both;animation-delay:-${el}ms`:''}"></i>${live?`<b class="dmg" style="animation-delay:-${el}ms">−${fmt(st.cut)}</b>`:''}</span>`;
+}
 function cardHTML(p,i){
   if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span>${pwBits(p)}<span class="rip">${typeof DEATH_ICON!=='undefined'&&DEATH_ICON[p.d]?`<span class="dicon">${DEATH_ICON[p.d]}</span>`:''}${SHORT[p.d]||'Out'}</span></span></div>`;
   const cur=G.players[G.turn];
@@ -1084,7 +1095,7 @@ function cardHTML(p,i){
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
 ${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`<span class="rng"><b>${fmt(v.lo)} – ${fmt(v.hi)}</b></span>
-<span class="barline ${z?'hot':''}"><i style="left:${lf}%;width:${w}%"></i></span>
+${hpHTML(p.pid,v,z)}
 ${z?`<span class="zone">${leftX(v)} LEFT</span>`:`<span class="left"><b>${fmt(v.hi-v.lo+1)} left</b></span>`}`}
 ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'hide':'show'}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''} ${dg>=3?'dg3':''}">${inner}</div>`;
@@ -1094,7 +1105,7 @@ function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
 function trayInner(){
   if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID&&!(me&&me.bot);
-  const evLine=G.ev?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
+  const evLine=G.ev&&(myTurn||G.ev.a===cur.pid)?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
   const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${timerPill()}</div>${evLine}</div></div>`;
   if(!myTurn){
     const ct=curTarget();

@@ -24,13 +24,13 @@ Ship High & Low (party number-guessing game, each player on their own phone) to 
 - Proposed, NOT approved yet: silent guest accounts; 1 free power per game; Google and Apple sign-in.
 
 ## 5. Next steps
+Scope for the deploying agent is ONLY steps 1 and 2. Game changes stay with the owner's Claude session.
 1. Wrap the web build with Capacitor (iOS + Android). Done when both run the game from bundled files on a real device with sound.
-2. Self-host the two Google Fonts (Lilita One, Baloo 2) and drop the fonts hosts from the CSP. Done when the app works offline to the home screen.
-3. Privacy policy and terms pages, linked from the "i" sheet. Needed by both stores and by any ad network.
-4. Analytics: a privacy-friendly events table in Supabase or a hosted tool. Events: open, play_tap, game_start, game_end (length, players, bots), leave, power_used. No names or free text.
-5. Ads: interstitial only between games (never mid-game), at most one per two games, plus a rewarded ad for coins. "No ads" as a one-time in-app purchase using the stores' own billing.
-6. Move coins and purchases server-side (use the existing Supabase functions) before selling anything.
-7. Store listings: icon 1024px, screenshots, age rating, data safety forms.
+2. Provide `window.HLNative` in the app builds (contract in `dev/src/ads.js`): `showInterstitial()`, `showRewarded()`, `buyNoAds()`, `ownsNoAds()`. The game already decides WHEN to show an ad (only between games, from the 2nd finished game, then every 2nd) and shows a "Remove ads" button in the "i" sheet when `buyNoAds` exists. Name the ad provider in `privacy.html` once chosen.
+3. Store listings: icon 1024px, screenshots, age rating, data safety forms. Data collected: anonymous usage events tied to a random device id (see `privacy.html`).
+
+Already built (do not redo): anonymous analytics (`dev/src/track.js` writes to Supabase table `events`, view `stats_daily`, SQL in `dev/supabase/events.sql`), `privacy.html`, `terms.html`, link preview, desktop layout.
+Still open on the game side: self-hosted fonts, server-side coins, stronger name filter, Play games surviving a host leaving.
 
 ## 6. Watch out
 - Build: `cd dev && python3 build.py web`. The script has absolute paths from the previous workspace (`/home/claude/hl`); fix `H=` and the output paths first. `SITE=` in build.py sets the link preview address.

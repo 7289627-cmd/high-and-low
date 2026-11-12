@@ -178,3 +178,5 @@ button{touch-action:manipulation}
   .btn:hover,.key:hover,.half:hover{filter:brightness(1.06)}
   .btn,.key,.half,.card[data-pid]{cursor:pointer}
 }
+
+.legal{font-size:14px}.legal a{color:var(--ink);font-weight:700}

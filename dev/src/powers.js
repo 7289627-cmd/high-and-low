@@ -24,6 +24,7 @@ function pwSpend(ev){
   const key=G.gid+':'+G.turnNo;
   if(LS.get(LSK('hl-pwspent'))===key)return;
   LS.set(LSK('hl-pwspent'),key);
+  track('power',{k:ev.t});
   LS.set(LSK('hl-coins'),Math.max(0,myCoins()-d.cost));
 }
 function pwCoinSVG(s){return `<svg viewBox="0 0 16 16" width="${s||14}" height="${s||14}" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="#FFD23F" stroke="#1E2240" stroke-width="2"/><circle cx="8" cy="8" r="3" fill="none" stroke="#1E2240" stroke-width="1.5"/></svg>`}

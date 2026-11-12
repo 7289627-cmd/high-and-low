@@ -218,6 +218,7 @@ function update(){
     if(G&&G.phase==='over'&&G.win===PID)try{countWin()}catch(e){}
     if(G&&G.phase==='over')try{botGameDone()}catch(e){}
     try{trackTaunts()}catch(e){}
+    trackTick();
     if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;later(showWinner,900)}
   }
   render();
@@ -691,9 +692,9 @@ function showWinner(){
   if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
   openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${awardsHTML()}
 <div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>':`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
-  {const c=$('#ovClose');if(c)c.onclick=closeOv}
+  {const c=$('#ovClose');if(c)c.onclick=()=>{closeOv();HLAds.between()}}
   {const a=$('#againBtn');if(a)a.onclick=playAgain}
-  const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();toLobby()};
+  const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();HLAds.between().then(toLobby)};
 }
 function toLobby(){if(!isHost||!G)return;G.players=G.players.filter(p=>!p.hb);G.phase='lobby';G.q=null;G.ev=null;G.gid=uid();publishG()}
 
@@ -704,7 +705,7 @@ function quickStop(){
   clearInterval(pubTimer);pubTimer=null;
   if(qp){clearInterval(qp.ann);try{qp.q&&qp.q.leave()}catch(e){}qp=null}
 }
-function playAgain(){closeOv();leaveGame().then(quickPlay)}
+function playAgain(){closeOv();track('again');HLAds.between().then(leaveGame).then(quickPlay)}
 function waitHTML(players){
   let list=players;
   if(!list){const l=myLook()||{};list=[{pid:PID,name:NAME||'You',c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
@@ -785,7 +786,7 @@ function addBot(){
   G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
 async function leaveGame(){
-  hostSeenAt=0;quickStop();isPub=false;
+  trackLeave();hostSeenAt=0;quickStop();isPub=false;
   clearTimers();clearInterval(tickTimer);closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
   LS.del(LSK('hl-session'));if(isHost&&code)LS.del('hl-host-'+code);
@@ -1131,14 +1132,14 @@ function bind(){
     const ni=$('#nameIn');ni.oninput=()=>{NAME=clean(ni.value);LS.set(LSK('hl-name'),NAME)};
     const ci=$('#codeIn');ci.oninput=()=>{ci.value=ci.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=ci.value};
     const need=()=>{if(!NAME){ui.homeErr='Type your name first.';render(true);$('#nameIn').focus();return false}ui.homeErr='';return true};
-    on('hostBtn',()=>{if(!need())return;let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];startOnline(true,c)});
-    const join=()=>{if(!need())return;const c=ci.value;if(!/^[A-Z]{4}$/.test(c)){ui.homeErr='Room codes are 4 letters.';render(true);return}startOnline(false,c)};
+    on('hostBtn',()=>{if(!need())return;let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
+    const join=()=>{if(!need())return;const c=ci.value;if(!/^[A-Z]{4}$/.test(c)){ui.homeErr='Room codes are 4 letters.';render(true);return}track('join');startOnline(false,c)};
     on('joinBtn',join);ci.onkeydown=e=>{if(e.key==='Enter')join()};
     on('rejoinBtn',()=>{const s=LS.get(LSK('hl-session'));if(s)startOnline(!!s.host,s.code)});
-    on('soloBtn',()=>{if(!NAME){NAME='You'}startSolo()});
+    on('soloBtn',()=>{if(!NAME){NAME='You'}track('practice');startSolo()});
     on('friendsBtn',()=>{ui.friends=!ui.friends;render(true)});
-    on('playBtn',()=>{ui.homeErr='';quickPlay()});
-    on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><div class="btn-row"><button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv});
+    on('playBtn',()=>{ui.homeErr='';track('play_tap');quickPlay()});
+    on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
     return;
   }
   on('leaveBtn',()=>{if(ui.leaveArmed||mode==='search'||(G&&G.pub&&G.phase==='lobby')||(isPub&&!G)){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
@@ -1212,6 +1213,7 @@ render(true);
 (async()=>{
   try{if(window.HL_CONFIG&&window.makeSupabaseRoom)roomNS=window.makeSupabaseRoom(window.HL_CONFIG);else roomNS=window.claude&&window.claude.use?await window.claude.use('room'):null}catch(e){roomNS=null}
   roomState=roomNS?'ok':'none';render(true);
+track('open',{inv:/[#&]room=/.test(location.hash)?1:0,wide:innerWidth>=820?1:0,app:window.HLNative?1:0});
   if(DEEP){
     if(roomState==='ok'&&NAME)startOnline(false,DEEP);
     else{ui.codeIn=DEEP;ui.friends=true;if(!NAME)ui.homeErr='Type your name, then tap Join.';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}

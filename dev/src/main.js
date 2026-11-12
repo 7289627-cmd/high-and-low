@@ -48,13 +48,18 @@ function popHTML(pid){
   return ui.pops.filter(x=>x.pid===pid&&x.until>now).map(x=>`<span class="taunt-pop" style="animation-delay:-${((1600-(x.until-now))/1000).toFixed(2)}s">${x.e}</span>`).join('');
 }
 function trackTaunts(){
+  if(G&&G.bt)for(const pid in G.bt){
+    const tn=G.bt[pid],k='b:'+pid+':'+G.gid;
+    if(!(k in tnSeen)){tnSeen[k]=view==='game'&&G.phase!=='lobby'?0:tn.n}
+    if(tn.n>tnSeen[k]){tnSeen[k]=tn.n;addPop(pid,TAUNTS[tn.e]);const p=byPid(pid);sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07})}
+  }
   for(const [pid,v] of peerMap){
     const tn=v.pres.tn,n=tn&&Number.isInteger(tn.n)?tn.n:0;
     if(!(pid in tnSeen)){tnSeen[pid]=n;continue}
     if(n>tnSeen[pid]){
       tnSeen[pid]=n;
       if(Number.isInteger(tn.e)&&tn.e>=0&&tn.e<TAUNTS.length){
-        addPop(pid,TAUNTS[tn.e]);
+        addPop(pid,TAUNTS[tn.e]);botHear(pid,tn.e);
         const p=byPid(pid);sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07});
       }
     }
@@ -62,7 +67,7 @@ function trackTaunts(){
 }
 function tauntSend(e){
   if(Date.now()<ui.tauntUntil||!G)return;
-  tnN++;setP({tn:{n:tnN,e}});addPop(PID,TAUNTS[e]);
+  tnN++;setP({tn:{n:tnN,e}});addPop(PID,TAUNTS[e]);botHear(PID,e);
   sfx('babble'+rnd(1,3),{rate:babRate()});
   ui.tauntUntil=Date.now()+1500;later(()=>render(true),1530);render(true);
 }
@@ -177,6 +182,7 @@ function cleanG(g){
         o[a.slice(0,40)]=r;
       }
       g.kn=o}
+    {const o={},b=obj(g.bt);let c=0;for(const k in b){const t=b[k];if(k==='__proto__'||c++>=6||!t||!Number.isInteger(t.n)||!Number.isInteger(t.e)||t.e<0||t.e>5)continue;o[k.slice(0,40)]={n:int(t.n,0,0,1e6),e:t.e}}g.bt=o}
     g.gid=str(g.gid,24);g.turn=int(g.turn,0,0,g.players.length-1);g.seq=int(g.seq,0,0,1e9);
     g.stage=['await','show','wheel','power'].includes(g.stage)?g.stage:'await';
     g.en=int(g.en,0,0,1e9);g.asked=int(g.asked,0,0,1e9);g.turnNo=int(g.turnNo,0,0,1e9);g.pwTurn=int(g.pwTurn,-1,-1,1e9);
@@ -318,9 +324,10 @@ const BAD=['fuck','shit','bitch','cunt','nigg','fagg','whore','slut','bastard','
 function tameName(n){const l=String(n||'').toLowerCase().replace(/[^a-z]/g,'');return BAD.some(w=>l.includes(w))?'Bean':n}
 function addFillBot(){
   if(G.players.length>=6)return;
-  const used=G.players.map(p=>p.name);const free=FILL_NAMES.filter(n=>!used.includes(n));
-  const nm=free.length?free[rnd(0,free.length-1)]:'Bean';
-  G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,hb:1,a:1,d:'',dg:0});
+  const nm=freshName(G.players.map(p=>p.name));
+  const np={pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,hb:1,a:1,d:'',dg:0};
+  const k=fillLook();if(k!=null)np.k=k;
+  G.players.push(np);
 }
 /* Public room pacing (host side): fill bots at 1.5, 2.5, 3.5 steps, start 1.5 s after 4 players. Returns true when the game was started. */
 let pubAt=0,pubFills=0,pubFullAt=0;
@@ -336,6 +343,7 @@ function pubTick(){
 }
 function hostTick(){
   if(!G)return;
+  botLifeTick();
   if(watchdog()){publishG();return}
   let ch=false;
   const me=byPid(PID);const myNm=G.pub?tameName(NAME||'Host'):(NAME||'Host');if(me&&me.name!==myNm){me.name=myNm;ch=true}

@@ -1176,6 +1176,8 @@ function buzz(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
 function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick a whole number from 1 to ${fmt(G.max)}.`;sfx('error');render(true);return}ui.err='';sfx('send');sfx('lock',{delay:0.15});lockSecret(n);seen('secret')}
 document.addEventListener('keydown',e=>{
   if(view!=='game'||!G||e.target.tagName==='INPUT')return;
+  if(askViewOn()&&ui.step==='dir'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){const b=$('[data-pickdir="'+(e.key==='ArrowUp'?'h':'l')+'"]');if(b){e.preventDefault();b.click()}return}
+  if(askViewOn()&&ui.step==='num'&&e.key==='Escape'){const b=$('#askBack');if(b)b.click();return}
   const onPad=(G.phase==='secrets'&&byPid(PID)&&!mySecret)||(askViewOn()&&ui.step==='num');
   if(!onPad)return;
   if(/^\d$/.test(e.key))padPress(e.key);

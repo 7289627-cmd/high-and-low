@@ -1,6 +1,7 @@
 """Build the single-file game: src/* -> /home/claude/high-and-low.html. Run: python3 /home/claude/hl/build.py"""
 import pathlib
 H=pathlib.Path('/home/claude/hl')
+SITE='https://7289627-cmd.github.io/high-and-low/'  # public address; change when the game moves to its own domain
 HEAD='''<title>High and Low</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +28,12 @@ if len(sys.argv)>1 and sys.argv[1]=='web':
     '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     '<meta name="theme-color" content="#7FD0E4">'
     '<link rel="apple-touch-icon" href="icon-180.png"><meta name="apple-mobile-web-app-title" content="High &amp; Low"><link rel="icon" type="image/png" href="icon-180.png">\n'
-    '<title>High and Low</title>\n'
+    '<title>High &amp; Low</title>\n'
+    '<meta name="description" content="Hide a number. Guess theirs. Last bean standing wins.">\n'
+    '<meta property="og:type" content="website"><meta property="og:site_name" content="High &amp; Low">\n'
+    '<meta property="og:title" content="High &amp; Low"><meta property="og:description" content="Hide a number. Guess theirs. Last bean standing wins.">\n'
+    '<meta property="og:url" content="'+SITE+'"><meta property="og:image" content="'+SITE+'og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">\n'
+    '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="'+SITE+'og.png">\n'
     '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">\n')

@@ -168,3 +168,13 @@ button{touch-action:manipulation}
 @keyframes hppulse{from{opacity:1}to{opacity:.55}}
 .card .rng{font-size:15px}
 @media (prefers-reduced-motion:reduce){.hp i,.hp u,.hp .dmg{animation:none!important}.hp u,.hp .dmg{display:none}}
+
+/* ---- desktop ---- */
+@media (min-width:820px){
+  #app{max-width:520px}
+  #ov .sheet{max-width:480px;margin-left:auto;margin-right:auto}
+}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover,.key:hover,.half:hover{filter:brightness(1.06)}
+  .btn,.key,.half,.card[data-pid]{cursor:pointer}
+}

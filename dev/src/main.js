@@ -166,7 +166,7 @@ function cleanG(g){
     const hats=typeof hatCount==='function'?hatCount():12;
     g.players=g.players.slice(0,6).filter(p=>p&&typeof p==='object'&&typeof p.pid==='string'&&p.pid).map(p=>{
       p.pid=p.pid.slice(0,40);p.name=clean(p.name)||'Player';p.c=int(p.c,0,0,5);p.k=p.k==null?null:int(p.k,0,0,hats-1);
-      p.dg=int(p.dg,0,0,3);
+      p.dg=int(p.dg,0,0,3);if('el' in p)p.el=int(p.el,ELO0,100,3000);
       p.a=p.a?1:0;p.bot=p.bot?1:0;p.hb=p.hb?1:0;p.ez=p.ez?1:0;p.sh=p.sh?1:0;p.fz=p.fz?1:0;p.d=DEATHS.includes(p.d)?p.d:'';
       if('co' in p)p.co=int(p.co,0,0,99999);return p});
     if(!g.players.length)return null;
@@ -212,9 +212,9 @@ function update(){
   if(view==='game'){
     if(!isHost){
       let h=null;for(const v of peerMap.values())if(v.pres.role==='host'&&v.pres.game&&typeof v.pres.game==='object')h=v;
-      if(h&&h.pres.gone){const wp=G&&G.pub;leaveGame().then(()=>{if(!wp)ui.homeErr='The host left.';render(true)});return}
+      if(h&&h.pres.gone){const wp=G&&G.pub;eloSkip=true;leaveGame().then(()=>{if(!wp)ui.homeErr='The host left.';render(true)});return}
       if(h){hostSeenAt=Date.now()}
-      else if(hostSeenAt&&Date.now()-hostSeenAt>(window.HL_TEST_HOSTLOST_MS||60000)){hostSeenAt=0;const wp=G&&G.pub;leaveGame().then(()=>{if(!wp)ui.homeErr='Lost the host.';render(true)});return}
+      else if(hostSeenAt&&Date.now()-hostSeenAt>(window.HL_TEST_HOSTLOST_MS||60000)){hostSeenAt=0;const wp=G&&G.pub;eloSkip=true;leaveGame().then(()=>{if(!wp)ui.homeErr='Lost the host.';render(true)});return}
       G=h?cleanG(h.pres.game):null;
     } else hostTick();
     syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
@@ -222,6 +222,7 @@ function update(){
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
     if(G&&G.phase==='over'&&G.win===PID)try{countWin()}catch(e){}
+    if(G&&G.phase==='over'&&G.pub)eloApply(G.win===PID);
     if(G&&G.phase==='over')try{botGameDone()}catch(e){}
     try{trackTaunts()}catch(e){}
     trackTick();
@@ -327,6 +328,7 @@ function addFillBot(){
   const nm=freshName(G.players.map(p=>p.name));
   const np={pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,hb:1,a:1,d:'',dg:0};
   const k=fillLook();if(k!=null)np.k=k;
+  np.el=Math.max(700,myElo()+rnd(-80,80));
   G.players.push(np);
 }
 /* Public room pacing (host side): fill bots at 1.5, 2.5, 3.5 steps, start 1.5 s after 4 players. Returns true when the game was started. */
@@ -334,8 +336,8 @@ let pubAt=0,pubFills=0,pubFullAt=0;
 function pubTick(){
   const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
   if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
-  if(G.players.length<4&&pubFills<3&&now-pubAt>=step*(1.5+pubFills)){pubFills++;addFillBot();publishG()}
-  if(G.players.length>=4){
+  if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubFills)){pubFills++;addFillBot();publishG()}
+  if(G.players.length>=PUB_N){
     if(!pubFullAt)pubFullAt=now;
     if(now-pubFullAt>=1500){pubFullAt=0;hostStart();return true}
   } else pubFullAt=0;
@@ -347,13 +349,14 @@ function hostTick(){
   if(watchdog()){publishG();return}
   let ch=false;
   const me=byPid(PID);const myNm=G.pub?tameName(NAME||'Host'):(NAME||'Host');if(me&&me.name!==myNm){me.name=myNm;ch=true}
+  if(me&&G.phase==='lobby'&&me.el!==myElo()){me.el=myElo();ch=true}
   if(G.phase==='lobby'&&mode==='online'){
     for(const [pid,v] of peerMap){
       if(v.pres.role!=='player'||v.pres.gone)continue;
       const nm0=clean(v.pres.name)||'Player',nm=G.pub?tameName(nm0):nm0;
       const p=byPid(pid);
       if(p){if(p.name!==nm){p.name=nm;ch=true}}
-      else if(G.players.length<6){const l=validLook(v.pres.look);const np={pid,name:nm,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;G.players.push(np);ch=true}
+      else if(G.players.length<(G.pub?PUB_N:6)){const l=validLook(v.pres.look);const np={pid,name:nm,el:Number.isInteger(v.pres.el)?Math.min(3000,Math.max(100,v.pres.el)):ELO0,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;G.players.push(np);ch=true}
     }
     const before=G.players.length;
     G.players=G.players.filter(p=>p.bot||p.pid===PID||(peerMap.has(p.pid)&&!peerMap.get(p.pid).pres.gone));
@@ -567,7 +570,7 @@ function botChoose(me){
     const dir=Math.random()<.5?'h':'l',xs={};
     for(const o of nzOpp(me.pid)){
       const t=vw(me.pid,o);
-      const sk=me.ez?0.15:Math.max(0.1,Math.min(1,(G.bs==null?0.5:G.bs)+botLeaderBias(me.pid,o)));
+      const sk=me.ez?0.15:(G.pub&&me.hb&&Number.isInteger(me.el))?eloSkill(me.el):Math.max(0.1,Math.min(1,(G.bs==null?0.5:G.bs)+botLeaderBias(me.pid,o)));
       xs[o.pid]=botSplit(t,sk,dir,Math.random(),Math.random());
     }
     return{...base,tg:'',t:'askall',dir,xs};
@@ -654,6 +657,7 @@ function evText(ev){
   {const pt=pwEvText(ev,a,t);if(pt)return pt}
   if(ev.t==='askall'){
     const r=(ev.rs||{})[PID];
+    if(G.players.length===2)return ev.a===PID?'You asked.':`${(byPid(ev.a)||{}).name||'They'} asked.`;
     if(ev.a===PID)return 'You asked everyone.';
     if(r)return `${a} asked you: ${ev.dir==='l'?'lower':'higher'} than ${fmt(r.x)}? ${r.ans?'Yes.':'No.'}`;
     if((ev.bl||[]).includes(PID))return `Your shield blocked ${a}!`;
@@ -698,7 +702,7 @@ function showWinner(){
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
   let hatBlock='';const nh=newHatIdx;newHatIdx=null;
   if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
-  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${awardsHTML()}
+  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
 <div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>':`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
   {const c=$('#ovClose');if(c)c.onclick=()=>{closeOv();HLAds.between()}}
   {const a=$('#againBtn');if(a)a.onclick=playAgain}
@@ -719,7 +723,7 @@ function waitHTML(players){
   if(!list){const l=myLook()||{};list=[{pid:PID,name:NAME||'You',c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
   const rows=list.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}</span><span></span></div>`).join('');
   return `<main class="scroll waitv"><h1 class="logo small">High<span>&amp;</span>Low</h1><section class="panel"><div class="plist">${rows}</div></section>
-<p class="finding">Finding players<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
+<p class="finding">Finding a match<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
 <button class="btn" id="leaveBtn">Leave</button></main>`;
 }
 async function quickPlay(){
@@ -732,7 +736,7 @@ async function quickPlay(){
   const opens=[];
   try{
     my.q=window.makeSupabaseQueue(window.HL_CONFIG);
-    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<4&&m.n>=1)opens.push({code:m.code,n:m.n,t:Date.now()})});
+    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1)opens.push({code:m.code,n:m.n,t:Date.now()})});
     my.q.join();
   }catch(e){my.q=null}
   const qms=window.HL_TEST_Q_MS||2000;
@@ -750,7 +754,7 @@ async function quickPlay(){
       const ann=()=>{
         if(qp!==my)return;
         if(!G||!isHost||!G.pub||G.phase!=='lobby'){quickStop();return}
-        if(G.players.length<4)my.q.announce({code,n:G.players.length,at:Date.now()});
+        if(G.players.length<PUB_N)my.q.announce({code,n:G.players.length,at:Date.now()});
       };
       my.ann=setInterval(ann,Math.min(1500,Math.round(qms*0.75)));ann();
     }
@@ -771,7 +775,7 @@ async function quickPlay(){
 async function startOnline(asHost,c,pub){
   if(!roomNS)return;
   mode='online';isHost=asHost;code=c;view='game';tnSeen={};isPub=!!pub;
-  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player'};{const l=myLook();if(l)myPres.look=l}
+  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player',el:myElo()};{const l=myLook();if(l)myPres.look=l}
   if(asHost){const saved=pub?null:LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
   if(!pub)LS.set(LSK('hl-session'),{code,host:asHost,at:Date.now()});
@@ -794,6 +798,7 @@ function addBot(){
   G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
 async function leaveGame(){
+  if(G&&G.pub&&G.phase==='play'&&!eloSkip){const m=byPid(PID);if(m&&m.a)eloApply(false)}eloSkip=false;
   trackLeave();hostSeenAt=0;quickStop();isPub=false;
   clearTimers();clearInterval(tickTimer);closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
@@ -839,7 +844,7 @@ function homeHTML(){
   const online=roomState==='ok';
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
   return `<main class="scroll">
-<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${winsN()>0?`<div class="wins-pill">Wins: ${winsN()}</div>`:''}${pwHomePill()}</section>
+<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${eloPill()}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
  <button id="playBtn" class="btn primary big full">Play</button>
@@ -894,7 +899,10 @@ ${long?'<p class="tip">Make sure the host has the game open on their phone and t
   if(G.phase==='secrets')return headerHTML()+secretsHTML();
   if(!byPid(PID)&&G.phase!=='over')return headerHTML()+`<main class="cast">${G.players.map(cardHTML).join('')}</main><section class="tray"><p class="hint">A round is already going. You're watching, and you'll be in the next one.</p></section>`;
   if(askViewOn())return headerHTML()+askViewHTML();
-  return headerHTML()+`<main class="cast">${G.players.map(cardHTML).join('')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
+  if(guessViewOn())return headerHTML()+guessViewHTML();
+  const duel=G.players.length===2,me0=G.players.findIndex(p=>p.pid===PID);
+  const order=duel&&me0===0?[1,0]:G.players.map((_,i)=>i);
+  return headerHTML()+`<main class="cast ${duel?'duel':''}">${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
 }
 function canAct(){
   if(!G||G.phase!=='play')return false;
@@ -906,6 +914,15 @@ function curTarget(){
   if(!G||G.phase!=='play'||G.stage==='wheel'||!G.sub||!G.sub.length)return null;
   if(G.sub[0]==='*'){const c=G.players[G.turn];return c?focusOf(c.pid):null}
   return byPid(G.sub[0]);
+}
+function guessViewOn(){const t=curTarget();return canAct()&&G.sub[0]!=='*'&&!!t&&t.a}
+function guessViewHTML(){
+  const t=curTarget(),tv=mv(t),xs=myXs(tv),btns=[];
+  for(let n=tv.lo;n<=tv.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
+  return `<main class="guessv"><div class="ask-top">${timerPill()}${pwBtnHTML()}</div>
+<div class="ped"><div class="ped-bean jit">${popHTML(t.pid)}${charSVG(pv(t),'scared')}</div><div class="ped-base"><b>${esc(t.name)}</b></div></div>
+<p class="ped-q">Which one is it?</p>
+<div class="guess-grid big n${btns.length}">${btns.join('')}</div></main>`;
 }
 function askViewOn(){const t=curTarget();return canAct()&&G.sub[0]==='*'&&!!t&&t.a}
 const BIG_UP=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8l40 46H66v38H34V54H10z" fill="#fff" stroke="#1E2240" stroke-width="6" stroke-linejoin="round"/></svg>`;
@@ -1102,7 +1119,7 @@ function cardHTML(p,i){
   const bb=bubOf(p.pid),bub=bb?`<span class="bubble ${bb.up?'up':'down'}">${esc(bb.text)}</span>`:'';
   const turnTag='';
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
-<span class="info"><span class="nm"><b>${esc(p.name)}</b>${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
+<span class="info"><span class="nm"><b>${esc(p.name)}</b>${G.pub&&Number.isInteger(p.el)?`<span class="elo">${p.el}</span>`:''}${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
 ${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`<span class="rng"><b>${fmt(v.lo)} – ${fmt(v.hi)}</b></span>
 ${hpHTML(p.pid,v,z)}
 ${z?`<span class="zone">${leftX(v)} LEFT</span>`:`<span class="left"><b>${fmt(v.hi-v.lo+1)} left</b></span>`}`}

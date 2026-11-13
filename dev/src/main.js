@@ -337,6 +337,7 @@ function pubTick(){
   const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
   if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
   if(G.max!==playMode().max)G.max=playMode().max;
+  if(G.timer!==40)G.timer=40;
   if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubFills)){pubFills++;addFillBot();publishG()}
   if(G.players.length>=PUB_N){
     if(!pubFullAt)pubFullAt=now;
@@ -841,12 +842,26 @@ function render(force){
   bind();
   if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
+const SCENE_T0=Date.now();
+function ph(dur,off){return `animation-delay:-${(((Date.now()-SCENE_T0)/1000+(off||0))%dur).toFixed(2)}s`}
+function homeSceneHTML(){
+  const bean=(i,mood)=>charSVG({color:COLORS[i%COLORS.length],acc:i%COLORS.length,id:30+i},mood||'happy');
+  const nums=['7','42','?','3','99','1','?','58'];
+  return `<div class="hscene" aria-hidden="true">
+<i class="cloud c1" style="${ph(70,10)}"></i><i class="cloud c2" style="${ph(95,50)}"></i><i class="cloud c3" style="${ph(120,90)}"></i>
+${nums.map((n,i)=>`<span class="fnum" style="left:${6+i*12.5}%;animation-duration:${15+(i*5)%9}s;${ph(15+(i*5)%9,i*3.7)}">${n}</span>`).join('')}
+<div class="hs-catch"><span class="hs-b a" style="${ph(2.8,0)}">${bean(1,'happy')}</span><span class="hs-ballx" style="${ph(2.8,0)}"><span class="hs-bally" style="${ph(1.4,0)}"></span></span><span class="hs-b b" style="${ph(2.8,1.4)}">${bean(3,'happy')}</span></div>
+<span class="hs-walk" style="${ph(26,4)}"><span class="hs-waddle">${bean(4,'idle')}</span></span>
+<span class="hs-hop" style="${ph(1.3,0)}">${bean(5,'happy')}</span>
+<span class="hs-chase" style="${ph(19,6)}"><span class="hs-run r1">${bean(2,'happy')}</span><span class="hs-run r2">${bean(0,'scared')}</span></span>
+</div>`;
+}
 function homeHTML(){
   const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
-  return `<main class="scroll">
+  return `<main class="scroll home">${homeSceneHTML()}
 <section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${eloPill()}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
@@ -881,7 +896,11 @@ function timerLeft(){
   if(ui.timerSeq!==G.gid+':'+G.seq)return null;
   return Math.max(0,Math.ceil(G.timer-(Date.now()-ui.timerStart)/1000));
 }
-function timerPill(){const v=timerLeft();if(v===null)return '';return `<span class="timer-pill ${v<6?'low':''}">${Math.floor(v/60)}:${String(v%60).padStart(2,'0')}</span>`}
+function timerPill(){
+  const v=timerLeft();if(v===null)return '';
+  const f=Math.min(1,v/Math.max(1,G.timer));
+  return `<span class="tclock ${v<6?'low':''}" style="--f:${f.toFixed(3)}" role="timer" aria-label="${v} seconds left"><i class="bell l"></i><i class="bell r"></i><i class="foot l"></i><i class="foot r"></i><span class="face"><b>${v}</b></span></span>`;
+}
 const SPK='<path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
 function muteHTML(){
   const m=SFX.muted;
@@ -906,7 +925,7 @@ ${long?'<p class="tip">Make sure the host has the game open on their phone and t
   if(guessViewOn())return headerHTML()+guessViewHTML();
   const duel=G.players.length===2,me0=G.players.findIndex(p=>p.pid===PID);
   const order=duel&&me0===0?[1,0]:G.players.map((_,i)=>i);
-  return headerHTML()+`<main class="cast ${duel?'duel':''}">${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
+  return headerHTML()+`<main class="cast ${duel?'duel':''}"><div class="clock-corner">${timerPill()}</div>${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
 }
 function canAct(){
   if(!G||G.phase!=='play')return false;
@@ -1204,7 +1223,7 @@ function trayInner(){
   if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID&&!(me&&me.bot);
   const evLine=G.ev&&(myTurn||G.ev.a===cur.pid)?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
-  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${timerPill()}</div>${evLine}</div></div>`;
+  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${''}</div>${evLine}</div></div>`;
   if(!myTurn){
     const ct=curTarget();
     let body=G.stage==='wheel'?'':G.q?`<p class="hint">${esc(qText(G.q))}</p>`:(ct?'':`<p class="hint">Waiting for ${esc(cur.name)}…</p>`);
@@ -1308,7 +1327,7 @@ setInterval(()=>{
     if(tv<=5&&tv>0&&!sfxSeen.hurry.has('h'+k)){sfxSeen.hurry.add('h'+k);sfx('vo_hurry')}
     if(tv===0&&!sfxSeen.hurry.has('o'+k)){sfxSeen.hurry.add('o'+k);sfx('vo_timeover')}
   }
-  if(tv===null)return;document.querySelectorAll('.timer-pill').forEach(el=>{const v=timerLeft();if(v===null)return;el.textContent=Math.floor(v/60)+':'+String(v%60).padStart(2,'0');el.classList.toggle('low',v<6)})},1000);
+  if(tv===null)return;document.querySelectorAll('.tclock').forEach(el=>{const v=timerLeft();if(v===null)return;el.style.setProperty('--f',Math.min(1,v/Math.max(1,G.timer)).toFixed(3));const b=el.querySelector('b');if(b)b.textContent=v;el.classList.toggle('low',v<6)})},1000);
 /* ---------- Boot ---------- */
 const DEEP=(()=>{
   const m=location.hash.match(/room=([A-Za-z]{4})/);if(!m)return null;

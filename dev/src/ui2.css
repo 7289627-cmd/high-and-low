@@ -254,3 +254,58 @@ button{touch-action:manipulation}
 .mode em{position:absolute;top:-9px;right:-5px;font-style:normal;font-size:13px;background:var(--red);color:var(--white);border:3px solid var(--ink);border-radius:99px;padding:1px 7px;line-height:1.2}
 .mode[aria-checked="true"]{opacity:1;background:var(--yellow);transform:translateY(-3px);box-shadow:0 7px 0 var(--ink)}
 .mode:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
+
+/* ---- cartoon turn clock ---- */
+.tclock{position:relative;display:inline-block;width:56px;height:56px;flex:none;vertical-align:middle;transform-origin:50% 90%;animation:clockSway 3.6s ease-in-out infinite}
+.tclock .face{position:absolute;inset:0;border-radius:50%;border:4px solid var(--ink);background:conic-gradient(var(--yellow) calc(var(--f)*1turn),var(--white) 0);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;transition:background .3s}
+.tclock .face:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:42%;margin-left:-2px;background:var(--ink);border-radius:2px;transform-origin:50% 0;transform:rotate(calc(180deg + var(--f)*1turn));transition:transform .9s linear;opacity:.25}
+.tclock b{position:relative;z-index:1;font-family:var(--display);font-weight:400;font-size:22px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.tclock .bell{position:absolute;top:-7px;width:20px;height:14px;background:var(--red);border:4px solid var(--ink);border-radius:12px 12px 4px 4px}
+.tclock .bell.l{left:0;transform:rotate(-32deg)}.tclock .bell.r{right:0;transform:rotate(32deg)}
+.tclock .foot{position:absolute;bottom:-7px;width:9px;height:12px;background:var(--ink);border-radius:4px}
+.tclock .foot.l{left:9px;transform:rotate(24deg)}.tclock .foot.r{right:9px;transform:rotate(-24deg)}
+.tclock.low{animation:clockRing .28s linear infinite}
+.tclock.low .face{background:conic-gradient(var(--red) calc(var(--f)*1turn),var(--white) 0)}
+@keyframes clockSway{0%,100%{transform:rotate(-5deg) scale(1)}50%{transform:rotate(5deg) scale(1.06)}}
+@keyframes clockRing{0%,100%{transform:rotate(-9deg) scale(1.08)}50%{transform:rotate(9deg) scale(1.08)}}
+.cast{position:relative}
+.clock-corner{position:absolute;left:2px;top:0;z-index:3;pointer-events:none}
+.clock-corner:empty{display:none}
+.cast.duel .clock-corner{top:-6px}
+.ask-top .tclock,.guessv .ask-top .tclock{margin:4px 6px 0 2px}
+/* ---- living home screen ---- */
+.hscene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.scroll.home>section{position:relative;z-index:1}
+.hscene svg{width:100%;height:auto;display:block;overflow:visible}
+.hscene .cloud{position:absolute;left:0;width:120px;height:38px;background:var(--white);border-radius:40px;opacity:.85;animation:cloudDrift 70s linear infinite}
+.hscene .cloud:before,.hscene .cloud:after{content:"";position:absolute;background:inherit;border-radius:50%}
+.hscene .cloud:before{width:54px;height:54px;left:18px;top:-24px}.hscene .cloud:after{width:40px;height:40px;right:20px;top:-16px}
+.hscene .c1{top:9%}.hscene .c2{top:27%;transform:scale(.7);animation-duration:95s;opacity:.7}.hscene .c3{top:50%;animation-duration:120s;opacity:.6}
+@keyframes cloudDrift{from{translate:-160px 0}to{translate:calc(100vw + 40px) 0}}
+.hscene .fnum{position:absolute;bottom:60px;font-family:var(--display);font-size:26px;color:var(--white);opacity:0;animation:numRise 18s linear infinite}
+@keyframes numRise{0%{translate:0 0;opacity:0;rotate:-10deg}8%{opacity:.5}60%{opacity:.35}100%{translate:18px -72vh;opacity:0;rotate:14deg}}
+.hs-b,.hs-walk,.hs-hop,.hs-run{position:absolute;bottom:50px;width:52px}
+.hs-catch{position:absolute;left:5%;bottom:0;width:150px;height:140px}
+.hs-catch .hs-b.a{left:0;animation:catchHop 2.8s ease-in-out infinite}
+.hs-catch .hs-b.b{right:0;animation:catchHop 2.8s ease-in-out infinite}
+.hs-catch .hs-b.b svg{transform:scaleX(-1)}
+.hs-ballx{position:absolute;left:44px;bottom:84px;width:62px;animation:ballX 2.8s linear infinite}
+.hs-bally{display:block;width:16px;height:16px;border-radius:50%;background:var(--red);border:3px solid var(--ink);animation:ballY 1.4s cubic-bezier(.3,0,.7,1) infinite}
+@keyframes ballX{0%,100%{translate:0 0}50%{translate:46px 0}}
+@keyframes ballY{0%,100%{translate:0 0}50%{translate:0 -46px}}
+@keyframes catchHop{0%,12%,100%{translate:0 0;scale:1 1}4%{translate:0 -9px;scale:.96 1.05}8%{translate:0 0;scale:1.06 .94}}
+.hs-walk{left:0;animation:walkAcross 26s linear infinite}
+.hs-waddle{display:block;transform-origin:50% 100%;animation:waddle .5s ease-in-out infinite alternate}
+@keyframes walkAcross{0%{translate:-70px 0;scale:1 1}49.9%{translate:calc(100vw + 20px) 0;scale:1 1}50%{translate:calc(100vw + 20px) 0;scale:-1 1}99.9%{translate:-70px 0;scale:-1 1}100%{translate:-70px 0;scale:1 1}}
+@keyframes waddle{from{rotate:-7deg}to{rotate:7deg}}
+.hs-hop{right:7%;transform-origin:50% 100%;animation:hopHop 1.3s cubic-bezier(.3,0,.4,1) infinite}
+@keyframes hopHop{0%,100%{translate:0 0;scale:1.08 .9}45%{translate:0 -44px;scale:.95 1.07}55%{translate:0 -44px;scale:.95 1.07}}
+.hs-chase{position:absolute;left:0;bottom:0;width:140px;height:110px;animation:chase 19s linear infinite}
+.hs-run{animation:waddle .22s ease-in-out infinite alternate;transform-origin:50% 100%}
+.hs-run.r1{left:0;bottom:50px}.hs-run.r2{left:78px;bottom:50px}
+@keyframes chase{0%,62%{translate:-170px 0}86%,100%{translate:calc(100vw + 30px) 0}}
+.hero .lineup .lu{animation:luHop 5.4s ease-in-out infinite}
+.hero .lineup .lu:nth-child(2){animation-delay:-.9s}.hero .lineup .lu:nth-child(3){animation-delay:-1.8s}.hero .lineup .lu:nth-child(4){animation-delay:-2.7s}.hero .lineup .lu:nth-child(5){animation-delay:-3.6s}.hero .lineup .lu:nth-child(6){animation-delay:-4.5s}
+@keyframes luHop{0%,84%,100%{translate:0 0}90%{translate:0 -12px}95%{translate:0 0}}
+@media (max-height:600px){.hs-catch,.hs-hop{display:none}}
+@media (prefers-reduced-motion:reduce){.hscene *{animation:none!important}.hscene .fnum,.hs-walk,.hs-chase{display:none}.hero .lineup .lu{animation:none}}

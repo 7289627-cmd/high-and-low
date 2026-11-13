@@ -919,6 +919,61 @@ button{touch-action:manipulation}
 .mode em{position:absolute;top:-9px;right:-5px;font-style:normal;font-size:13px;background:var(--red);color:var(--white);border:3px solid var(--ink);border-radius:99px;padding:1px 7px;line-height:1.2}
 .mode[aria-checked="true"]{opacity:1;background:var(--yellow);transform:translateY(-3px);box-shadow:0 7px 0 var(--ink)}
 .mode:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
+
+/* ---- cartoon turn clock ---- */
+.tclock{position:relative;display:inline-block;width:56px;height:56px;flex:none;vertical-align:middle;transform-origin:50% 90%;animation:clockSway 3.6s ease-in-out infinite}
+.tclock .face{position:absolute;inset:0;border-radius:50%;border:4px solid var(--ink);background:conic-gradient(var(--yellow) calc(var(--f)*1turn),var(--white) 0);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;transition:background .3s}
+.tclock .face:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:42%;margin-left:-2px;background:var(--ink);border-radius:2px;transform-origin:50% 0;transform:rotate(calc(180deg + var(--f)*1turn));transition:transform .9s linear;opacity:.25}
+.tclock b{position:relative;z-index:1;font-family:var(--display);font-weight:400;font-size:22px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.tclock .bell{position:absolute;top:-7px;width:20px;height:14px;background:var(--red);border:4px solid var(--ink);border-radius:12px 12px 4px 4px}
+.tclock .bell.l{left:0;transform:rotate(-32deg)}.tclock .bell.r{right:0;transform:rotate(32deg)}
+.tclock .foot{position:absolute;bottom:-7px;width:9px;height:12px;background:var(--ink);border-radius:4px}
+.tclock .foot.l{left:9px;transform:rotate(24deg)}.tclock .foot.r{right:9px;transform:rotate(-24deg)}
+.tclock.low{animation:clockRing .28s linear infinite}
+.tclock.low .face{background:conic-gradient(var(--red) calc(var(--f)*1turn),var(--white) 0)}
+@keyframes clockSway{0%,100%{transform:rotate(-5deg) scale(1)}50%{transform:rotate(5deg) scale(1.06)}}
+@keyframes clockRing{0%,100%{transform:rotate(-9deg) scale(1.08)}50%{transform:rotate(9deg) scale(1.08)}}
+.cast{position:relative}
+.clock-corner{position:absolute;left:2px;top:0;z-index:3;pointer-events:none}
+.clock-corner:empty{display:none}
+.cast.duel .clock-corner{top:-6px}
+.ask-top .tclock,.guessv .ask-top .tclock{margin:4px 6px 0 2px}
+/* ---- living home screen ---- */
+.hscene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.scroll.home>section{position:relative;z-index:1}
+.hscene svg{width:100%;height:auto;display:block;overflow:visible}
+.hscene .cloud{position:absolute;left:0;width:120px;height:38px;background:var(--white);border-radius:40px;opacity:.85;animation:cloudDrift 70s linear infinite}
+.hscene .cloud:before,.hscene .cloud:after{content:"";position:absolute;background:inherit;border-radius:50%}
+.hscene .cloud:before{width:54px;height:54px;left:18px;top:-24px}.hscene .cloud:after{width:40px;height:40px;right:20px;top:-16px}
+.hscene .c1{top:9%}.hscene .c2{top:27%;transform:scale(.7);animation-duration:95s;opacity:.7}.hscene .c3{top:50%;animation-duration:120s;opacity:.6}
+@keyframes cloudDrift{from{translate:-160px 0}to{translate:calc(100vw + 40px) 0}}
+.hscene .fnum{position:absolute;bottom:60px;font-family:var(--display);font-size:26px;color:var(--white);opacity:0;animation:numRise 18s linear infinite}
+@keyframes numRise{0%{translate:0 0;opacity:0;rotate:-10deg}8%{opacity:.5}60%{opacity:.35}100%{translate:18px -72vh;opacity:0;rotate:14deg}}
+.hs-b,.hs-walk,.hs-hop,.hs-run{position:absolute;bottom:50px;width:52px}
+.hs-catch{position:absolute;left:5%;bottom:0;width:150px;height:140px}
+.hs-catch .hs-b.a{left:0;animation:catchHop 2.8s ease-in-out infinite}
+.hs-catch .hs-b.b{right:0;animation:catchHop 2.8s ease-in-out infinite}
+.hs-catch .hs-b.b svg{transform:scaleX(-1)}
+.hs-ballx{position:absolute;left:44px;bottom:84px;width:62px;animation:ballX 2.8s linear infinite}
+.hs-bally{display:block;width:16px;height:16px;border-radius:50%;background:var(--red);border:3px solid var(--ink);animation:ballY 1.4s cubic-bezier(.3,0,.7,1) infinite}
+@keyframes ballX{0%,100%{translate:0 0}50%{translate:46px 0}}
+@keyframes ballY{0%,100%{translate:0 0}50%{translate:0 -46px}}
+@keyframes catchHop{0%,12%,100%{translate:0 0;scale:1 1}4%{translate:0 -9px;scale:.96 1.05}8%{translate:0 0;scale:1.06 .94}}
+.hs-walk{left:0;animation:walkAcross 26s linear infinite}
+.hs-waddle{display:block;transform-origin:50% 100%;animation:waddle .5s ease-in-out infinite alternate}
+@keyframes walkAcross{0%{translate:-70px 0;scale:1 1}49.9%{translate:calc(100vw + 20px) 0;scale:1 1}50%{translate:calc(100vw + 20px) 0;scale:-1 1}99.9%{translate:-70px 0;scale:-1 1}100%{translate:-70px 0;scale:1 1}}
+@keyframes waddle{from{rotate:-7deg}to{rotate:7deg}}
+.hs-hop{right:7%;transform-origin:50% 100%;animation:hopHop 1.3s cubic-bezier(.3,0,.4,1) infinite}
+@keyframes hopHop{0%,100%{translate:0 0;scale:1.08 .9}45%{translate:0 -44px;scale:.95 1.07}55%{translate:0 -44px;scale:.95 1.07}}
+.hs-chase{position:absolute;left:0;bottom:0;width:140px;height:110px;animation:chase 19s linear infinite}
+.hs-run{animation:waddle .22s ease-in-out infinite alternate;transform-origin:50% 100%}
+.hs-run.r1{left:0;bottom:50px}.hs-run.r2{left:78px;bottom:50px}
+@keyframes chase{0%,62%{translate:-170px 0}86%,100%{translate:calc(100vw + 30px) 0}}
+.hero .lineup .lu{animation:luHop 5.4s ease-in-out infinite}
+.hero .lineup .lu:nth-child(2){animation-delay:-.9s}.hero .lineup .lu:nth-child(3){animation-delay:-1.8s}.hero .lineup .lu:nth-child(4){animation-delay:-2.7s}.hero .lineup .lu:nth-child(5){animation-delay:-3.6s}.hero .lineup .lu:nth-child(6){animation-delay:-4.5s}
+@keyframes luHop{0%,84%,100%{translate:0 0}90%{translate:0 -12px}95%{translate:0 0}}
+@media (max-height:600px){.hs-catch,.hs-hop{display:none}}
+@media (prefers-reduced-motion:reduce){.hscene *{animation:none!important}.hscene .fnum,.hs-walk,.hs-chase{display:none}.hero .lineup .lu{animation:none}}
 </style>
 </head><body>
 <div id="app"></div>
@@ -2304,6 +2359,7 @@ function pubTick(){
   const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
   if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
   if(G.max!==playMode().max)G.max=playMode().max;
+  if(G.timer!==40)G.timer=40;
   if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubFills)){pubFills++;addFillBot();publishG()}
   if(G.players.length>=PUB_N){
     if(!pubFullAt)pubFullAt=now;
@@ -2808,12 +2864,26 @@ function render(force){
   bind();
   if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
+const SCENE_T0=Date.now();
+function ph(dur,off){return `animation-delay:-${(((Date.now()-SCENE_T0)/1000+(off||0))%dur).toFixed(2)}s`}
+function homeSceneHTML(){
+  const bean=(i,mood)=>charSVG({color:COLORS[i%COLORS.length],acc:i%COLORS.length,id:30+i},mood||'happy');
+  const nums=['7','42','?','3','99','1','?','58'];
+  return `<div class="hscene" aria-hidden="true">
+<i class="cloud c1" style="${ph(70,10)}"></i><i class="cloud c2" style="${ph(95,50)}"></i><i class="cloud c3" style="${ph(120,90)}"></i>
+${nums.map((n,i)=>`<span class="fnum" style="left:${6+i*12.5}%;animation-duration:${15+(i*5)%9}s;${ph(15+(i*5)%9,i*3.7)}">${n}</span>`).join('')}
+<div class="hs-catch"><span class="hs-b a" style="${ph(2.8,0)}">${bean(1,'happy')}</span><span class="hs-ballx" style="${ph(2.8,0)}"><span class="hs-bally" style="${ph(1.4,0)}"></span></span><span class="hs-b b" style="${ph(2.8,1.4)}">${bean(3,'happy')}</span></div>
+<span class="hs-walk" style="${ph(26,4)}"><span class="hs-waddle">${bean(4,'idle')}</span></span>
+<span class="hs-hop" style="${ph(1.3,0)}">${bean(5,'happy')}</span>
+<span class="hs-chase" style="${ph(19,6)}"><span class="hs-run r1">${bean(2,'happy')}</span><span class="hs-run r2">${bean(0,'scared')}</span></span>
+</div>`;
+}
 function homeHTML(){
   const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
-  return `<main class="scroll">
+  return `<main class="scroll home">${homeSceneHTML()}
 <section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${eloPill()}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
@@ -2848,7 +2918,11 @@ function timerLeft(){
   if(ui.timerSeq!==G.gid+':'+G.seq)return null;
   return Math.max(0,Math.ceil(G.timer-(Date.now()-ui.timerStart)/1000));
 }
-function timerPill(){const v=timerLeft();if(v===null)return '';return `<span class="timer-pill ${v<6?'low':''}">${Math.floor(v/60)}:${String(v%60).padStart(2,'0')}</span>`}
+function timerPill(){
+  const v=timerLeft();if(v===null)return '';
+  const f=Math.min(1,v/Math.max(1,G.timer));
+  return `<span class="tclock ${v<6?'low':''}" style="--f:${f.toFixed(3)}" role="timer" aria-label="${v} seconds left"><i class="bell l"></i><i class="bell r"></i><i class="foot l"></i><i class="foot r"></i><span class="face"><b>${v}</b></span></span>`;
+}
 const SPK='<path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
 function muteHTML(){
   const m=SFX.muted;
@@ -2873,7 +2947,7 @@ ${long?'<p class="tip">Make sure the host has the game open on their phone and t
   if(guessViewOn())return headerHTML()+guessViewHTML();
   const duel=G.players.length===2,me0=G.players.findIndex(p=>p.pid===PID);
   const order=duel&&me0===0?[1,0]:G.players.map((_,i)=>i);
-  return headerHTML()+`<main class="cast ${duel?'duel':''}">${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
+  return headerHTML()+`<main class="cast ${duel?'duel':''}"><div class="clock-corner">${timerPill()}</div>${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
 }
 function canAct(){
   if(!G||G.phase!=='play')return false;
@@ -3171,7 +3245,7 @@ function trayInner(){
   if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID&&!(me&&me.bot);
   const evLine=G.ev&&(myTurn||G.ev.a===cur.pid)?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
-  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${timerPill()}</div>${evLine}</div></div>`;
+  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${''}</div>${evLine}</div></div>`;
   if(!myTurn){
     const ct=curTarget();
     let body=G.stage==='wheel'?'':G.q?`<p class="hint">${esc(qText(G.q))}</p>`:(ct?'':`<p class="hint">Waiting for ${esc(cur.name)}…</p>`);
@@ -3275,7 +3349,7 @@ setInterval(()=>{
     if(tv<=5&&tv>0&&!sfxSeen.hurry.has('h'+k)){sfxSeen.hurry.add('h'+k);sfx('vo_hurry')}
     if(tv===0&&!sfxSeen.hurry.has('o'+k)){sfxSeen.hurry.add('o'+k);sfx('vo_timeover')}
   }
-  if(tv===null)return;document.querySelectorAll('.timer-pill').forEach(el=>{const v=timerLeft();if(v===null)return;el.textContent=Math.floor(v/60)+':'+String(v%60).padStart(2,'0');el.classList.toggle('low',v<6)})},1000);
+  if(tv===null)return;document.querySelectorAll('.tclock').forEach(el=>{const v=timerLeft();if(v===null)return;el.style.setProperty('--f',Math.min(1,v/Math.max(1,G.timer)).toFixed(3));const b=el.querySelector('b');if(b)b.textContent=v;el.classList.toggle('low',v<6)})},1000);
 /* ---------- Boot ---------- */
 const DEEP=(()=>{
   const m=location.hash.match(/room=([A-Za-z]{4})/);if(!m)return null;

@@ -336,6 +336,7 @@ let pubAt=0,pubFills=0,pubFullAt=0;
 function pubTick(){
   const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
   if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
+  if(G.max!==playMode().max)G.max=playMode().max;
   if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubFills)){pubFills++;addFillBot();publishG()}
   if(G.players.length>=PUB_N){
     if(!pubFullAt)pubFullAt=now;
@@ -736,7 +737,7 @@ async function quickPlay(){
   const opens=[];
   try{
     my.q=window.makeSupabaseQueue(window.HL_CONFIG);
-    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1)opens.push({code:m.code,n:m.n,t:Date.now()})});
+    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1&&m.max===playMode().max)opens.push({code:m.code,n:m.n,t:Date.now()})});
     my.q.join();
   }catch(e){my.q=null}
   const qms=window.HL_TEST_Q_MS||2000;
@@ -754,7 +755,7 @@ async function quickPlay(){
       const ann=()=>{
         if(qp!==my)return;
         if(!G||!isHost||!G.pub||G.phase!=='lobby'){quickStop();return}
-        if(G.players.length<PUB_N)my.q.announce({code,n:G.players.length,at:Date.now()});
+        if(G.players.length<PUB_N)my.q.announce({code,n:G.players.length,max:playMode().max,at:Date.now()});
       };
       my.ann=setInterval(ann,Math.min(1500,Math.round(qms*0.75)));ann();
     }
@@ -849,6 +850,7 @@ function homeHTML(){
 <section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${eloPill()}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
+ ${modesHTML()}
  <button id="playBtn" class="btn primary big full">Play</button>
  <button id="friendsBtn" class="btn full" aria-expanded="${!!ui.friends}">Play with friends</button>
  <div class="friends ${ui.friends?'':'closed'}">
@@ -1236,7 +1238,8 @@ function bind(){
       ui.homeErr='';if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
       if(roomState!=='ok'||!roomNS){track('practice');startSolo();return}
       let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
-    on('playBtn',()=>{ui.homeErr='';track('play_tap');quickPlay()});
+    on('playBtn',()=>{ui.homeErr='';track('play_tap',{max:playMode().max});quickPlay()});
+    $$('[data-mode]').forEach(b=>b.onclick=()=>{pmSel=b.dataset.mode;LS.set('hl-pm',pmSel);sfx('pick');render(true)});
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
     return;
   }

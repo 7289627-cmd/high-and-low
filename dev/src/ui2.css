@@ -245,3 +245,12 @@ button{touch-action:manipulation}
 
 .secpick .sld,.secpick .nudge{width:100%;justify-self:stretch}
 .stake{font-size:18px;margin:6px 0 14px}.stake b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--red)}
+
+/* ---- play modes ---- */
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:2px 0 10px}
+.mode{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;background:var(--white);border:3px solid var(--ink);border-radius:16px;box-shadow:0 4px 0 var(--ink);color:var(--ink);font-family:var(--display);cursor:pointer;opacity:.72}
+.mode svg{width:40px;height:40px;display:block}
+.mode b{font-weight:400;font-size:clamp(13px,3.9vw,16px);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mode em{position:absolute;top:-9px;right:-5px;font-style:normal;font-size:13px;background:var(--red);color:var(--white);border:3px solid var(--ink);border-radius:99px;padding:1px 7px;line-height:1.2}
+.mode[aria-checked="true"]{opacity:1;background:var(--yellow);transform:translateY(-3px);box-shadow:0 7px 0 var(--ink)}
+.mode:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}

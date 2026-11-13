@@ -910,6 +910,15 @@ button{touch-action:manipulation}
 
 .secpick .sld,.secpick .nudge{width:100%;justify-self:stretch}
 .stake{font-size:18px;margin:6px 0 14px}.stake b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--red)}
+
+/* ---- play modes ---- */
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:2px 0 10px}
+.mode{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;background:var(--white);border:3px solid var(--ink);border-radius:16px;box-shadow:0 4px 0 var(--ink);color:var(--ink);font-family:var(--display);cursor:pointer;opacity:.72}
+.mode svg{width:40px;height:40px;display:block}
+.mode b{font-weight:400;font-size:clamp(13px,3.9vw,16px);white-space:nowrap;font-variant-numeric:tabular-nums}
+.mode em{position:absolute;top:-9px;right:-5px;font-style:normal;font-size:13px;background:var(--red);color:var(--white);border:3px solid var(--ink);border-radius:99px;padding:1px 7px;line-height:1.2}
+.mode[aria-checked="true"]{opacity:1;background:var(--yellow);transform:translateY(-3px);box-shadow:0 7px 0 var(--ink)}
+.mode:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
 </style>
 </head><body>
 <div id="app"></div>
@@ -1794,6 +1803,19 @@ function pwEvText(ev,a,t){
 }
 /* ---------- Rating (Play duels) ---------- */
 const ELO0=1000,PUB_N=2;
+/* Play modes: bigger ranges take longer and pay more rating for a win. */
+const MODES=[
+  {k:'s',max:100,mult:1,icon:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M27 4 9 27h12l-3 17 20-25H25z" fill="#FFD23F" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></svg>'},
+  {k:'m',max:10000,mult:1.5,icon:'<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19" fill="#fff" stroke="#1E2240" stroke-width="4"/><circle cx="24" cy="24" r="11.5" fill="#F0503C" stroke="#1E2240" stroke-width="4"/><circle cx="24" cy="24" r="4" fill="#fff" stroke="#1E2240" stroke-width="3"/></svg>'},
+  {k:'l',max:100000,mult:2,icon:'<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 37 4 14l11 9 9-15 9 15 11-9-2 23z" fill="#FFD23F" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><circle cx="24" cy="29" r="3.5" fill="#F0503C" stroke="#1E2240" stroke-width="3"/></svg>'}
+];
+let pmSel=null;
+function playMode(){const k=pmSel||LS.get('hl-pm');return MODES.find(m=>m.k===k)||MODES[0]}
+function modeMult(max){const m=MODES.find(x=>x.max===max);return m?m.mult:1}
+function modesHTML(){
+  const cur=playMode().k;
+  return `<div class="modes" role="radiogroup" aria-label="Range">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>1 – ${fmt(m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>`;
+}
 const RANKS=[[0,'Rookie'],[1050,'Guesser'],[1150,'Sharp'],[1300,'Hunter'],[1450,'Mind Reader'],[1600,'Mastermind']];
 function myElo(){const e=LS.get(LSK('hl-elo'));return Number.isInteger(e)?Math.min(3000,Math.max(100,e)):ELO0}
 function rankName(e){let n=RANKS[0][1];for(const r of RANKS)if(e>=r[0])n=r[1];return n}
@@ -1808,7 +1830,7 @@ function eloApply(won){
     LS.set(LSK('hl-elo-g'),G.gid);
     const me=myElo(),oe=Number.isInteger(opp.el)?opp.el:ELO0,ex=1/(1+Math.pow(10,(oe-me)/400));
     const played=(LS.get(LSK('hl-elo-n'))|0),k=played<10?40:28;
-    let d=Math.round(k*((won?1:0)-ex));if(won&&d<1)d=1;if(!won&&d>-1)d=-1;
+    let d=Math.round(k*((won?1:0)-ex)*(won?modeMult(G.max):1));if(won&&d<1)d=1;if(!won&&d>-1)d=-1;
     const to=Math.max(100,me+d);
     LS.set(LSK('hl-elo'),to);LS.set(LSK('hl-elo-n'),played+1);
     eloLast={gid:G.gid,d:to-me,from:me,to,up:rankName(to)!==rankName(me)&&to>me};
@@ -2281,6 +2303,7 @@ let pubAt=0,pubFills=0,pubFullAt=0;
 function pubTick(){
   const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
   if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
+  if(G.max!==playMode().max)G.max=playMode().max;
   if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubFills)){pubFills++;addFillBot();publishG()}
   if(G.players.length>=PUB_N){
     if(!pubFullAt)pubFullAt=now;
@@ -2681,7 +2704,7 @@ async function quickPlay(){
   const opens=[];
   try{
     my.q=window.makeSupabaseQueue(window.HL_CONFIG);
-    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1)opens.push({code:m.code,n:m.n,t:Date.now()})});
+    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1&&m.max===playMode().max)opens.push({code:m.code,n:m.n,t:Date.now()})});
     my.q.join();
   }catch(e){my.q=null}
   const qms=window.HL_TEST_Q_MS||2000;
@@ -2699,7 +2722,7 @@ async function quickPlay(){
       const ann=()=>{
         if(qp!==my)return;
         if(!G||!isHost||!G.pub||G.phase!=='lobby'){quickStop();return}
-        if(G.players.length<PUB_N)my.q.announce({code,n:G.players.length,at:Date.now()});
+        if(G.players.length<PUB_N)my.q.announce({code,n:G.players.length,max:playMode().max,at:Date.now()});
       };
       my.ann=setInterval(ann,Math.min(1500,Math.round(qms*0.75)));ann();
     }
@@ -2794,6 +2817,7 @@ function homeHTML(){
 <section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${eloPill()}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
+ ${modesHTML()}
  <button id="playBtn" class="btn primary big full">Play</button>
  <button id="friendsBtn" class="btn full" aria-expanded="${!!ui.friends}">Play with friends</button>
  <div class="friends ${ui.friends?'':'closed'}">
@@ -3181,7 +3205,8 @@ function bind(){
       ui.homeErr='';if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
       if(roomState!=='ok'||!roomNS){track('practice');startSolo();return}
       let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
-    on('playBtn',()=>{ui.homeErr='';track('play_tap');quickPlay()});
+    on('playBtn',()=>{ui.homeErr='';track('play_tap',{max:playMode().max});quickPlay()});
+    $$('[data-mode]').forEach(b=>b.onclick=()=>{pmSel=b.dataset.mode;LS.set('hl-pm',pmSel);sfx('pick');render(true)});
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
     return;
   }

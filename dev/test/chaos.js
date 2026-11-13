@@ -37,7 +37,7 @@ async function game(seed){
   if(maxGap>4000)return 'event loop froze for '+maxGap+' ms';
   if(!over)return 'game never ended: '+A.eval('JSON.stringify([G.phase,G.stage,G.seq,G.turn,G.sub,G.q&&G.q.t,G.players.map(p=>[p.name,p.pid,p.a,p.bot,p.fz,p.sh]),botSched,qSched,timerSched,G.pr,G.kn[G.players[G.turn].pid],botSecrets])');
   if(errs.length)return 'page errors '+JSON.stringify(errs).slice(0,300);
-  [A,B,C,D].forEach(w=>{try{w.close()}catch(e){}});
+  // windows are left open: closing them while page timers are still queued crashes jsdom
   return null;
 }
 (async()=>{

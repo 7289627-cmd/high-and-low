@@ -54,30 +54,44 @@ const txt=P=>P.$('#app').textContent+' '+P.$('#ov').textContent;
   if(!X)fail('no asker appeared');
   const pids=phones.map(P=>P.eval('PID'));
   const xi=phones.indexOf(X),xp=pids[xi];
-  const yp=X.eval('G.sub[0]'),yi=pids.indexOf(yp);
-  const Y=phones[yi],Z=phones.find((P,i)=>i!==xi&&i!==yi),zp=pids[phones.indexOf(Z)];
-  // ask HIGHER than 4321 through the UI
+  const others=[0,1,2].filter(i=>i!==xi);
+  const yi=others[0],zi=others[1],Y=phones[yi],Z=phones[zi],yp=pids[yi],zp=pids[zi];
+  const secs=[777,9100,555],zc=secs[zi];
+  // make Z's range clearly smaller than Y's so Y is the focus and Z gets its own number
+  const lo0=Math.max(1,zc-1500),hi0=Math.min(10000,zc+1500);
+  A.eval('(()=>{G.kn['+JSON.stringify(xp)+']['+JSON.stringify(zp)+']={lo:'+lo0+',hi:'+hi0+',x:[]};publishG()})()');
+  await wait(500);
+  if(X.eval('curTarget().pid')!==yp)fail('focus is not Y');
+  const zx=X.eval('spreadX(4321,{lo:1,hi:10000},{lo:'+lo0+',hi:'+hi0+'},"h")');
+  if(zx===4321)fail('test setup: Z number equals focus number');
+  // ask HIGHER than 4321 (focus number) through the UI
   X.document.querySelector('[data-pickdir="h"]').click();await wait(100);
   const open=X.eval('askSlots(mv(curTarget())).open'),pre=X.eval('askSlots(mv(curTarget())).prefix');
   const need='4321'.slice(pre.length);
   if(pre&&!'4321'.startsWith(pre))fail('prefix '+pre);
-  if(need.length!==open)fail('open digits '+open+' prefix '+pre);
-  for(const d of need)X.$('.key[data-k="'+d+'"]').click();
+  X.eval('setAskX(4321);render(true)');
   await wait(50);
-  X.$('#askGo').click();
-  let leaked=false,t0=Date.now();
-  while(Date.now()-t0<1500){
-    if(/4,321/.test(txt(Z)))leaked=true;
-    await wait(100);
-  }
   if(!/4,321/.test(txt(X)))fail('asker page lacks 4,321');
-  if(leaked)fail('third phone saw 4,321');
-  const kx=JSON.parse(A.eval('JSON.stringify([G.kn['+JSON.stringify(xp)+']['+JSON.stringify(yp)+'],G.kn['+JSON.stringify(zp)+']['+JSON.stringify(yp)+']])'));
-  if(!(kx[0].lo>1||kx[0].hi<10000))fail('asker knowledge not narrowed '+JSON.stringify(kx[0]));
-  if(kx[1].lo!==1||kx[1].hi!==10000)fail('third knowledge changed '+JSON.stringify(kx[1]));
-  const card=(P)=>{const c=P.$('.card[data-pid="'+yp+'"]');return c?c.textContent:''};
-  if(!card(Z).includes('1 – 10,000'))fail('Z card for Y not full range: '+card(Z));
-  if(card(X).includes('1 – 10,000'))fail('X card for Y still full: '+card(X));
+  X.$('#askGo').click();
+  let leaked=false,ySaw=false,zSaw=false,t0=Date.now();
+  const zre=new RegExp('(asking|asked) you: higher than '+zx.toLocaleString('en-US').replace(',','\\,'));
+  let cardOk=false,cardBad='';
+  while(Date.now()-t0<2500){
+    {const cz=Z.$('.card[data-pid="'+yp+'"]'),cx=X.$('.card[data-pid="'+yp+'"]');
+     if(cz&&cx&&!cardOk&&ySaw){if(cz.textContent.includes('1 – 10,000')&&!cx.textContent.includes('1 – 10,000'))cardOk=true;else cardBad=cz.textContent+' | '+cx.textContent}}
+    if(/4,321/.test(txt(Z)))leaked=true;
+    if(/(asking|asked) you: higher than 4,321/.test(txt(Y)))ySaw=true;
+    if(zre.test(txt(Z)))zSaw=true;
+    await wait(50);
+  }
+  if(leaked)fail('non-focus target saw 4,321');
+  if(!ySaw)fail('focus target did not see 4,321');
+  if(!zSaw)fail('Z did not see its own number '+zx+' :: '+txt(Z).slice(0,200));
+  const kn=JSON.parse(A.eval('JSON.stringify([G.kn['+JSON.stringify(xp)+']['+JSON.stringify(yp)+'],G.kn['+JSON.stringify(xp)+']['+JSON.stringify(zp)+'],G.kn['+JSON.stringify(zp)+']['+JSON.stringify(yp)+']])'));
+  if(!(kn[0].lo>1||kn[0].hi<10000))fail('X view of Y not narrowed '+JSON.stringify(kn[0]));
+  if(!(kn[1].lo>lo0||kn[1].hi<hi0))fail('X view of Z not narrowed '+JSON.stringify(kn[1]));
+  if(kn[2].lo!==1||kn[2].hi!==10000)fail('Z view of Y changed '+JSON.stringify(kn[2]));
+  if(!cardOk)fail('card ranges wrong: '+cardBad);
   // auto play to a winner
   let won=false;
   for(let t=0;t<3000&&!won;t++){

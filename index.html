@@ -879,6 +879,26 @@ button{touch-action:manipulation}
 .guess-grid.big .g{min-height:64px;font-family:var(--display);font-size:clamp(17px,5.2vw,26px);padding:4px 2px;border:3px solid var(--ink);border-radius:14px;background:var(--white);box-shadow:0 4px 0 var(--ink);color:var(--ink)}
 .guess-grid.big .g:disabled{opacity:.35;text-decoration:line-through;box-shadow:none;transform:translateY(4px)}
 .guess-grid.big .g:active{transform:translateY(4px);box-shadow:none}
+
+/* ---- slider ---- */
+.sld{touch-action:none;user-select:none;-webkit-user-select:none;padding:14px 0 2px;cursor:pointer;outline:none}
+.sld-track{position:relative;display:flex;height:58px;border:4px solid var(--ink);border-radius:18px;box-shadow:0 5px 0 var(--ink);background:var(--paper-2)}
+.sld-track i{display:flex;align-items:center;justify-content:center;min-width:0;overflow:hidden;font-style:normal}
+.sld-track i:first-child{border-radius:13px 0 0 13px}.sld-track i:nth-child(2){border-radius:0 13px 13px 0}
+.sld-track i.yes{background:var(--green)}.sld-track i.no{background:var(--red)}
+.sld-track i em{font-family:var(--display);font-style:normal;font-size:22px;color:var(--white);letter-spacing:.04em;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.sld-track i.tiny em{display:none}
+.sld-thumb{position:absolute;top:-14px;bottom:-14px;width:30px;margin-left:-15px;background:var(--white);border:4px solid var(--ink);border-radius:12px;box-shadow:0 4px 0 var(--ink);pointer-events:none}
+.sld-thumb:after{content:"";position:absolute;left:50%;top:22%;bottom:22%;width:4px;margin-left:-2px;border-radius:2px;background:var(--ink);opacity:.35}
+.sld.drag .sld-thumb{background:var(--yellow);transform:scale(1.08)}
+.sld .rl-caps{margin-top:16px}
+.bignum{font-family:var(--display);font-size:clamp(40px,13vw,58px);line-height:1;color:var(--red);font-variant-numeric:tabular-nums}
+.speech.big .numslot{align-items:baseline}
+.speech.big .numslot .qm{font-size:1.3em}
+.nudge{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:10px;margin-top:auto}
+.nudge .key{height:56px}.nudge .key.nb{font-size:34px;line-height:1}
+.lob-join{margin-top:12px}
+.lob-join input{min-width:0}
 </style>
 </head><body>
 <div id="app"></div>
@@ -2723,7 +2743,9 @@ function doAsk(){
 }
 
 /* ---------- Render ---------- */
+let sldDown=false,sldPend=false;
 function render(force){
+  if(sldDown&&view==='game'&&askViewOn()&&ui.step==='num'){sldPend=true;return}
   trackConn();
   if(ui.pops.length)ui.pops=ui.pops.filter(x=>x.until>Date.now());
   const sig=JSON.stringify([view,mode,roomState,connected,connBanner(),timerLeft()!==null,G,{...ui,land:0},mySecret,myPres.act,myPres.ready,
@@ -2842,21 +2864,60 @@ function askSlots(t){
   if(prefix.length>=n)prefix=prefix.slice(0,n-1);
   return{lo,hi,n,prefix,open:n-prefix.length};
 }
-function rulerHTML(t,sl){
-  const tot=sl.hi-sl.lo+1;let x=null;
-  if(ui.num){
-    const full=sl.prefix?Number((sl.prefix+ui.num).padEnd(sl.n,'0')):Number(ui.num);
-    x=Math.min(sl.hi,Math.max(sl.lo,full));
-  }
-  if(x===null)return `<div class="ruler"><div class="rl-bar"><i class="plain" style="flex:1"><em>${fmt(sl.lo)} – ${fmt(sl.hi)}</em></i></div></div>`;
-  const hiMode=ui.dir!=='l';
-  const leftN=hiMode?x-sl.lo+1:x-sl.lo,rightN=tot-leftN;
-  const cut=sl.lo+leftN; // first number of the right part
-  const rg=(a,b)=>a>b?'–':(a===b?fmt(a):fmt(a)+' – '+fmt(b));
-  const lc=hiMode?'no':'yes',rc=hiMode?'yes':'no';
-  let lw=leftN/tot*100;lw=leftN===0?0:rightN===0?100:Math.min(78,Math.max(22,lw));
-  const seg=(c,w,n)=>n?`<i class="${c}" style="flex:${w}"><em>${c.toUpperCase()}</em></i>`:'';
-  return `<div class="ruler cut"><div class="rl-bar">${seg(lc,lw,leftN)}${seg(rc,100-lw,rightN)}</div><div class="rl-caps"><span class="${lc}">${rg(sl.lo,cut-1)}</span><span class="${rc}">${rg(cut,sl.hi)}</span></div></div>`;
+/* The asking slider. x is always a whole number inside the allowed range for the chosen direction. */
+function askX(){
+  const t=curTarget();if(!t)return null;
+  const sl=askSlots(mv(t));if(!ui.num)return null;
+  const x=Number(sl.prefix+ui.num);
+  return Number.isInteger(x)?Math.min(sl.hi,Math.max(sl.lo,x)):null;
+}
+function setAskX(x){
+  const t=curTarget();if(!t)return;
+  const sl=askSlots(mv(t));x=Math.min(sl.hi,Math.max(sl.lo,Math.round(x)));
+  const str=String(x);ui.num=sl.prefix&&str.startsWith(sl.prefix)&&str.length===sl.n?str.slice(sl.prefix.length):str;ui.err='';
+}
+function askMid(tv){return ui.dir==='l'?Math.ceil((tv.lo+tv.hi+1)/2):Math.floor((tv.lo+tv.hi-1)/2)}
+function sliderParts(tv,x){
+  const T=tv.hi-tv.lo+1,hiMode=ui.dir!=='l';
+  const leftN=Math.min(T-1,Math.max(1,hiMode?x-tv.lo+1:x-tv.lo)),cut=tv.lo+leftN;
+  const rg=(a,b)=>a===b?fmt(a):fmt(a)+' – '+fmt(b);
+  return{T,leftN,f:leftN/T,lc:hiMode?'no':'yes',rc:hiMode?'yes':'no',lt:rg(tv.lo,cut-1),rt:rg(cut,tv.hi)};
+}
+function sliderHTML(tv){
+  const x=askX();if(x===null)return '';
+  const q=sliderParts(tv,x),seg=(c,fl,fr)=>`<i class="${c} ${fr<0.17?'tiny':''}" style="flex:${fl} 1 0"><em>${c.toUpperCase()}</em></i>`;
+  return `<div class="sld" id="sld" role="slider" tabindex="0" aria-label="Number" aria-valuemin="${askSlots(tv).lo}" aria-valuemax="${askSlots(tv).hi}" aria-valuenow="${x}">
+<div class="sld-track" id="sldTrack">${seg(q.lc,q.leftN,q.f)}${seg(q.rc,q.T-q.leftN,1-q.f)}<b class="sld-thumb" id="sldThumb" style="left:${(q.f*100).toFixed(3)}%"></b></div>
+<div class="rl-caps"><span class="${q.lc}" id="sldL">${q.lt}</span><span class="${q.rc}" id="sldR">${q.rt}</span></div></div>`;
+}
+/* Repaint the slider in place while dragging, so the finger never loses the thumb. */
+function sliderPaint(){
+  const t=curTarget(),x=askX();if(!t||x===null)return;
+  const tv=mv(t),q=sliderParts(tv,x),tr=$('#sldTrack');if(!tr)return;
+  const segs=tr.querySelectorAll('i');
+  if(segs[0]){segs[0].style.flex=q.leftN+' 1 0';segs[0].classList.toggle('tiny',q.f<0.17)}
+  if(segs[1]){segs[1].style.flex=(q.T-q.leftN)+' 1 0';segs[1].classList.toggle('tiny',1-q.f<0.17)}
+  const th=$('#sldThumb');if(th)th.style.left=(q.f*100).toFixed(3)+'%';
+  const l=$('#sldL'),r=$('#sldR');if(l)l.textContent=q.lt;if(r)r.textContent=q.rt;
+  const bn=$('#bigNum');if(bn)bn.textContent=fmt(x);
+  const sd=$('#sld');if(sd)sd.setAttribute('aria-valuenow',x);
+}
+let sldTickAt=0;
+function sliderBind(){
+  const sd=$('#sld'),tr=$('#sldTrack');if(!sd||!tr)return;
+  const at=e=>{
+    const t=curTarget();if(!t)return;
+    const tv=mv(t),r=tr.getBoundingClientRect(),T=tv.hi-tv.lo+1;
+    const f=Math.min(1,Math.max(0,((e.clientX-r.left)/Math.max(1,r.width)-0.04)/0.92));
+    const leftN=Math.min(T-1,Math.max(1,Math.round(f*T)));
+    const before=ui.num;setAskX(ui.dir!=='l'?tv.lo+leftN-1:tv.lo+leftN);
+    if(ui.num!==before){sliderPaint();const now=Date.now();if(now-sldTickAt>70){sldTickAt=now;sfx('tick',{vol:0.5,rate:0.9+f*0.5})}}
+  };
+  let down=false;
+  sd.onpointerdown=e=>{down=true;sldDown=true;try{sd.setPointerCapture(e.pointerId)}catch(_){}sd.classList.add('drag');at(e);e.preventDefault()};
+  sd.onpointermove=e=>{if(down)at(e)};
+  const up=()=>{if(down){down=false;sldDown=false;sd.classList.remove('drag');buzz(8);if(sldPend){sldPend=false;render(true)}}};
+  sd.onpointerup=up;sd.onpointercancel=up;
 }
 function askRowHTML(f,fv){
   const o=nzOpp(PID).filter(x=>x.pid!==f.pid);
@@ -2878,15 +2939,15 @@ ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-row">${askRowHTML
   }
   const land=ui.land;ui.land=false;
   const word=ui.dir==='l'?'LOWER':'HIGHER';
-  const sl=askSlots(tv),lo=sl.lo,hi=sl.hi;
+  if(!ui.num)setAskX(askMid(tv));
+  const x=askX();
   return `<section class="askv">${top}
-<div class="say"><span class="spk-bean ${ui.num?'jit-slow':'jit'}">${charSVG(pv(me),'talk')}</span>
-<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot ${ui.num?'jit':''}">${slotsHTML(ui.num,sl.n,sl.prefix)}<span class="qm">?</span></span></div></div>
-${rulerHTML(tv,sl)}
-${hint('num','Type a number, then tap Ask!')}<p class="sub ask-hint"><span>Pick from ${fmt(lo)} to ${fmt(hi)}.</span><span>Tap ${word.toLowerCase()} to flip it.</span></p>
+<div class="say"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span>
+<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot"><span class="bignum" id="bigNum">${fmt(x)}</span><span class="qm">?</span></span></div></div>
+${sliderHTML(tv)}
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
-${padHTML(`<button class="key mid" data-k="mid">HALF</button>`,land)}
-<button class="btn primary big full" id="askGo" ${ui.num?'':'disabled'}>Ask!</button>
+<div class="nudge"><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key mid" data-k="mid">HALF</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
+<button class="btn primary big full" id="askGo">Ask!</button>
 </section>`;
 }
 function slotsHTML(str,n,pfx){
@@ -2947,7 +3008,7 @@ function padPress(k){
   const maxLen=sl?sl.open:String(G.max).length;
   let v=ui[field];
   if(k==='del'){sfx('del');v=v.slice(0,-1)}
-  else if(k==='mid'){sfx('pick');const t=curTarget();if(t){const tv=mv(t),ms=String(ui.dir==='l'?Math.ceil((tv.lo+tv.hi+1)/2):Math.floor((tv.lo+tv.hi-1)/2));v=sl.prefix&&ms.startsWith(sl.prefix)?ms.slice(sl.prefix.length):ms}}
+  else if(k==='mid'||k==='inc'||k==='dec'){const t=curTarget();if(!t)return;sfx(k==='mid'?'pick':'tick');const cur=askX();setAskX(k==='mid'||cur===null?askMid(mv(t)):cur+(k==='inc'?1:-1));if($('#sldTrack')){sliderPaint();return}render(true);return}
   else if(/^\d$/.test(k)){if(field==='sec')sfx('key');else sfx('babble'+(1+ui.num.length%3),{rate:babRate()+ui.num.length*0.04});if(v.length<maxLen&&!(v===''&&k==='0'&&!(sl&&sl.prefix)))v+=k}
   ui[field]=v;ui.err='';render(true);
 }
@@ -2956,7 +3017,7 @@ function lobbyHTML(){
 ${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:(p.pid===PID?`<button class="btn sm" id="lookBtn" aria-expanded="${!!ui.picker}">Change look</button>`:'<span></span>')}</div>`).join('');
   const full=!byPid(PID)&&G.players.length>=6;
   return `<main class="scroll">
-${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Link copied!':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}</section>`:''}
+${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Link copied!':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}${isHost&&G.players.filter(q=>!q.bot).length<2?`<div class="join-row lob-join"><input id="lobCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Friend's room code"><button class="btn" id="lobJoin">Join a room</button></div>${ui.lobErr?`<p class="err">${esc(ui.lobErr)}</p>`:''}`:''}</section>`:''}
 <section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
 ${ui.picker&&byPid(PID)?pickerHTML():''}
 ${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" style="justify-self:start">+ Add a bot</button>':''}
@@ -3065,7 +3126,10 @@ function bind(){
     on('joinBtn',join);ci.onkeydown=e=>{if(e.key==='Enter')join()};
     on('rejoinBtn',()=>{const s=LS.get(LSK('hl-session'));if(s)startOnline(!!s.host,s.code)});
     on('soloBtn',()=>{if(!NAME){NAME='You'}track('practice');startSolo()});
-    on('friendsBtn',()=>{ui.friends=!ui.friends;render(true)});
+    on('friendsBtn',()=>{
+      ui.homeErr='';if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
+      if(roomState!=='ok'||!roomNS){track('practice');startSolo();return}
+      let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
     on('playBtn',()=>{ui.homeErr='';track('play_tap');quickPlay()});
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
     return;
@@ -3096,7 +3160,11 @@ function bind(){
   on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
   $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
-  on('askGo',doAsk);
+  {const lc=$('#lobCode');if(lc){lc.oninput=()=>{lc.value=lc.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=lc.value;ui.lobErr=''};
+    const go=()=>{const c=ui.codeIn;if(!/^[A-Z]{4}$/.test(c)){ui.lobErr='Room codes are 4 letters.';render(true);return}if(c===code){ui.lobErr='That is this room.';render(true);return}ui.lobErr='';track('join');leaveGame().then(()=>startOnline(false,c))};
+    on('lobJoin',go);lc.onkeydown=e=>{if(e.key==='Enter')go()}}}
+  on('askGo',doAsk);sliderBind();
+  $$('.key.nb').forEach(b=>{let h=null,iv=null;const stop=()=>{clearTimeout(h);clearInterval(iv)};b.onpointerdown=()=>{stop();h=setTimeout(()=>{iv=setInterval(()=>padPress(b.dataset.k),60)},380)};b.onpointerup=stop;b.onpointerleave=stop;b.onpointercancel=stop});
   pwBind();
   $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sfx('send');sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});
 }

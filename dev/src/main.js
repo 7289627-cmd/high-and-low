@@ -1130,9 +1130,9 @@ function wheelSVG(){
     const a0=i*360/n,a1=(i+1)*360/n,[x0,y0]=pt(a0),[x1,y1]=pt(a1),mid=(a0+a1)/2;
     s+=n===1?`<circle cx="${c}" cy="${c}" r="${R}" fill="#FFF8EC"/>`:`<path d="M${c} ${c}L${x0} ${y0}A${R} ${R} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}Z" fill="${i%2?'#F1E4CB':'#FFF8EC'}" stroke="#1E2240" stroke-width="3" stroke-linejoin="round"/>`;
     const bean=charSVG(pv(p),'idle').replace(/^<svg[^>]*>/,`<svg x="${c-24}" y="${c-R+16}" width="48" height="67" viewBox="0 -14 100 140">`);
-    s+=`<g transform="rotate(${mid.toFixed(2)} ${c} ${c})">${bean}<text x="${c}" y="${c-R+100}" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="15" fill="#1E2240">${esc(p.name)}</text></g>`;
+    s+=`<g transform="rotate(${mid.toFixed(2)} ${c} ${c})">${bean}<text x="${c}" y="${c-R+100}" text-anchor="middle" font-family="Bagel Fat One, sans-serif" font-size="15" fill="#1E2240">${esc(p.name)}</text></g>`;
   });
-  s+=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#1E2240" stroke-width="6"/><circle cx="${c}" cy="${c}" r="20" fill="#1E2240"/><text x="${c}" y="${c+8}" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="22" fill="#FFD23F">?</text>`;
+  s+=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#1E2240" stroke-width="6"/><circle cx="${c}" cy="${c}" r="20" fill="#1E2240"/><text x="${c}" y="${c+8}" text-anchor="middle" font-family="Bagel Fat One, sans-serif" font-size="22" fill="#FFD23F">?</text>`;
   return `<svg viewBox="0 0 280 280" aria-hidden="true">${s}</svg>`;
 }
 function showWheel(){

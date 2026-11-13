@@ -7,7 +7,7 @@
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://7289627-cmd.github.io/high-and-low/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Baloo+2:wght@500;600;700;800&display=swap">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
 
 /* Layout: one-screen pass-and-play stage. Bean cast on a sky backdrop over a strip of ground, action tray pinned at the bottom. Single committed cartoon look. */
@@ -15,7 +15,7 @@
   --sky:#7FD0E4; --sky-deep:#5BB8D2; --ground:#F4C04F; --ground-dark:#D9A22F;
   --ink:#1E2240; --paper:#FFF8EC; --paper-2:#F1E4CB; --red:#EE4B3B; --green:#2FA36B;
   --yellow:#FFD23F; --muted:#545C7D; --monster:#6CC24A; --white:#FFFFFF;
-  --display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
+  --display:"Bagel Fat One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
   --body:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
   color-scheme: light;
 }
@@ -410,7 +410,7 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 @keyframes x3st{0%{opacity:0;transform:translate(0,0) scale(.3) rotate(0)}12%{opacity:1;transform:translate(calc(var(--dx)*.25),calc(var(--dy)*.25)) scale(1.1) rotate(30deg)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(.7)}}
 @keyframes x3shg{to{transform:scale(1)}}
 @keyframes x3spin{to{transform:rotate(360deg)}}
-@keyframes x3cblink{0%{opacity:1}55%{opacity:1}56%{opacity:.55}99%{opacity:.55}100%{opacity:1}}
+@keyframes x3cblink{0%,55%{filter:none}56%,99%{filter:brightness(1.22)}100%{filter:none}}
 @keyframes x3eblink{0%,78%{opacity:1}82%,92%{opacity:.15}96%,100%{opacity:1}}
 @keyframes x3blink{0%{opacity:1}55%{opacity:1}56%{opacity:.4}99%{opacity:.4}100%{opacity:1}}
 @keyframes x3flag{0%{transform:scale(1,0)}100%{transform:scale(1,1)}}
@@ -596,7 +596,7 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 .x3-ban{position:absolute;left:50%;top:-54px;width:64px;margin-left:-32px;z-index:7}
 .x3-ban svg{display:block;width:100%;height:auto}
 @keyframes x3ban2{0%{opacity:0;transform:translate(-107px,42px) scale(.3)}20%{opacity:1}100%{opacity:1;transform:translate(0,0) scale(1)}}
-@keyframes x3plant{to{transform:translateY(57px) rotate(-5deg)}}
+@keyframes x3plant{to{transform:translateY(36px) rotate(-7deg)}}
 @keyframes x3bnb{from{transform:translateY(-3px)}to{transform:translateY(3px)}}
 .x3-w{position:absolute;left:0;top:0;width:100%;height:100%;z-index:5}
 /* calc */
@@ -663,6 +663,14 @@ body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align
 @keyframes x3cal{0.0%{transform:translate(190px,-50px) scale(0.72,0.72) rotate(0deg)}21.739%{transform:translate(78px,-50px) scale(0.72,0.72) rotate(0deg);animation-timing-function:ease-out}30.435%{transform:translate(78px,-58px) scale(0.72,0.72) rotate(0deg)}39.13%{transform:translate(78px,-48px) scale(0.72,0.72) rotate(0deg)}47.826%{transform:translate(78px,-54px) scale(0.72,0.72) rotate(0deg)}52.174%{transform:translate(78px,-50px) scale(0.72,0.72) rotate(-2deg)}55.652%{transform:translate(70px,-50px) scale(0.72,0.72) rotate(2deg)}59.13%{transform:translate(55px,-50px) scale(0.72,0.72) rotate(-2deg)}62.609%{transform:translate(40px,-50px) scale(0.72,0.72) rotate(2deg)}66.087%{transform:translate(22px,-50px) scale(0.72,0.72) rotate(-2deg)}69.565%{transform:translate(0px,-50px) scale(0.72,0.72) rotate(0deg)}73.913%{transform:translate(0px,-66px) scale(0.72,0.72) rotate(0deg);animation-timing-function:cubic-bezier(.55,0,1,.45)}89.13%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}90.87%{transform:translate(0px,0px) scale(1.1,0.86) rotate(0deg)}95.652%{transform:translate(0px,0px) scale(0.98,1.03) rotate(0deg)}100.0%{transform:translate(0px,0px) scale(1,1) rotate(0deg)}}
 @keyframes x3pr{0.0%{transform:translate(0,0) rotate(0deg);opacity:1}71.739%{transform:translate(0px,0px) rotate(0deg);opacity:1}73.913%{transform:translate(0px,-6px) rotate(10deg);opacity:1}86.957%{transform:translate(40px,-120px) rotate(360deg);opacity:0}100.0%{transform:translate(40px,-120px) rotate(360deg);opacity:0}}
 @keyframes x3kcl{0.0%{transform:none}17.188%{transform:translateY(0)}18.75%{transform:translateY(2px)}21.875%{transform:translateY(0)}25.0%{transform:translateY(2px)}28.125%{transform:translateY(0)}31.25%{transform:translateY(2px)}33.75%{transform:translateY(0)}34.375%{transform:translateY(-12px) rotate(-6deg)}38.125%{transform:translateY(0) rotate(0deg)}64.062%{transform:translateY(0)}65.625%{transform:translateY(-8px) rotate(8deg)}70.312%{transform:translateY(0) rotate(0deg)}78.125%{transform:translateY(0)}81.25%{transform:translateY(-14px)}84.375%{transform:translateY(0)}90.625%{transform:translateY(-14px)}93.75%{transform:translateY(0)}100.0%{transform:translateY(0)}}
+
+/* ---- finishing pass ---- */
+.x4-key{position:absolute;left:50%;bottom:74px;width:14px;margin-left:-7px;z-index:5;opacity:0;animation:x4key .75s linear both}
+@keyframes x4key{0%{opacity:1;transform:translate(0,0) rotate(0);animation-timing-function:cubic-bezier(.2,.7,.5,1)}45%{opacity:1;transform:translate(calc(var(--dx)*.62),-64px) rotate(calc(var(--r)*.55));animation-timing-function:cubic-bezier(.5,0,.9,.5)}86%{opacity:1;transform:translate(var(--dx),28px) rotate(var(--r))}93%{opacity:1;transform:translate(var(--dx),22px) rotate(var(--r))}100%{opacity:1;transform:translate(var(--dx),28px) rotate(var(--r))}}
+.x4-flag{position:absolute;left:calc(50% - 132px);bottom:38px;width:66px;z-index:3;transform-origin:90% 100%;opacity:0}
+.x4-flag svg{display:block;width:100%;height:auto;overflow:visible;transform-origin:86% 94%}
+@keyframes x4flagup{0%{opacity:0;transform:translateY(30px) scale(.4)}100%{opacity:1;transform:none}}
+@keyframes x4wave{from{transform:rotate(-13deg)}to{transform:rotate(11deg)}}
 /* Worker B: bean picker, taunts, awards, hats */
 
 .lpic{position:relative;display:block}
@@ -1005,6 +1013,15 @@ button{touch-action:manipulation}
 @media (min-width:820px){.hsun{left:8%;top:50px;width:190px;height:190px}.hill.far{height:260px}.hill.near{height:160px}}
 @media (max-height:600px){.hs-catch{display:none}}
 @media (prefers-reduced-motion:reduce){.hscene *{animation:none!important}.hscene .fnum,.hs-walk,.hs-chase,.bird,.bfly{display:none}.hero .lineup .lu{animation:none}}
+
+/* ---- one world: death and winner stages share the home landscape ---- */
+.stage{background:linear-gradient(to bottom,#49B9DF 0%,#8EDDF0 52%,#FFF3C4 88%)}
+.stage::before{content:"";position:absolute;left:0;right:0;bottom:38px;height:150px;z-index:0;pointer-events:none;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path d='M22 52a16 16 0 0 1 2-32a22 22 0 0 1 40-6a18 18 0 0 1 30 12a13 13 0 0 1 2 26z' fill='%23fff' opacity='.9'/></svg>") 12% 6px/76px auto no-repeat,url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path d='M22 52a16 16 0 0 1 2-32a22 22 0 0 1 40-6a18 18 0 0 1 30 12a13 13 0 0 1 2 26z' fill='%23fff' opacity='.9'/></svg>") 84% 30px/52px auto no-repeat,url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 110' preserveAspectRatio='none'><path d='M0 110V58C40 22 90 20 140 52S230 78 290 42S370 14 400 40V110Z' fill='%237AD3A6' stroke='%231E2240' stroke-width='3'/><path d='M0 110V84C60 54 120 60 180 82S290 96 340 70S385 62 400 68V110Z' fill='%233FB67A' stroke='%231E2240' stroke-width='3'/></svg>") center bottom/100% 86px no-repeat}
+.stage::after{box-shadow:inset 0 6px 0 rgba(255,255,255,.28)}
+.puff{border:0;filter:drop-shadow(1.6px 0 0 var(--ink)) drop-shadow(-1.6px 0 0 var(--ink)) drop-shadow(0 1.6px 0 var(--ink)) drop-shadow(0 -1.6px 0 var(--ink))}
+.puff::before,.puff::after{content:"";position:absolute;background:inherit;border-radius:50%}
+.puff::before{width:52%;height:86%;left:6%;top:-38%}
+.puff::after{width:44%;height:72%;right:8%;top:-26%}
 </style>
 </head><body>
 <div id="app"></div>
@@ -1331,10 +1348,10 @@ function charSVG(p,mood='idle',cls=''){
 <ellipse cx="34" cy="32" rx="6" ry="11" fill="#fff" opacity=".25"/>
 ${eyes}${mouth}${sweat}${ACC[(p.acc||0)%ACC.length]()}</svg>`;
 }
-const TOMB=`<svg class="bean" viewBox="0 -14 100 140" aria-hidden="true"><path d="M22 120V42a28 28 0 0 1 56 0v78z" fill="#C9CCD8" stroke="${INK}" stroke-width="4"/><text x="50" y="66" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="20" fill="#545C7D">RIP</text><path d="M8 122h84" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M30 112q6-8 12 0M58 114q5-6 10 0" stroke="#2FA36B" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`;
+const TOMB=`<svg class="bean" viewBox="0 -14 100 140" aria-hidden="true"><path d="M22 120V42a28 28 0 0 1 56 0v78z" fill="#C9CCD8" stroke="${INK}" stroke-width="4"/><text x="50" y="66" text-anchor="middle" font-family="Bagel Fat One, sans-serif" font-size="20" fill="#545C7D">RIP</text><path d="M8 122h84" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M30 112q6-8 12 0M58 114q5-6 10 0" stroke="#2FA36B" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`;
 
 /* ---------- Scene props ---------- */
-const ANVIL=`<svg viewBox="0 0 124 64"><path d="M6 8h80q24 0 34 14H90v10q-6 9-18 11v11h12v8H30v-8h12V43Q26 40 22 24H6z" fill="#3A3F5C" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><text x="44" y="22" font-family="Lilita One, sans-serif" font-size="12" fill="#fff">1 TON</text></svg>`;
+const ANVIL=`<svg viewBox="0 0 124 64"><path d="M6 8h80q24 0 34 14H90v10q-6 9-18 11v11h12v8H30v-8h12V43Q26 40 22 24H6z" fill="#3A3F5C" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><text x="44" y="22" font-family="Bagel Fat One, sans-serif" font-size="12" fill="#fff">1 TON</text></svg>`;
 const CLOUD=`<svg viewBox="0 0 150 70"><path d="M30 64a22 22 0 0 1 4-43a28 28 0 0 1 52-6a22 22 0 0 1 38 14a18 18 0 0 1-2 35z" fill="#5A6080" stroke="${INK}" stroke-width="3"/></svg>`;
 const BOLT=`<svg viewBox="0 0 44 110"><path d="M26 2L4 58h16L10 108 40 44H24L34 2z" fill="#FFE14D" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/></svg>`;
 const ROCKET=`<svg class="rocket" viewBox="0 0 54 190"><g class="flame"><path d="M12 150q15 52 15 40q0 12 15-40z" fill="#FF8A2B" stroke="${INK}" stroke-width="2"/><path d="M20 150q7 26 7 20q0 6 7-20z" fill="#FFE14D"/></g><path d="M27 4q20 22 20 60v86H7V64Q7 26 27 4z" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M27 4q14 14 18 34H9Q13 18 27 4z" fill="#EE4B3B" stroke="${INK}" stroke-width="3"/><circle cx="27" cy="62" r="9" fill="#7FD0E4" stroke="${INK}" stroke-width="3"/><path d="M7 110L-4 150h11zM47 110l11 40H47z" fill="#EE4B3B" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M8 122h38M8 134h38" stroke="#EE4B3B" stroke-width="5"/></svg>`;
@@ -1347,7 +1364,7 @@ const PIANO=`<svg viewBox="0 0 160 104"><path d="M8 34Q8 12 34 12H112Q152 12 156
 const PKEY=`<svg viewBox="0 0 14 34"><rect x="1.5" y="1.5" width="11" height="31" rx="2" fill="#fff" stroke="${INK}" stroke-width="2.5"/></svg>`;
 const PEEL=`<svg viewBox="0 0 80 34"><path d="M6 24Q4 12 22 12Q40 10 58 12Q76 12 74 24Q60 18 40 20Q20 18 6 24z" fill="#FFD23F" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M14 22Q8 30 12 32Q20 28 26 22zM66 22Q74 30 68 32Q60 28 54 22z" fill="#FFE98A" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M26 18q14-4 28 0" stroke="${INK}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
 const BEE=`<svg viewBox="0 0 30 22"><ellipse cx="11" cy="5" rx="6" ry="4" fill="#fff" stroke="${INK}" stroke-width="1.5" transform="rotate(-25 11 5)"/><ellipse cx="19" cy="5" rx="6" ry="4" fill="#fff" stroke="${INK}" stroke-width="1.5" transform="rotate(25 19 5)"/><ellipse cx="14" cy="14" rx="11" ry="7" fill="#FFD23F" stroke="${INK}" stroke-width="2"/><path d="M10 8v12M16 8v12" stroke="${INK}" stroke-width="3"/><path d="M25 14l4 1" stroke="${INK}" stroke-width="2" stroke-linecap="round"/><circle cx="7" cy="12" r="1.6" fill="${INK}"/></svg>`;
-const CALC=`<svg viewBox="0 0 120 150"><rect x="4" y="4" width="112" height="142" rx="12" fill="#6B7194" stroke="${INK}" stroke-width="3.5"/><rect x="14" y="14" width="92" height="34" rx="5" fill="#BFE9D0" stroke="${INK}" stroke-width="3"/><text class="d2-num" x="100" y="40" text-anchor="end" font-family="Lilita One, sans-serif" font-size="24" fill="${INK}">88888</text><text class="d2-err" x="60" y="40" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="21" fill="#EE4B3B">ERROR</text><g fill="#fff" stroke="${INK}" stroke-width="2.5"><rect x="14" y="58" width="20" height="16" rx="4"/><rect x="40" y="58" width="20" height="16" rx="4"/><rect x="66" y="58" width="20" height="16" rx="4"/><rect x="14" y="80" width="20" height="16" rx="4"/><rect x="40" y="80" width="20" height="16" rx="4"/><rect x="66" y="80" width="20" height="16" rx="4"/><rect x="14" y="102" width="20" height="16" rx="4"/><rect x="40" y="102" width="20" height="16" rx="4"/><rect x="66" y="102" width="20" height="16" rx="4"/><rect x="14" y="124" width="46" height="16" rx="4"/></g><g stroke="${INK}" stroke-width="2.5"><rect x="92" y="58" width="14" height="38" rx="4" fill="#FF8A2B"/><rect x="92" y="102" width="14" height="38" rx="4" fill="#EE4B3B"/><rect x="66" y="124" width="20" height="16" rx="4" fill="#fff"/></g></svg>`;
+const CALC=`<svg viewBox="0 0 120 150"><rect x="4" y="4" width="112" height="142" rx="12" fill="#6B7194" stroke="${INK}" stroke-width="3.5"/><rect x="14" y="14" width="92" height="34" rx="5" fill="#BFE9D0" stroke="${INK}" stroke-width="3"/><text class="d2-num" x="100" y="40" text-anchor="end" font-family="Bagel Fat One, sans-serif" font-size="24" fill="${INK}">88888</text><text class="d2-err" x="60" y="40" text-anchor="middle" font-family="Bagel Fat One, sans-serif" font-size="21" fill="#EE4B3B">ERROR</text><g fill="#fff" stroke="${INK}" stroke-width="2.5"><rect x="14" y="58" width="20" height="16" rx="4"/><rect x="40" y="58" width="20" height="16" rx="4"/><rect x="66" y="58" width="20" height="16" rx="4"/><rect x="14" y="80" width="20" height="16" rx="4"/><rect x="40" y="80" width="20" height="16" rx="4"/><rect x="66" y="80" width="20" height="16" rx="4"/><rect x="14" y="102" width="20" height="16" rx="4"/><rect x="40" y="102" width="20" height="16" rx="4"/><rect x="66" y="102" width="20" height="16" rx="4"/><rect x="14" y="124" width="46" height="16" rx="4"/></g><g stroke="${INK}" stroke-width="2.5"><rect x="92" y="58" width="14" height="38" rx="4" fill="#FF8A2B"/><rect x="92" y="102" width="14" height="38" rx="4" fill="#EE4B3B"/><rect x="66" y="124" width="20" height="16" rx="4" fill="#fff"/></g></svg>`;
 function swarm(){let b='';const n=10;for(let i=0;i<n;i++){const a=Math.round(i*360/n),r=48+(i%3)*14,t=(0.9+(i%4)*.15).toFixed(2);
   b+=`<div class="d2-orb" style="--a:${a}deg;--t:${t}s"><div class="d2-bee" style="--r:${r}px;animation-delay:-${(i*.13).toFixed(2)}s">${BEE}</div></div>`}
   return `<div class="d2-swarm">${b}</div>`}
@@ -1364,7 +1381,7 @@ const STAR3=`<svg viewBox="0 0 24 24"><path d="M12 2l3 7 7.5.6-5.7 4.9 1.8 7.4L1
 const NOTE3=c=>`<svg viewBox="0 0 24 24"><path d="M9 18V6l12-2v12" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/><path d="M9 6l12-2v4L9 10z" fill="${INK}"/><ellipse cx="6" cy="18.5" rx="4.6" ry="3.6" fill="${c}" stroke="${INK}" stroke-width="2.2"/><ellipse cx="18" cy="16.5" rx="4.6" ry="3.6" fill="${c}" stroke="${INK}" stroke-width="2.2"/></svg>`;
 function E3(c,st,h=''){return `<div class="${c}" style="${st}">${h}</div>`}
 function T3(n,x,y,fs,fill,ex='',anchor='middle'){n=String(n);const f=Math.min(fs,fs*5.2/Math.max(n.length,1));
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Lilita One, sans-serif" font-size="${f.toFixed(1)}" fill="${fill}" ${ex}>${esc(n)}</text>`}
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Bagel Fat One, sans-serif" font-size="${f.toFixed(1)}" fill="${fill}" ${ex}>${esc(n)}</text>`}
 function stars3(d,x,y,n=6,r=70){let h='';for(let i=0;i<n;i++){const a=Math.PI+(i+.5)/n*Math.PI,dx=Math.round(Math.cos(a)*r*(i%2?1:.75)),dy=Math.round(Math.sin(a)*r*.85);
   h+=`<i class="x3-st" style="left:calc(50% + ${x}px);bottom:${y}px;--dx:${dx}px;--dy:${dy}px;--r:${(i%2?1:-1)*(160+i*45)}deg;animation-delay:${d}s">${STAR3}</i>`}return h}
 function word3(t,d,x,y,rot,fs){return `<div class="x3-word" style="left:${x};top:${y}px;--rot:${rot}deg;animation-delay:${d}s${fs?`;font-size:${fs}px`:''}">${t}</div>`}
@@ -1409,7 +1426,7 @@ ${K3(k,'left:6px','x3-ka')}
 
 zap:(p,k,n)=>`<div class="x3-shake" style="${SH(1.5,.5)}">
 ${E3('x3-zc','',`<div class="x3-zci" style="animation:x3zc 3.8s linear both"><div class="x3-zj">${CLOUD3}<div class="x3-zg" style="animation:x3flick .1s steps(1) 1.2s 3 alternate">${CLOUDG}</div>${[22,42,62].map((l,i)=>`<i class="x3-rd" style="left:${l}%;animation-delay:${(.9+i*.17).toFixed(2)}s"></i>`).join('')}</div></div>`)}
-${A3(p,{s:.45,d:2.1,cls:'x3-zb',st:'animation:x3zb 1.2s linear both,x3zfl .6s linear 1.5s both',dead:`<div class="x3-char" style="animation:x3cblink .9s linear infinite">${charSVG({color:'#555B7A',acc:p.acc,id:p.id},'dead')}</div>`})}
+${A3(p,{s:.45,d:2.1,cls:'x3-zb',st:'animation:x3zb 1.2s linear both,x3zfl .6s linear 1.5s both',dead:`<div class="x3-char" style="animation:x3cblink .9s linear infinite">${charSVG({color:'#454A66',acc:p.acc,id:p.id},'dead')}</div>`})}
 ${[0,.5,1].map(d=>`<i class="x3-sm" style="left:calc(50% - 38px);animation-delay:${(2.1+d*.45).toFixed(2)}s"></i>`).join('')}
 ${E3('x3-bolt','animation:x3bolt .55s linear 1.5s forwards',BOLT)}
 ${E3('x3-flash','animation:flash .6s linear 1.5s both')}
@@ -1481,8 +1498,8 @@ ${[[38,0],[48,.3],[58,.62],[44,.9],[54,.15]].map((a,i)=>`<i class="x3-nt" style=
 ${A3(p,{s:.95,d:1.42,cls:'x3-pyb',st:'animation:x3sway .5s ease-in-out 0s 2 alternate,x3off .01s linear 1.45s forwards'})}
 ${E3('x3-pc','width:132px;margin-left:-66px;bottom:38px;animation:x3on .01s linear 1.45s forwards',PANCAKE(p,0))}
 <div class="x3-pi" style="animation:x3pif 2.2s linear both">${PIANO3(n)}${K3(k,'bottom:calc(100% - 5px);left:86px;width:54px','x3-kpi')}</div>
-${[[-150,-200,1.44],[118,240,1.48],[150,120,1.52]].map(a=>`<div class="d2-key" style="--dx:${a[0]}px;--r:${a[1]}deg;animation-delay:${a[2]}s">${PKEY}</div>`).join('')}
-${E3('x3-feet','animation:x3on .01s linear 1.6s forwards',`<svg viewBox="0 0 60 40" style="animation:x3feet 1.6s linear 1.7s both"><g stroke="${p.color}" stroke-width="8" stroke-linecap="round"><path d="M58 14L22 8"/><path d="M58 28L24 30"/></g><ellipse cx="17" cy="7" rx="9" ry="5" fill="${INK}" transform="rotate(-12 17 7)"/><ellipse cx="19" cy="31" rx="9" ry="5" fill="${INK}" transform="rotate(10 19 31)"/></svg>`)}
+${[[-150,-104,1.44],[98,-76,1.47],[140,98,1.53]].map(a=>`<div class="x4-key" style="--dx:${a[0]}px;--r:${a[1]}deg;animation-delay:${a[2]}s">${PKEY}</div>`).join('')}
+<div class="x4-flag" style="animation:x4flagup .45s cubic-bezier(.3,1.5,.5,1) 2.05s both"><svg viewBox="0 0 60 70" style="animation:x4wave .42s ease-in-out 2.5s infinite alternate"><path d="M52 66Q40 60 34 44" fill="none" stroke="${p.color}" stroke-width="9" stroke-linecap="round"/><path d="M34 46V6" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M34 7Q22 2 10 8Q16 14 10 22Q22 17 34 22Z" fill="#fff" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/><circle cx="34" cy="45" r="6.5" fill="${p.color}" stroke="${INK}" stroke-width="3"/></svg></div>
 ${[[0,1.7],[1,2.1],[2,2.5]].map(a=>`<i class="x3-nt2" style="left:calc(50% + ${[-20,10,40][a[0]]}px);animation-delay:${a[1]}s">${NOTE3(['#FFD23F','#FF5FA8','#7FD0E4'][a[0]])}</i>`).join('')}
 ${puff3(1.44,-90,-40)}${puff3(1.44,44,40)}${stars3(1.44,-66,60,5,70)}
 ${word3('BWANG!',1.5,'28%',16,-8,44)}
@@ -3183,9 +3200,9 @@ function wheelSVG(){
     const a0=i*360/n,a1=(i+1)*360/n,[x0,y0]=pt(a0),[x1,y1]=pt(a1),mid=(a0+a1)/2;
     s+=n===1?`<circle cx="${c}" cy="${c}" r="${R}" fill="#FFF8EC"/>`:`<path d="M${c} ${c}L${x0} ${y0}A${R} ${R} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}Z" fill="${i%2?'#F1E4CB':'#FFF8EC'}" stroke="#1E2240" stroke-width="3" stroke-linejoin="round"/>`;
     const bean=charSVG(pv(p),'idle').replace(/^<svg[^>]*>/,`<svg x="${c-24}" y="${c-R+16}" width="48" height="67" viewBox="0 -14 100 140">`);
-    s+=`<g transform="rotate(${mid.toFixed(2)} ${c} ${c})">${bean}<text x="${c}" y="${c-R+100}" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="15" fill="#1E2240">${esc(p.name)}</text></g>`;
+    s+=`<g transform="rotate(${mid.toFixed(2)} ${c} ${c})">${bean}<text x="${c}" y="${c-R+100}" text-anchor="middle" font-family="Bagel Fat One, sans-serif" font-size="15" fill="#1E2240">${esc(p.name)}</text></g>`;
   });
-  s+=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#1E2240" stroke-width="6"/><circle cx="${c}" cy="${c}" r="20" fill="#1E2240"/><text x="${c}" y="${c+8}" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="22" fill="#FFD23F">?</text>`;
+  s+=`<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#1E2240" stroke-width="6"/><circle cx="${c}" cy="${c}" r="20" fill="#1E2240"/><text x="${c}" y="${c+8}" text-anchor="middle" font-family="Bagel Fat One, sans-serif" font-size="22" fill="#FFD23F">?</text>`;
   return `<svg viewBox="0 0 280 280" aria-hidden="true">${s}</svg>`;
 }
 function showWheel(){

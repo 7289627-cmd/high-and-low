@@ -6,7 +6,7 @@ HEAD='''<title>High and Low</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Baloo+2:wght@500;600;700;800&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 '''
 css=''.join((H/'src'/f).read_text() for f in ['base.css','extra.css','deaths.css','ui2.css'] if (H/'src'/f).exists())
@@ -36,7 +36,7 @@ if len(sys.argv)>1 and sys.argv[1]=='web':
     '<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="'+SITE+'og.png">\n'
     '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">\n')
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Baloo+2:wght@500;600;700;800&display=swap">\n')
     reset=':root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}\n'
     out=(head+'<style>'+reset+css+'</style>\n</head><body>\n<div id="app"></div>\n<div id="ov" hidden></div>\n\n'
     '<script src="vendor/supabase-2.118.0.js"></script>\n'

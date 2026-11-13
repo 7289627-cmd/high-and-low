@@ -340,3 +340,12 @@ button{touch-action:manipulation}
 @media (min-width:820px){.hsun{left:8%;top:50px;width:190px;height:190px}.hill.far{height:260px}.hill.near{height:160px}}
 @media (max-height:600px){.hs-catch{display:none}}
 @media (prefers-reduced-motion:reduce){.hscene *{animation:none!important}.hscene .fnum,.hs-walk,.hs-chase,.bird,.bfly{display:none}.hero .lineup .lu{animation:none}}
+
+/* ---- one world: death and winner stages share the home landscape ---- */
+.stage{background:linear-gradient(to bottom,#49B9DF 0%,#8EDDF0 52%,#FFF3C4 88%)}
+.stage::before{content:"";position:absolute;left:0;right:0;bottom:38px;height:150px;z-index:0;pointer-events:none;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path d='M22 52a16 16 0 0 1 2-32a22 22 0 0 1 40-6a18 18 0 0 1 30 12a13 13 0 0 1 2 26z' fill='%23fff' opacity='.9'/></svg>") 12% 6px/76px auto no-repeat,url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path d='M22 52a16 16 0 0 1 2-32a22 22 0 0 1 40-6a18 18 0 0 1 30 12a13 13 0 0 1 2 26z' fill='%23fff' opacity='.9'/></svg>") 84% 30px/52px auto no-repeat,url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 110' preserveAspectRatio='none'><path d='M0 110V58C40 22 90 20 140 52S230 78 290 42S370 14 400 40V110Z' fill='%237AD3A6' stroke='%231E2240' stroke-width='3'/><path d='M0 110V84C60 54 120 60 180 82S290 96 340 70S385 62 400 68V110Z' fill='%233FB67A' stroke='%231E2240' stroke-width='3'/></svg>") center bottom/100% 86px no-repeat}
+.stage::after{box-shadow:inset 0 6px 0 rgba(255,255,255,.28)}
+.puff{border:0;filter:drop-shadow(1.6px 0 0 var(--ink)) drop-shadow(-1.6px 0 0 var(--ink)) drop-shadow(0 1.6px 0 var(--ink)) drop-shadow(0 -1.6px 0 var(--ink))}
+.puff::before,.puff::after{content:"";position:absolute;background:inherit;border-radius:50%}
+.puff::before{width:52%;height:86%;left:6%;top:-38%}
+.puff::after{width:44%;height:72%;right:8%;top:-26%}

@@ -840,29 +840,72 @@ function render(force){
   SCROLLERS.forEach((s,i)=>{const el=app.querySelector(s);if(el&&keepScroll[i])el.scrollTop=keepScroll[i]});
   if(winY)window.scrollTo(0,winY);
   bind();
+  kiteStart();
   if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
 const SCENE_T0=Date.now();
 function ph(dur,off){return `animation-delay:-${(((Date.now()-SCENE_T0)/1000+(off||0))%dur).toFixed(2)}s`}
 function homeSceneHTML(){
   const bean=(i,mood)=>charSVG({color:COLORS[i%COLORS.length],acc:i%COLORS.length,id:30+i},mood||'happy');
-  const nums=['7','42','?','3','99','1','?','58'];
+  const nums=['7','?','42','3','?','99'];
+  const tree=(l,b,sc,d)=>`<span class="tree" style="left:${l}%;bottom:${b}px;--s:${sc};${ph(4.5,d)}"><i class="crown"></i><i class="crown c2"></i><i class="trunk"></i></span>`;
+  const flower=(l,b,c,d)=>`<i class="flower" style="left:${l}%;bottom:${b}px;--c:${c};${ph(2.6,d)}"></i>`;
+  const bird=(cls,dur,off)=>`<span class="bird ${cls}" style="${ph(dur,off)}"><svg viewBox="0 0 28 12"><path d="M2 9Q8 0 14 8Q20 0 26 9" fill="none" stroke="#1E2240" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   return `<div class="hscene" aria-hidden="true">
-<i class="cloud c1" style="${ph(70,10)}"></i><i class="cloud c2" style="${ph(95,50)}"></i><i class="cloud c3" style="${ph(120,90)}"></i>
-${nums.map((n,i)=>`<span class="fnum" style="left:${6+i*12.5}%;animation-duration:${15+(i*5)%9}s;${ph(15+(i*5)%9,i*3.7)}">${n}</span>`).join('')}
+<svg class="hsun" viewBox="-90 -90 180 180"><g class="rays" style="${ph(60,0)}" fill="#FFD23F" stroke="#1E2240" stroke-width="5" stroke-linejoin="round"><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(0)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(30)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(60)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(90)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(120)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(150)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(180)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(210)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(240)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(270)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(300)"/><path d="M-9 -58L0 -84L9 -58Z" transform="rotate(330)"/></g><circle r="46" fill="#FFD23F" stroke="#1E2240" stroke-width="6"/><ellipse cx="-16" cy="-18" rx="13" ry="8" fill="#fff" opacity=".55" transform="rotate(-30 -16 -18)"/></svg>
+<i class="cloud c1" style="${ph(70,10)}"></i><i class="cloud c2" style="${ph(95,50)}"></i><i class="cloud c3" style="${ph(120,90)}"></i><i class="cloud c4" style="${ph(84,30)}"></i>
+${bird('b1',24,3)}${bird('b2',24,4.2)}${bird('b3',31,17)}
+${nums.map((n,i)=>`<span class="fnum" style="left:${8+i*16}%;animation-duration:${16+(i*5)%9}s;${ph(16+(i*5)%9,i*3.7)}">${n}</span>`).join('')}
+<svg class="hill far" viewBox="0 0 1000 200" preserveAspectRatio="none"><path d="M0 200V96C90 40 190 34 300 92S520 150 660 84S880 20 1000 78V200Z" fill="#7AD3A6"/><path d="M0 200V96C90 40 190 34 300 92S520 150 660 84S880 20 1000 78" fill="none" stroke="#1E2240" stroke-width="5" vector-effect="non-scaling-stroke"/></svg>
+${tree(9,150,.8,0)}${tree(27,118,.6,1.2)}${tree(63,128,.72,2.1)}${tree(88,160,.9,3)}
+<svg class="hill near" viewBox="0 0 1000 160" preserveAspectRatio="none"><path d="M0 160V70C140 16 260 30 400 74S640 120 800 60S940 40 1000 58V160Z" fill="#3FB67A"/><path d="M0 70C140 16 260 30 400 74S640 120 800 60S940 40 1000 58" fill="none" stroke="#1E2240" stroke-width="5" vector-effect="non-scaling-stroke"/></svg>
+${tree(46,74,1,.6)}
+${flower(4,84,'#F0503C',0)}${flower(15,98,'#FFD23F',.5)}${flower(33,82,'#fff',1.1)}${flower(57,70,'#FF8FC7',.2)}${flower(72,84,'#FFD23F',1.6)}${flower(83,98,'#F0503C',.9)}${flower(95,92,'#fff',2)}
+<div class="path"></div>
+<svg class="kitesvg" id="kiteSvg"><path id="kiteStr" fill="none" stroke="#1E2240" stroke-width="2" stroke-linecap="round"/><path id="kiteTail" fill="none" stroke="#1E2240" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g id="kiteBows"></g><g id="kite"><path d="M0-30 20 0 0 38-20 0Z" fill="#F0503C" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M0-30 20 0 0 0Z" fill="#FFD23F"/><path d="M0 0 0 38-20 0Z" fill="#4A7BF7"/><path d="M0-30V38M-20 0H20" stroke="#1E2240" stroke-width="3"/><path d="M0-30 20 0 0 38-20 0Z" fill="none" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></g></svg>
 <div class="hs-catch"><span class="hs-b a" style="${ph(2.8,0)}">${bean(1,'happy')}</span><span class="hs-ballx" style="${ph(2.8,0)}"><span class="hs-bally" style="${ph(1.4,0)}"></span></span><span class="hs-b b" style="${ph(2.8,1.4)}">${bean(3,'happy')}</span></div>
 <span class="hs-walk" style="${ph(26,4)}"><span class="hs-waddle">${bean(4,'idle')}</span></span>
-<span class="hs-hop" style="${ph(1.3,0)}">${bean(5,'happy')}</span>
-<span class="hs-chase" style="${ph(19,6)}"><span class="hs-run r1">${bean(2,'happy')}</span><span class="hs-run r2">${bean(0,'scared')}</span></span>
+<span class="hs-kiter" id="kiteBean" style="${ph(3.4,0)}">${bean(0,'happy')}</span>
+<span class="hs-chase" style="${ph(19,6)}"><span class="hs-run r1">${bean(2,'happy')}</span><span class="hs-run r2">${bean(3,'scared')}</span></span>
+<span class="bfly" style="${ph(17,2)}"><i></i><i></i></span>
 </div>`;
 }
+/* The kite: flown with a little physics-free maths so the string always reaches the bean's hand. */
+let kiteOn=false;
+function kiteFrame(now){
+  const svg=document.getElementById('kiteSvg'),bn=document.getElementById('kiteBean');
+  if(!svg||!bn||view!=='home'){kiteOn=false;return}
+  const W=innerWidth,H=innerHeight,br=bn.getBoundingClientRect();
+  const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const t=still?2.2:now/1000;
+  const hx=br.left+br.width*0.16,hy=br.top+br.height*0.52;
+  const gap=document.querySelector('.skygap'),gr=gap?gap.getBoundingClientRect():{top:80,height:70};
+  const cx=hx-Math.min(W*0.24,260),cy=gr.top+gr.height*0.5,ax=Math.min(W*0.2,200),ay=Math.max(8,gr.height*0.16);
+  const kx=cx+ax*Math.sin(t*0.55)+6*Math.sin(t*2.3),ky=cy+ay*Math.sin(t*1.1+0.6)+4*Math.sin(t*3.1);
+  const rot=-18+16*Math.cos(t*0.55)+5*Math.sin(t*2.3);
+  const k=document.getElementById('kite');if(k)k.setAttribute('transform',`translate(${kx.toFixed(1)} ${ky.toFixed(1)}) rotate(${rot.toFixed(1)})`);
+  const r=rot*Math.PI/180,tx=kx-38*Math.sin(r),ty=ky+38*Math.cos(r);
+  const mx=(tx+hx)/2,my=(ty+hy)/2,d=Math.hypot(hx-tx,hy-ty);
+  const st=document.getElementById('kiteStr');if(st)st.setAttribute('d',`M${hx.toFixed(1)} ${hy.toFixed(1)}Q${(mx+d*0.1).toFixed(1)} ${(my+d*0.16).toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`);
+  let dd=`M${tx.toFixed(1)} ${ty.toFixed(1)}`,bows='';
+  for(let i=1;i<=6;i++){
+    const lag=t-i*0.16,px=tx+i*9*Math.cos(r+1.25)+7*Math.sin(lag*3.2+i*0.9)+i*2.2*Math.cos(lag*0.55)*-3,py=ty+i*11+3*Math.cos(lag*3.2+i);
+    dd+=`L${px.toFixed(1)} ${py.toFixed(1)}`;
+    if(i%2===0)bows+=`<path d="M${(px-6).toFixed(1)} ${(py-4).toFixed(1)}l12 8v-8l-12 8z" fill="${i===4?'#FFD23F':'#4A7BF7'}" stroke="#1E2240" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  const tl=document.getElementById('kiteTail');if(tl)tl.setAttribute('d',dd);
+  const bw=document.getElementById('kiteBows');if(bw)bw.innerHTML=bows;
+  if(still){kiteOn=false;return}
+  requestAnimationFrame(kiteFrame);
+}
+function kiteStart(){if(kiteOn||typeof requestAnimationFrame!=='function'||!document.getElementById('kiteSvg'))return;kiteOn=true;requestAnimationFrame(kiteFrame)}
 function homeHTML(){
   const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
   return `<main class="scroll home">${homeSceneHTML()}
-<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="lineup">${lineup}</div>${eloPill()}${pwHomePill()}</section>
+<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${eloPill()}${pwHomePill()}</section>
 <section class="panel">
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
  ${modesHTML()}

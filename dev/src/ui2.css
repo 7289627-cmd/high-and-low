@@ -274,22 +274,44 @@ button{touch-action:manipulation}
 .cast.duel .clock-corner{top:-6px}
 .ask-top .tclock,.guessv .ask-top .tclock{margin:4px 6px 0 2px}
 /* ---- living home screen ---- */
-.hscene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.hscene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:linear-gradient(to bottom,#49B9DF 0%,#7FD6EE 38%,#C9F0EC 66%,#FFF3C4 86%)}
 .scroll.home>section{position:relative;z-index:1}
-.hscene svg{width:100%;height:auto;display:block;overflow:visible}
-.hscene .cloud{position:absolute;left:0;width:120px;height:38px;background:var(--white);border-radius:40px;opacity:.85;animation:cloudDrift 70s linear infinite}
+.hscene svg{display:block;overflow:visible}
+.hs-b svg,.hs-walk svg,.hs-kiter svg,.hs-run svg,.hs-nap svg{width:100%;height:auto}
+.hsun{position:absolute;left:-40px;top:66px;width:128px;height:128px}
+.hsun .rays{transform-box:fill-box;transform-origin:center;animation:spin 60s linear infinite}
+.skygap{height:76px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hscene .cloud{position:absolute;left:0;width:120px;height:38px;background:#fff;border-radius:40px;opacity:.92;animation:cloudDrift 70s linear infinite;filter:drop-shadow(0 5px 0 rgba(30,34,64,.10))}
 .hscene .cloud:before,.hscene .cloud:after{content:"";position:absolute;background:inherit;border-radius:50%}
 .hscene .cloud:before{width:54px;height:54px;left:18px;top:-24px}.hscene .cloud:after{width:40px;height:40px;right:20px;top:-16px}
-.hscene .c1{top:9%}.hscene .c2{top:27%;transform:scale(.7);animation-duration:95s;opacity:.7}.hscene .c3{top:50%;animation-duration:120s;opacity:.6}
-@keyframes cloudDrift{from{translate:-160px 0}to{translate:calc(100vw + 40px) 0}}
-.hscene .fnum{position:absolute;bottom:60px;font-family:var(--display);font-size:26px;color:var(--white);opacity:0;animation:numRise 18s linear infinite}
-@keyframes numRise{0%{translate:0 0;opacity:0;rotate:-10deg}8%{opacity:.5}60%{opacity:.35}100%{translate:18px -72vh;opacity:0;rotate:14deg}}
-.hs-b,.hs-walk,.hs-hop,.hs-run{position:absolute;bottom:50px;width:52px}
+.hscene .c1{top:8%}.hscene .c2{top:25%;scale:.7;animation-duration:95s;opacity:.8}.hscene .c3{top:44%;animation-duration:120s;opacity:.7;scale:1.15}.hscene .c4{top:60%;scale:.55;animation-duration:84s;opacity:.75}
+@keyframes cloudDrift{from{translate:-170px 0}to{translate:calc(100vw + 60px) 0}}
+.bird{position:absolute;left:0;top:15%;width:26px;animation:birdFly 24s linear infinite}
+.bird svg{width:100%;height:auto;transform-origin:50% 70%;animation:flap .5s ease-in-out infinite alternate}
+.bird.b2{top:18%;width:20px}.bird.b3{top:36%;width:22px;animation-duration:31s}
+@keyframes birdFly{0%{translate:-60px 0}50%{translate:50vw -26px}100%{translate:calc(100vw + 60px) 6px}}
+@keyframes flap{from{scale:1 1}to{scale:1 .35}}
+.hscene .fnum{position:absolute;bottom:150px;font-family:var(--display);font-size:26px;color:#fff;opacity:0;animation:numRise 18s linear infinite;text-shadow:0 2px 0 rgba(30,34,64,.18)}
+@keyframes numRise{0%{translate:0 0;opacity:0;rotate:-10deg}8%{opacity:.55}60%{opacity:.35}100%{translate:18px -66vh;opacity:0;rotate:14deg}}
+.hill{position:absolute;left:-2%;width:104%}
+.hill.far{bottom:40px;height:210px}
+.hill.near{bottom:30px;height:130px}
+.tree{position:absolute;width:64px;height:92px;margin-left:-32px;scale:var(--s);transform-origin:50% 100%;animation:sway 4.5s ease-in-out infinite alternate}
+.tree .trunk{position:absolute;left:50%;bottom:0;width:12px;height:42px;margin-left:-6px;background:#9A6442;border:4px solid var(--ink);border-radius:5px}
+.tree .crown{position:absolute;left:4px;top:0;width:56px;height:56px;border-radius:50%;background:#2E9E68;border:4px solid var(--ink);z-index:1}
+.tree .crown.c2{left:22px;top:14px;width:26px;height:22px;border:0;background:#58C98D;border-radius:50%;z-index:2}
+@keyframes sway{from{rotate:-3deg}to{rotate:3deg}}
+.flower{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--c);border:3px solid var(--ink);transform-origin:50% 200%;animation:sway 2.6s ease-in-out infinite alternate}
+.flower:after{content:"";position:absolute;left:50%;top:100%;width:3px;height:10px;margin-left:-1.5px;background:var(--ink)}
+.path{position:absolute;left:0;right:0;bottom:0;height:58px;background:var(--ground);border-top:5px solid var(--ink);box-shadow:inset 0 9px 0 rgba(255,255,255,.28)}
+.kitesvg{position:absolute;inset:0;width:100%;height:100%}
+.hs-b,.hs-walk,.hs-kiter,.hs-run{position:absolute;bottom:46px;width:52px}
 .hs-catch{position:absolute;left:5%;bottom:0;width:150px;height:140px}
 .hs-catch .hs-b.a{left:0;animation:catchHop 2.8s ease-in-out infinite}
 .hs-catch .hs-b.b{right:0;animation:catchHop 2.8s ease-in-out infinite}
 .hs-catch .hs-b.b svg{transform:scaleX(-1)}
-.hs-ballx{position:absolute;left:44px;bottom:84px;width:62px;animation:ballX 2.8s linear infinite}
+.hs-ballx{position:absolute;left:44px;bottom:80px;width:62px;animation:ballX 2.8s linear infinite}
 .hs-bally{display:block;width:16px;height:16px;border-radius:50%;background:var(--red);border:3px solid var(--ink);animation:ballY 1.4s cubic-bezier(.3,0,.7,1) infinite}
 @keyframes ballX{0%,100%{translate:0 0}50%{translate:46px 0}}
 @keyframes ballY{0%,100%{translate:0 0}50%{translate:0 -46px}}
@@ -298,14 +320,23 @@ button{touch-action:manipulation}
 .hs-waddle{display:block;transform-origin:50% 100%;animation:waddle .5s ease-in-out infinite alternate}
 @keyframes walkAcross{0%{translate:-70px 0;scale:1 1}49.9%{translate:calc(100vw + 20px) 0;scale:1 1}50%{translate:calc(100vw + 20px) 0;scale:-1 1}99.9%{translate:-70px 0;scale:-1 1}100%{translate:-70px 0;scale:1 1}}
 @keyframes waddle{from{rotate:-7deg}to{rotate:7deg}}
-.hs-hop{right:7%;transform-origin:50% 100%;animation:hopHop 1.3s cubic-bezier(.3,0,.4,1) infinite}
-@keyframes hopHop{0%,100%{translate:0 0;scale:1.08 .9}45%{translate:0 -44px;scale:.95 1.07}55%{translate:0 -44px;scale:.95 1.07}}
+.hs-kiter{right:6%;transform-origin:50% 100%;animation:kiterLean 3.4s ease-in-out infinite alternate}
+@keyframes kiterLean{from{rotate:4deg;translate:0 0}to{rotate:12deg;translate:5px 0}}
 .hs-chase{position:absolute;left:0;bottom:0;width:140px;height:110px;animation:chase 19s linear infinite}
 .hs-run{animation:waddle .22s ease-in-out infinite alternate;transform-origin:50% 100%}
-.hs-run.r1{left:0;bottom:50px}.hs-run.r2{left:78px;bottom:50px}
+.hs-run.r1{left:0}.hs-run.r2{left:78px}
 @keyframes chase{0%,62%{translate:-170px 0}86%,100%{translate:calc(100vw + 30px) 0}}
+.hs-nap{position:absolute;left:46%;bottom:70px;width:44px;margin-left:26px;rotate:78deg;transform-origin:50% 100%;display:none}
+.hs-nap .zz{position:absolute;left:-6px;top:-4px;font-family:var(--display);font-weight:400;font-size:16px;color:var(--ink);rotate:-78deg;opacity:0;animation:zz 3.2s ease-out infinite}
+@keyframes zz{0%{translate:0 0;opacity:0;scale:.6}20%{opacity:.9}100%{translate:-34px -30px;opacity:0;scale:1.4}}
+.bfly{position:absolute;left:0;bottom:120px;width:18px;height:14px;animation:bflyPath 17s ease-in-out infinite}
+.bfly i{position:absolute;top:0;width:9px;height:14px;background:#FF8FC7;border:2.5px solid var(--ink);border-radius:80% 20% 60% 40%;transform-origin:100% 50%;animation:flapW .16s ease-in-out infinite alternate}
+.bfly i:last-child{left:9px;border-radius:20% 80% 40% 60%;transform-origin:0 50%}
+@keyframes flapW{from{scale:1 1}to{scale:.25 1}}
+@keyframes bflyPath{0%{translate:-30px 0}20%{translate:22vw -46px}40%{translate:44vw 8px}60%{translate:63vw -60px}80%{translate:84vw -10px}100%{translate:calc(100vw + 30px) -50px}}
 .hero .lineup .lu{animation:luHop 5.4s ease-in-out infinite}
 .hero .lineup .lu:nth-child(2){animation-delay:-.9s}.hero .lineup .lu:nth-child(3){animation-delay:-1.8s}.hero .lineup .lu:nth-child(4){animation-delay:-2.7s}.hero .lineup .lu:nth-child(5){animation-delay:-3.6s}.hero .lineup .lu:nth-child(6){animation-delay:-4.5s}
 @keyframes luHop{0%,84%,100%{translate:0 0}90%{translate:0 -12px}95%{translate:0 0}}
-@media (max-height:600px){.hs-catch,.hs-hop{display:none}}
-@media (prefers-reduced-motion:reduce){.hscene *{animation:none!important}.hscene .fnum,.hs-walk,.hs-chase{display:none}.hero .lineup .lu{animation:none}}
+@media (min-width:820px){.hsun{left:8%;top:50px;width:190px;height:190px}.hill.far{height:260px}.hill.near{height:160px}}
+@media (max-height:600px){.hs-catch{display:none}}
+@media (prefers-reduced-motion:reduce){.hscene *{animation:none!important}.hscene .fnum,.hs-walk,.hs-chase,.bird,.bfly{display:none}.hero .lineup .lu{animation:none}}

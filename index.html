@@ -1022,6 +1022,11 @@ button{touch-action:manipulation}
 .puff::before,.puff::after{content:"";position:absolute;background:inherit;border-radius:50%}
 .puff::before{width:52%;height:86%;left:6%;top:-38%}
 .puff::after{width:44%;height:72%;right:8%;top:-26%}
+
+/* ---- no internet ---- */
+.nonet svg{width:84px;height:auto;margin:6px auto 2px;display:block}
+.nonet h2{font-family:var(--display);font-weight:400;font-size:28px;margin:4px 0 0}
+.nonet p{margin:2px 0 12px}
 </style>
 </head><body>
 <div id="app"></div>
@@ -1029,7 +1034,7 @@ button{touch-action:manipulation}
 
 <script src="vendor/supabase-2.118.0.js"></script>
 <script src="vendor/qrcode-1.4.4.js"></script>
-<script>window.HL_CONFIG={url:"https://qgeofeznwmlyerhpxnlf.supabase.co",key:"sb_publishable_Hrpga4m2rjebRlZV1MlcIA_QMM7uvED"}</script>
+<script>window.HL_CONFIG={url:"https://qgeofeznwmlyerhpxnlf.supabase.co",key:"sb_publishable_Hrpga4m2rjebRlZV1MlcIA_QMM7uvED"};window.HL_NEED_NET=1</script>
 <script>
 window.makeSupabaseRoom=function(cfg){
   var client=null;
@@ -1234,6 +1239,43 @@ try{SFX.muted=localStorage.getItem('hl-mute')==='1'}catch(e){}
     try{c.resume()}catch(e){}
   }
   ['touchend','click'].forEach(t=>document.addEventListener(t,wakeAudio,{capture:true,passive:true}));
+})();
+/* ---------- Music (recorded loops, streamed) ----------
+   home: the menu tune.  play: a much quieter bed during a game.
+   Missing files are fine: the game just stays without music. */
+const MUSIC={
+  src:{home:'music/home.mp3',play:'music/play.mp3'},
+  vol:{home:0.30,play:0.13},
+  el:{},want:'home',ok:false,timer:null,
+  init(){
+    if(MUSIC.ok||typeof Audio!=='function')return;
+    try{
+      for(const k in MUSIC.src){const a=new Audio();a.src=MUSIC.src[k];a.loop=true;a.preload='auto';a.volume=0;MUSIC.el[k]=a}
+      MUSIC.ok=true;MUSIC.sync();
+    }catch(e){}
+  },
+  set(name){if(MUSIC.want===name)return;MUSIC.want=name;MUSIC.sync()},
+  sync(){
+    if(!MUSIC.ok)return;
+    const on=!(SFX.muted||document.hidden)?MUSIC.want:null;
+    for(const k in MUSIC.el){const a=MUSIC.el[k];if(k===on&&a.paused){try{const p=a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}}
+    clearInterval(MUSIC.timer);
+    MUSIC.timer=setInterval(()=>{
+      let moving=false;
+      for(const k in MUSIC.el){
+        const a=MUSIC.el[k],to=k===on?MUSIC.vol[k]:0,d=to-a.volume;
+        if(Math.abs(d)<0.012){a.volume=to;if(to===0&&!a.paused){try{a.pause()}catch(e){}}}
+        else{a.volume=Math.min(1,Math.max(0,a.volume+Math.sign(d)*0.012));moving=true}
+      }
+      if(!moving)clearInterval(MUSIC.timer);
+    },60);
+  }
+};
+(function(){
+  const go=()=>{MUSIC.init();['pointerdown','touchend','keydown'].forEach(t=>document.removeEventListener(t,go,true))};
+  ['pointerdown','touchend','keydown'].forEach(t=>document.addEventListener(t,go,{capture:true,passive:true}));
+  document.addEventListener('visibilitychange',()=>MUSIC.sync());
+  const sm=SFX.setMuted;SFX.setMuted=m=>{sm(m);MUSIC.sync()};
 })();
 /* ---------- Anonymous play stats ----------
    One row per event in the Supabase table "events". No names, no room codes, no free text.
@@ -2801,6 +2843,7 @@ function waitHTML(players){
 async function quickPlay(){
   quickStop();
   if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
+  if(offline()){render(true);return}
   if(roomState!=='ok'||!roomNS||!window.makeSupabaseQueue||!window.HL_CONFIG){startSolo(true);return}
   const my={q:null,ann:0};qp=my;
   mode='search';view='game';G=null;code=null;isHost=false;isPub=true;myPres={};peerMap=new Map();
@@ -2911,6 +2954,7 @@ function render(force){
   if(winY)window.scrollTo(0,winY);
   bind();
   kiteStart();
+  try{MUSIC.set(view==='home'||!G||G.phase==='lobby'?'home':'play')}catch(e){}
   if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
 const SCENE_T0=Date.now();
@@ -2976,7 +3020,7 @@ function homeHTML(){
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
   return `<main class="scroll home">${homeSceneHTML()}
 <section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${eloPill()}${pwHomePill()}</section>
-<section class="panel">
+${offline()?offlineHTML():''}<section class="panel" ${offline()?'hidden':''}>
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
  ${modesHTML()}
  <button id="playBtn" class="btn primary big full">Play</button>
@@ -2986,7 +3030,7 @@ function homeHTML(){
   <button class="btn primary full" id="hostBtn" ${online?'':'disabled'}>Host a game</button>
   <div class="join-row"><input id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Room code"><button class="btn" id="joinBtn" ${online?'':'disabled'}>Join</button></div>
   ${ui.homeErr?`<p class="err">${esc(ui.homeErr)}</p>`:''}
-  <button class="btn full" id="soloBtn">Practice</button>
+  <button class="btn full" id="soloBtn" ${NEED_NET?'hidden':''}>Practice</button>
  </div>
  ${roomState==='checking'?'<p class="tip">Connecting to rooms…</p>':''}
 </section>
@@ -3368,8 +3412,10 @@ function bind(){
     on('soloBtn',()=>{if(!NAME){NAME='You'}track('practice');startSolo()});
     on('friendsBtn',()=>{
       ui.homeErr='';if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
+      if(offline()){render(true);return}
       if(roomState!=='ok'||!roomNS){track('practice');startSolo();return}
       let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
+    on('retryNet',()=>{sfx('pick');initRooms()});
     on('playBtn',()=>{ui.homeErr='';track('play_tap',{max:playMode().max});quickPlay()});
     $$('[data-mode]').forEach(b=>b.onclick=()=>{pmSel=b.dataset.mode;LS.set('hl-pm',pmSel);sfx('pick');render(true)});
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
@@ -3441,6 +3487,17 @@ setInterval(()=>{
     if(tv===0&&!sfxSeen.hurry.has('o'+k)){sfxSeen.hurry.add('o'+k);sfx('vo_timeover')}
   }
   if(tv===null)return;document.querySelectorAll('.tclock').forEach(el=>{const v=timerLeft();if(v===null)return;el.style.setProperty('--f',Math.min(1,v/Math.max(1,G.timer)).toFixed(3));const b=el.querySelector('b');if(b)b.textContent=v;el.classList.toggle('low',v<6)})},1000);
+/* ---------- Internet required (web and app builds) ---------- */
+const NEED_NET=!!window.HL_NEED_NET;
+function offline(){return NEED_NET&&(navigator.onLine===false||roomState==='none')}
+function offlineHTML(){return `<section class="panel center nonet"><svg viewBox="0 0 64 56" aria-hidden="true"><path d="M6 22a38 38 0 0 1 52 0M15 32a25 25 0 0 1 34 0M24 42a12 12 0 0 1 16 0" fill="none" stroke="#1E2240" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="50" r="4" fill="#1E2240"/><path d="M10 6 54 52" stroke="#F0503C" stroke-width="7" stroke-linecap="round"/></svg><h2>No internet</h2><p>Connect to play.</p><button class="btn primary full" id="retryNet">Try again</button></section>`}
+async function initRooms(){
+  roomState='checking';render(true);
+  try{if(navigator.onLine===false&&NEED_NET)roomNS=null;else if(window.HL_CONFIG&&window.makeSupabaseRoom)roomNS=window.makeSupabaseRoom(window.HL_CONFIG);else roomNS=window.claude&&window.claude.use?await window.claude.use('room'):null}catch(e){roomNS=null}
+  roomState=roomNS?'ok':'none';render(true);
+}
+window.addEventListener('offline',()=>render(true));
+window.addEventListener('online',()=>{if(roomState==='none')initRooms();else render(true)});
 /* ---------- Boot ---------- */
 const DEEP=(()=>{
   const m=location.hash.match(/room=([A-Za-z]{4})/);if(!m)return null;
@@ -3449,8 +3506,7 @@ const DEEP=(()=>{
 })();
 render(true);
 (async()=>{
-  try{if(window.HL_CONFIG&&window.makeSupabaseRoom)roomNS=window.makeSupabaseRoom(window.HL_CONFIG);else roomNS=window.claude&&window.claude.use?await window.claude.use('room'):null}catch(e){roomNS=null}
-  roomState=roomNS?'ok':'none';render(true);
+  await initRooms();
 track('open',{inv:/[#&]room=/.test(location.hash)?1:0,wide:innerWidth>=820?1:0,app:window.HLNative?1:0});
   if(DEEP){
     if(roomState==='ok'&&NAME)startOnline(false,DEEP);

@@ -10,7 +10,7 @@ HEAD='''<title>High and Low</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 '''
 css=''.join((H/'src'/f).read_text() for f in ['base.css','extra.css','deaths.css','ui2.css'] if (H/'src'/f).exists())
-snd=(H/'src/sound.js').read_text()
+snd=(H/'src/sound.js').read_text()+(H/'src/music.js').read_text()
 js=snd+(H/'src/track.js').read_text()+(H/'src/ads.js').read_text()+(H/'src/base.js').read_text()+((H/'src/showdown.js').read_text() if (H/'src/showdown.js').exists() else '')+((H/'src/powers.js').read_text() if (H/'src/powers.js').exists() else '')+(H/'src/rating.js').read_text()+(H/'src/botlife.js').read_text()+(H/'src/main.js').read_text()
 import sys,json
 if len(sys.argv)>1 and sys.argv[1]=='web':
@@ -41,7 +41,7 @@ if len(sys.argv)>1 and sys.argv[1]=='web':
     out=(head+'<style>'+reset+css+'</style>\n</head><body>\n<div id="app"></div>\n<div id="ov" hidden></div>\n\n'
     '<script src="vendor/supabase-2.118.0.js"></script>\n'
     '<script src="vendor/qrcode-1.4.4.js"></script>\n'
-    '<script>window.HL_CONFIG={url:'+json.dumps(cfg.get('url',''))+',key:'+json.dumps(cfg.get('key',''))+'}</script>\n'
+    '<script>window.HL_CONFIG={url:'+json.dumps(cfg.get('url',''))+',key:'+json.dumps(cfg.get('key',''))+'};window.HL_NEED_NET=1</script>\n'
     '<script>\n'+wjs+'</script>\n</body></html>\n')
     (H/'site').mkdir(exist_ok=True)
     (H/'site/index.html').write_text(out)

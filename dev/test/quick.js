@@ -23,7 +23,7 @@ function phone(name,online){
   const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://x.test/'+name,
     beforeParse(w){
       if(online){const fc=makeFakeClient();w.supabase={createClient:()=>fc}}
-      w.HL_TEST_Q_MS=300;w.HL_TEST_FILL_MS=900;w.HL_TEST_QJOIN_MS=1500;
+      w.HL_TEST_Q_MS=300;w.HL_TEST_FILL_MS=900;w.HL_TEST_QJOIN_MS=1500;if(!online)w.HL_NEED_NET=1;
     }});
   const w=dom.window;w.errs=[];w.addEventListener('error',e=>w.errs.push(e.message));
   w.$=s=>w.document.querySelector(s);all.push(w);return w;
@@ -58,10 +58,9 @@ const started=s=>(s.ph==='secrets'||s.ph==='play')&&s.n===2;
   // c) rooms not available
   const C=phone('c',false);await wait(400);
   if(C.eval('roomState')==='ok')fail('(c) roomState unexpectedly ok');
-  C.$('#playBtn').click();
-  const sc=await until(C,started,6000);
-  if(!sc)fail('(c) solo not started '+C.eval('JSON.stringify([view,mode,G&&G.phase,G&&G.players.length])'));
-  if(sc.bots!==1)fail('(c) expected 1 hidden bot');
+  C.$('#playBtn').click();await wait(1500);
+  if(C.eval('view')!=='home'||C.eval('!!G'))fail('(c) a game started without a connection');
+  if(!C.$('#retryNet'))fail('(c) no offline card');
   if(C.errs.length)fail('(c) page errors '+C.errs.join('|'));
   console.log('PASS quick play');process.exit(0);
 })();

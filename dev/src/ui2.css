@@ -349,3 +349,8 @@ button{touch-action:manipulation}
 .puff::before,.puff::after{content:"";position:absolute;background:inherit;border-radius:50%}
 .puff::before{width:52%;height:86%;left:6%;top:-38%}
 .puff::after{width:44%;height:72%;right:8%;top:-26%}
+
+/* ---- no internet ---- */
+.nonet svg{width:84px;height:auto;margin:6px auto 2px;display:block}
+.nonet h2{font-family:var(--display);font-weight:400;font-size:28px;margin:4px 0 0}
+.nonet p{margin:2px 0 12px}

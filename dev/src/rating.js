@@ -21,6 +21,17 @@ function eloApply(won){
     track('rated',{won:won?1:0,elo:to});
   }catch(e){}
 }
+/* What a loss right now would cost, without applying it. 0 when the game is not rated. */
+function eloAtStake(){
+  try{
+    if(!G||!G.pub||G.phase!=='play'||G.players.length!==2)return 0;
+    const m=byPid(PID),opp=G.players.find(p=>p.pid!==PID);if(!m||!m.a||!opp)return 0;
+    if(LS.get(LSK('hl-elo-g'))===G.gid)return 0;
+    const me=myElo(),oe=Number.isInteger(opp.el)?opp.el:ELO0,ex=1/(1+Math.pow(10,(oe-me)/400));
+    const k=(LS.get(LSK('hl-elo-n'))|0)<10?40:28;
+    return Math.max(1,Math.min(me-100,-Math.round(k*(0-ex))));
+  }catch(e){return 0}
+}
 function eloPill(){const e=myElo();return `<div class="wins-pill elo-pill"><b>${e}</b> ${rankName(e)}</div>`}
 function eloResultHTML(){
   if(!G||!eloLast||eloLast.gid!==G.gid)return '';

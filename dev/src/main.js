@@ -822,7 +822,7 @@ function doAsk(){
 /* ---------- Render ---------- */
 let sldDown=false,sldPend=false;
 function render(force){
-  if(sldDown&&view==='game'&&askViewOn()&&ui.step==='num'){sldPend=true;return}
+  if(sldDown&&view==='game'&&((askViewOn()&&ui.step==='num')||(G&&G.phase==='secrets'&&!mySecret&&!force))){sldPend=true;return}
   trackConn();
   if(ui.pops.length)ui.pops=ui.pops.filter(x=>x.until>Date.now());
   const sig=JSON.stringify([view,mode,roomState,connected,connBanner(),timerLeft()!==null,G,{...ui,land:0},mySecret,myPres.act,myPres.ready,
@@ -979,6 +979,26 @@ function sliderPaint(){
   const bn=$('#bigNum');if(bn)bn.textContent=fmt(x);
   const sd=$('#sld');if(sd)sd.setAttribute('aria-valuenow',x);
 }
+function secPaint(){
+  const tr=$('#secTrack');if(!tr)return false;
+  const n=Math.min(G.max,Math.max(1,Number(ui.sec)||1)),f=G.max>1?(n-1)/(G.max-1):0,pc=(f*100).toFixed(3)+'%';
+  $('#secFill').style.width=pc;$('#secThumb').style.left=pc;$('#secNum').textContent=fmt(n);
+  const lb=$('#lockBtn');if(lb)lb.disabled=false;
+  return true;
+}
+function secBind(){
+  const sd=$('#secSld'),tr=$('#secTrack');if(!sd||!tr)return;
+  const at=e=>{
+    const r=tr.getBoundingClientRect(),f=Math.min(1,Math.max(0,((e.clientX-r.left)/Math.max(1,r.width)-0.04)/0.92));
+    const n=String(1+Math.round(f*(G.max-1)));
+    if(n!==ui.sec){ui.sec=n;ui.secTyped=false;ui.err='';secPaint();const now=Date.now();if(now-sldTickAt>70){sldTickAt=now;sfx('tick',{vol:0.5,rate:0.9+f*0.5})}}
+  };
+  let down=false;
+  sd.onpointerdown=e=>{down=true;sldDown=true;try{sd.setPointerCapture(e.pointerId)}catch(_){}sd.classList.add('drag');at(e);e.preventDefault()};
+  sd.onpointermove=e=>{if(down)at(e)};
+  const up=()=>{if(down){down=false;sldDown=false;sd.classList.remove('drag');buzz(8);if(sldPend){sldPend=false;render(true)}}};
+  sd.onpointerup=up;sd.onpointercancel=up;
+}
 let sldTickAt=0;
 function sliderBind(){
   const sd=$('#sld'),tr=$('#sldTrack');if(!sd||!tr)return;
@@ -1084,6 +1104,8 @@ function padPress(k){
   const sl=field==='num'?askSlots(mv(curTarget())):null;
   const maxLen=sl?sl.open:String(G.max).length;
   let v=ui[field];
+  if(field==='sec'&&(k==='inc'||k==='dec')){sfx('tick');ui.sec=String(Math.min(G.max,Math.max(1,(Number(ui.sec)||1)+(k==='inc'?1:-1))));ui.secTyped=false;ui.err='';if(!secPaint())render(true);return}
+  if(field==='sec'&&!ui.secTyped&&(/^\d$/.test(k)||k==='del')){v='';ui.secTyped=true}
   if(k==='del'){sfx('del');v=v.slice(0,-1)}
   else if(k==='mid'||k==='inc'||k==='dec'){const t=curTarget();if(!t)return;sfx(k==='mid'?'pick':'tick');const cur=askX();setAskX(k==='mid'||cur===null?askMid(mv(t)):cur+(k==='inc'?1:-1));if($('#sldTrack')){sliderPaint();return}render(true);return}
   else if(/^\d$/.test(k)){if(field==='sec')sfx('key');else sfx('babble'+(1+ui.num.length%3),{rate:babRate()+ui.num.length*0.04});if(v.length<maxLen&&!(v===''&&k==='0'&&!(sl&&sl.prefix)))v+=k}
@@ -1129,12 +1151,19 @@ function setLook(patch){
 function secretsHTML(){
   const me=byPid(PID);
   const list=G.players.map(p=>{const r=p.bot||(getPres(p.pid)||{}).ready===G.gid;return `<div class="prow2"><span>${charSVG(pv(p),r?'idle':'scared')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="${r?'state-ok':'state-wait'}">${r?'Ready':'Picking…'}</span></div>`}).join('');
-  if(me&&!mySecret)return `<main class="scroll"><section class="panel center">${hint('secret','Pick a number nobody will guess!')}<div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">Pick your number</h2><p class="tip">1 – ${fmt(G.max)}</p>
-<div class="secret-big entry">${slotsHTML(ui.sec,String(G.max).length)}</div>
+  if(me&&!mySecret){
+    if(ui.secGid!==G.gid){ui.secGid=G.gid;ui.sec=String(rnd(1,G.max));ui.secTyped=false}
+    const n=Math.min(G.max,Math.max(1,Number(ui.sec)||1)),f=G.max>1?(n-1)/(G.max-1):0;
+    return `<main class="scroll"><section class="panel center secpick"><div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">Pick your number</h2>
+<div class="secret-big entry" id="secNum">${ui.sec?fmt(n):'&nbsp;'}</div>
+<div class="sld one" id="secSld" role="slider" tabindex="0" aria-label="Your number" aria-valuemin="1" aria-valuemax="${G.max}" aria-valuenow="${n}"><div class="sld-track" id="secTrack"><i class="pick" id="secFill" style="width:${(f*100).toFixed(3)}%"></i><b class="sld-thumb" id="secThumb" style="left:${(f*100).toFixed(3)}%"></b></div>
+<div class="sld-ends"><span>1</span><span>${fmt(G.max)}</span></div></div>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
-${padHTML(`<button class="key mid" data-k="rand">RND</button>`,false)}
+<div class="nudge"><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key mid" data-k="rand">RANDOM</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
+<div hidden>${padHTML('',false)}</div>
 <button class="btn go big full" id="lockBtn" ${ui.sec?'':'disabled'}>Lock it in</button></section>
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
+  }
   return `<main class="scroll"><section class="panel center"><div class="secret-big">${ui.show&&mySecret?fmt(mySecret.n):'• • • •'}</div><button class="link" id="showBtn">${ui.show?'Hide':'Show'} it</button></section>
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
 }
@@ -1211,7 +1240,8 @@ function bind(){
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney (CC0)</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
     return;
   }
-  on('leaveBtn',()=>{if(ui.leaveArmed||mode==='search'||(G&&G.pub&&G.phase==='lobby')||(isPub&&!G)){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
+  on('leaveBtn',()=>{const stake=eloAtStake();if(stake>0){openOv(`<div class="sheet center"><h2>Leave the duel?</h2><p class="stake">You'll lose <b>${stake}</b> rating.</p><div class="btn-row"><button class="btn primary" id="stayBtn">Keep playing</button><button class="btn" id="quitBtn">Leave</button></div></div>`);$('#stayBtn').onclick=closeOv;$('#quitBtn').onclick=()=>{closeOv();leaveGame()};return}
+    if(ui.leaveArmed||mode==='search'||(G&&G.pub&&G.phase==='lobby')||(isPub&&!G)){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
   if(!G)return;
   on('inviteBtn',()=>{
     const url=inviteURL();
@@ -1236,11 +1266,11 @@ function bind(){
   $$('[data-pickdir]').forEach(b=>b.onclick=()=>{sfx('pick');sfx('land',{delay:0.18});seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
   on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
-  $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
+  $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.secTyped=false;ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   {const lc=$('#lobCode');if(lc){lc.oninput=()=>{lc.value=lc.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=lc.value;ui.lobErr=''};
     const go=()=>{const c=ui.codeIn;if(!/^[A-Z]{4}$/.test(c)){ui.lobErr='Room codes are 4 letters.';render(true);return}if(c===code){ui.lobErr='That is this room.';render(true);return}ui.lobErr='';track('join');leaveGame().then(()=>startOnline(false,c))};
     on('lobJoin',go);lc.onkeydown=e=>{if(e.key==='Enter')go()}}}
-  on('askGo',doAsk);sliderBind();
+  on('askGo',doAsk);sliderBind();secBind();
   $$('.key.nb').forEach(b=>{let h=null,iv=null;const stop=()=>{clearTimeout(h);clearInterval(iv)};b.onpointerdown=()=>{stop();h=setTimeout(()=>{iv=setInterval(()=>padPress(b.dataset.k),60)},380)};b.onpointerup=stop;b.onpointerleave=stop;b.onpointercancel=stop});
   pwBind();
   $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sfx('send');sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});

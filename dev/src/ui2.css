@@ -234,3 +234,14 @@ button{touch-action:manipulation}
 .nudge .key{height:56px}.nudge .key.nb{font-size:34px;line-height:1}
 .lob-join{margin-top:12px}
 .lob-join input{min-width:0}
+
+/* ---- secret number slider ---- */
+.secpick{gap:8px}
+.secpick .secret-big.entry{font-size:clamp(48px,16vw,68px);min-height:0}
+.sld.one .sld-track i.pick{flex:none;background:var(--yellow);border-radius:13px 0 0 13px}
+.sld-ends{display:flex;justify-content:space-between;margin-top:16px;font-family:var(--display);font-size:16px;font-variant-numeric:tabular-nums;opacity:.75}
+.secpick .nudge{margin-top:4px}
+.secpick .nudge .key.mid{font-size:18px}
+
+.secpick .sld,.secpick .nudge{width:100%;justify-self:stretch}
+.stake{font-size:18px;margin:6px 0 14px}.stake b{font-family:var(--display);font-weight:400;font-size:26px;color:var(--red)}

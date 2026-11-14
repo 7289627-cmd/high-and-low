@@ -1,19 +1,19 @@
-key       interface-sounds/addons/kenney_interface_sounds/click_002.wav
-del       interface-sounds/addons/kenney_interface_sounds/back_002.wav
-pick      interface-sounds/addons/kenney_interface_sounds/select_002.wav
-land      zips/kenney_impact-sounds/Audio/impactPlank_medium_000.ogg
-send      interface-sounds/addons/kenney_interface_sounds/confirmation_001.wav
+key       (freesound.org/s/766640) Keyboard_Tactile_9  CC0, StavSounds
+del       (freesound.org/s/734201) Spacebar SFX 2  CC0, NotSpideeyDev; pitch x1.1
+pick      (freesound.org/s/825193) Mouse Click  CC0, planet_jvk
+land      (freesound.org/s/671105) Classic Click  CC0, adh.dreaming
+send      (freesound.org/s/784918) A Very Clear Pop Sound  CC0, 9voltfan
 yes       zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI04.ogg
-nope      zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI05.ogg
+nope      (freesound.org/s/742356) SingleKnock_Wood  CC0, NoisyRedFox; pitch x0.9
 yourturn  interface-sounds/addons/kenney_interface_sounds/question_002.wav
-tick      interface-sounds/addons/kenney_interface_sounds/tick_002.wav
+tick      (freesound.org/s/683048) Click / Tick  CC0, Squirrel_404
 spin      zips/kenney_casino-audio/Audio/card-fan-1.ogg
 wheelland zips/kenney_music-jingles/Audio/Pizzicato jingles/jingles_PIZZI16.ogg
-lock      zips/kenney_casino-audio/Audio/chips-stack-1.ogg
-join      interface-sounds/addons/kenney_interface_sounds/open_001.wav
-leave     interface-sounds/addons/kenney_interface_sounds/close_001.wav
+lock      (freesound.org/s/778443) Electric_Switch_Hit_04  CC0, BlondPanda
+join      (freesound.org/s/744144) bubble pop 6  CC0, nomentero
+leave     (freesound.org/s/744144) bubble pop 6  CC0, nomentero; pitch x0.7
 hint      interface-sounds/addons/kenney_interface_sounds/pluck_001.wav
-error     interface-sounds/addons/kenney_interface_sounds/error_004.wav
+error     (freesound.org/s/742356) SingleKnock_Wood  CC0, NoisyRedFox; pitch x0.7
 bonk      zips/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg
 zap       interface-sounds/addons/kenney_interface_sounds/glitch_002.wav
 pop       zips/kenney_impact-sounds/Audio/impactPunch_heavy_000.ogg

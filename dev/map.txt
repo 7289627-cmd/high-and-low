@@ -63,3 +63,4 @@ k_whoop   zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Quick Rise.wav
 k_sizzle  (freesound.org/s/436791) Sizzle  CC0, roboroo; middle looped to 1.5 s
 d_piano   (freesound.org/s/548430) Piano crash sound.m4a  CC0, Indian_gamer2005; from onset, 3.0 s
 home      (opengameart.org/content/snow-theme) BGM_Snow_Theme_Slowed_Loop.wav  CC0, Cleyton Kauffman (music/home.mp3)
+play      (opengameart.org/content/childrens-march-theme) Children's March Theme.wav  CC0, Cleyton Kauffman (music/play.mp3)

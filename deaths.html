@@ -1153,7 +1153,7 @@ try{SFX.muted=localStorage.getItem('hl-mute')==='1'}catch(e){}
 
 const COLORS=['#EE4B3B','#3D7BFF','#2FA36B','#A35BFF','#FF8A2B','#FF5FA8'];
 const BOT_NAMES=['Bean','Pickle','Noodle','Biscuit','Waffle','Turnip'];
-const DEATHS=['anvil','zap','rocket','chomp','melt','pop','piano','banana','bees','calc'];
+const DEATHS=['anvil','zap','rocket','chomp','melt','pop','piano','banana','calc'];
 const CAPTION={anvil:'got flattened by a falling anvil.',zap:'got zapped by a grumpy cloud.',rocket:'rode a firework straight into space.',chomp:'got gobbled up by the number monster.',melt:'melted into a sad little puddle.',pop:'got pumped up until they popped.',piano:'got flattened by a falling grand piano.',banana:'slipped on a banana peel into the void.',bees:'got chased and puffed up by angry bees.',calc:'got crushed by a giant calculator. ERROR.'};
 const SHORT={anvil:'Flattened',zap:'Fried',rocket:'Launched',chomp:'Eaten',melt:'Melted',pop:'Popped',piano:'Pianoed',banana:'Slipped',bees:'Stung',calc:'Calculated'};
 const INK='#1E2240';
@@ -1405,7 +1405,7 @@ const DEATH_SFX={
  chomp:[['k_boom',.3,.6,.4],['k_ring',1,1.5,.7],['k_ring',1.12,1.5,.7],['k_ring',1.24,1.5,.7],['k_yelp',1.3,1.2],['k_eat1',1.42],['k_eat2',1.72],['k_eat3',1.96],['k_burp',2.82,.9],['k_plop',3.45,1.1]],
  melt:[['k_gloop2',1.6,.8],['k_gloop',2.05,.7],['k_splash',2.1,.8,.6],['k_bubble',3,1.2],['k_bubble',3.5,1.5]],
  pop:[['k_squeak',.5,.8],['k_squeak',.8,.9],['k_squeak',1.1,1],['k_squeak',1.4,1.1],['k_squeak',1.7,1.2],['k_boing2',1.82,1.4,.7],['k_popbang',2.05,1],['pop',2.05],['k_woosh',2.5,.8],['k_plop',3,.8]],
- piano:[['hint',.15],['hint',.4,1.26],['hint',.65,1.5],['k_yelp',1.1,1],['d_piano',1.42],['k_woodbreak',1.42,.8],['k_clang',1.44,.5,.6],['k_glass',1.5,1,.5],['k_boing',1.62,1.2,.6],['k_plop',2.16,1.4],['k_plop',2.26,1.6]],
+ piano:[['hint',.15],['hint',.4,1.26],['hint',.65,1.5],['k_yelp',1.1,1],['d_piano',1.42],['k_plop',2.16,1.4,.7],['k_plop',2.26,1.6,.7]],
  banana:[['k_woosh',.9,1],['k_woosh',1.18,1.4],['k_yelp',1.26,1.3],['k_slam',2.1,.8,.8],['bonk',2.1,.9],['k_ring',2.95,1.8,.6],['k_plop',3.4,.7]],
  bees:[['bonk',.45,1.5,.6],['d_buzz',.6],['k_bug',1.3,1],['d_buzz',1.3,1.15],['k_bug2',1.5,1.2],['k_yelp',1.7,1.3],['bonk',1.95,1.6],['k_ouch',1.97,1.2],['k_boing2',2.1,.7,.7],['d_buzz',2.6,1.3]],
  calc:[['key',.6,1.2],['key',.8,1.2],['key',1,1.2],['error',1.15,1.4],['k_yelp',1.8,1.2],['d_slam',2.05],['k_crunch',2.05,.8],['k_clang',2.07,.9,.5],['k_paper',2.7],['k_paper',2.8],['k_paper',2.9],['k_paper',3,1.2],['k_paper',3.1,1.2]]

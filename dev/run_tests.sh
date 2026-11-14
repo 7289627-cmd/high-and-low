@@ -39,3 +39,4 @@ cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 400
 (cd /home/claude/hl/test && node hlnative.js 2>&1 | grep -E "^(PASS|FAIL)" | tail -1 || echo "FAIL hlnative: no output")
 (cd /home/claude/hl/test && node sound_levels.js 2>&1 | grep -E "^(PASS|FAIL)" | tail -1 || echo "FAIL sound levels: no output")
 (cd /home/claude/hl && python3 build.py web >/dev/null && timeout 600 python3 test/real_browser.py 2>&1 | grep -E "^(PASS|FAIL) real browser" || echo "FAIL real browser: no output")
+(cd /home/claude/hl && timeout 300 python3 test/shot_look.py 2>&1 | grep -E "^(PASS|FAIL) look" || echo "FAIL look: no output")

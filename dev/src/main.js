@@ -953,7 +953,7 @@ function render(force){
   bind();
   kiteStart();
   if(!$('#ov').hidden)ovLoops();
-  try{MUSIC.set(view==='home'||!G||G.phase==='lobby'?'home':'play')}catch(e){}
+  try{MUSIC.set(view==='home'?'home':'play')}catch(e){}
   if(keepId){const el=document.getElementById(keepId);if(el&&el.getAttribute('role')==='slider')el.focus({preventScroll:true});else if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
 const SCENE_T0=Date.now();
@@ -1022,6 +1022,30 @@ function kiteFrame(now){
 }
 function kiteStart(){kiteC=null;if(kiteOn||typeof requestAnimationFrame!=='function'||!document.getElementById('kiteSvg'))return;kiteOn=true;kiteLast=0;requestAnimationFrame(kiteFrame)}
 window.addEventListener('resize',()=>{kiteC=null});
+/* Home screen wardrobe: your bean sits beside your name; tapping it opens colours and every hat (locked ones show the wins needed). */
+function homeLook(){return myLook()||{c:0,k:0}}
+function meBean(){const l=homeLook();return charSVG({color:COLORS[l.c%6],acc:l.k,id:l.c},'idle')}
+function lookSheetHTML(){
+  const l=homeLook();
+  const sw=COLORS.map((c,i)=>`<button class="pk-sw ${i===l.c?'sel':''}" data-hc="${i}" aria-label="Color ${i+1}" aria-pressed="${i===l.c}">${charSVG({color:c,acc:l.k,id:i},'idle')}</button>`).join('');
+  let hats='';
+  for(let i=0;i<hatCount();i++){
+    const ok=hatUnlocked(i);
+    hats+=`<button class="pk-hat ${i===l.k?'sel':''} ${ok?'':'locked'}" data-hk="${i}" ${ok?'':'disabled'} aria-pressed="${i===l.k}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[l.c%6],acc:i,id:l.c},'idle')}</span><span class="hn">${ok?esc(hatName(i)):'Win '+(HAT_NEED[i]||99)}</span></button>`;
+  }
+  return `<div class="sheet center has-x looksheet" aria-label="Your look"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="look-me">${charSVG({color:COLORS[l.c%6],acc:l.k,id:l.c},'happy')}</div><div class="picker"><div class="pk-row">${sw}</div><div class="pk-grid">${hats}</div></div></div>`;
+}
+function openLook(){
+  openOv(lookSheetHTML(),e=>{
+    const b=e.target.closest?e.target.closest('button'):null;
+    if(!b){if(e.target.id==='ov'){closeOv();render(true)}return}
+    if(b.id==='ovX'){closeOv();render(true);return}
+    const cur=homeLook();let nl=null;
+    if(b.dataset.hc!=null)nl=validLook({...cur,c:+b.dataset.hc});
+    else if(b.dataset.hk!=null&&hatUnlocked(+b.dataset.hk))nl=validLook({...cur,k:+b.dataset.hk});
+    if(nl){LS.set(LSK('hl-look'),nl);sfx('pick');const sc=$('#ov .sheet'),y=sc?sc.scrollTop:0;openLook();const s2=$('#ov .sheet');if(s2)s2.scrollTop=y}
+  });
+}
 function homeHTML(){
   const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&/^[A-Z]{4}$/.test(sess.code)&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
@@ -1030,7 +1054,7 @@ function homeHTML(){
   return `<main class="scroll home">${homeSceneHTML()}
 <section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${stPillRow(eloPill())}${pwHomePill()}</section>
 ${offline()?offlineHTML():''}<section class="panel" ${offline()?'hidden':''}>
- <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
+ <div class="field me-row"><button class="me-btn" id="meBtn" aria-label="Change look">${meBean()}</button><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
  ${modesHTML()}
  <button id="playBtn" class="btn primary big full">Play</button>
  <button id="friendsBtn" class="btn full" aria-expanded="${!!ui.friends}">Play with friends</button>
@@ -1434,6 +1458,7 @@ function bind(){
     on('retryNet',()=>{sfx('pick');initRooms()});
     on('playBtn',()=>{ui.homeErr='';track('play_tap',{m:trackMode(playMode().max)});quickPlay()});
     $$('[data-mode]').forEach(b=>b.onclick=()=>{pmSel=b.dataset.mode;LS.set('hl-pm',pmSel);sfx('pick');render(true)});
+    on('meBtn',()=>{sfx('pick');openLook()});
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney, rubberduck and others (CC0). Piano: FluidR3 GM (CC BY 3.0).</p><p class="legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="support.html">Support</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}${window.HLNative&&window.HLNative.restore&&!HLAds.noAds()?'<button class="link" id="restoreBtn">Restore purchases</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{track('noads_tap');HLAds.buy().then(closeOv)};const rs=$('#restoreBtn');if(rs)rs.onclick=()=>{HLAds.restore().then(closeOv)}});
     return;
   }

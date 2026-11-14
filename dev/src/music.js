@@ -19,7 +19,15 @@ const MUSIC={
       MUSIC.ok=true;MUSIC.sync();
     }catch(e){}
   },
-  set(name){if(MUSIC.want===name)return;MUSIC.want=name;MUSIC.sync()},
+  // leaving the menu tune is a hard cut (it stops the moment Play is pressed); every other change crossfades
+  set(name){if(MUSIC.want===name)return;const was=MUSIC.want;MUSIC.want=name;if(was==='home')MUSIC.cut('home');MUSIC.sync()},
+  cut(name){
+    try{const t=MUSIC.T[name];if(!t||!t.node)return;const c=SFX.ctx,now=c.currentTime,s=t.node;
+      t.g.gain.cancelScheduledValues(now);t.g.gain.setValueAtTime(MUSIC.level(t,now),now);t.g.gain.linearRampToValueAtTime(0,now+0.03);
+      t.want=false;t.node=null;t.g=null;t.lvl=0;t.fadeDur=0;t.fadeTo=0;
+      setTimeout(()=>{try{s.stop();s.disconnect()}catch(e){}},80);
+    }catch(e){}
+  },
   // audible region of a decoded buffer: skips leading/trailing samples below -60 dB
   region(buf){
     try{

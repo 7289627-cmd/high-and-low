@@ -1,0 +1,8 @@
+/* Home wardrobe: bean button beside the name, and the look sheet */
+.field.me-row{grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+.me-btn{width:54px;height:54px;border-radius:50%;background:var(--white);border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink);padding:0;display:grid;place-items:center;cursor:pointer;overflow:hidden;flex:none}
+.me-btn svg{width:34px;height:auto;aspect-ratio:100/140;display:block;margin-top:4px}
+.me-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.looksheet{max-height:calc(100% - 24px);overflow:auto}
+.looksheet .look-me svg{width:84px;height:auto;aspect-ratio:100/140;display:block;margin:0 auto 6px}
+.looksheet .picker{margin-top:0}

@@ -5,13 +5,13 @@ const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return 
   del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const uid=()=>Math.random().toString(36).slice(2,10);
 const clean=s=>String(s||'').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g,'').trim().slice(0,12);
+/* A player id is used as an object key all over the engine: only plain tokens, never names like __proto__. */
+const okPid=s=>typeof s==='string'&&/^[\w-]{1,40}$/.test(s)&&!(s in Object.prototype);
 let PID=LS.get('hl-pid'); if(typeof PID!=='string'){PID='p'+uid();LS.set('hl-pid',PID)}
 {const t=(location.hash.match(/player=(\w{1,8})/)||[])[1];if(t)PID+='-'+t;}
 const LSTAG=(location.hash.match(/player=(\w{1,8})/)||[])[1]||'';const LSK=k=>LSTAG?k+'@'+LSTAG:k;
 let NAME=clean(LS.get(LSK('hl-name')))||'';
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';
-const ARROW_UP=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6 8H10v4H6v-4H2z" fill="currentColor"/></svg>`;
-const ARROW_DN=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14l6-8H10V2H6v4H2z" fill="currentColor"/></svg>`;
 
 /* ---------- App state ---------- */
 let view='home', mode=null, code=null, isHost=false;
@@ -37,9 +37,39 @@ const hatUnlocked=i=>i<6||winsN()>=(HAT_NEED[i]||99);
 const validLook=l=>l&&typeof l==='object'&&Number.isInteger(l.c)&&l.c>=0&&l.c<6&&Number.isInteger(l.k)&&l.k>=0&&l.k<hatCount()?{c:l.c,k:l.k}:null;
 function myLook(){const l=validLook(LS.get(LSK('hl-look')));if(!l)return null;if(!hatUnlocked(l.k))l.k=l.c;return l}
 const pv=p=>({color:COLORS[p.c%6],acc:(p.k!=null?p.k:p.c),id:p.c});
-const TAUNTS=['😂','😱','🤔','😈','🙏','🔥'];
+const TAUNTS=['😂','😱','🤔','😈','🙏','🔥'],TAUNT_NAMES=['Laugh','Shocked','Thinking','Evil grin','Please','Fire'];
+/* Report player: one tap on the result sheet. The name becomes Bean and taunts are hidden on this phone (names kept in a small capped list). */
+const REPK='hl-rep',REPCAP=30,repKey=n=>String(n==null?'':n).trim().toLowerCase();
+let repList=(()=>{const a=LS.get(REPK);return Array.isArray(a)?a.filter(x=>typeof x==='string').slice(-REPCAP):[]})(),repPids=new Set(),repOrig={};
+function repFix(p){
+  if(!p||p.pid===PID)return;
+  if(!repPids.has(p.pid)){const k=repKey(p.name);if(k==='bean'||!repList.includes(k))return;repPids.add(p.pid)}
+  if(p.name!=='Bean'){repOrig[p.pid]=p.name;p.name='Bean'}
+}
+function repOthers(){return G&&mode!=='solo'?G.players.filter(p=>p.pid!==PID&&(!p.bot||p.hb)):[]}
+function repBtnHTML(){
+  const o=repOthers();if(o.length!==1)return '';
+  const done=repPids.has(o[0].pid);
+  return `<button class="btn round rep-btn${done?' done':''}" id="repBtn" aria-label="${done?'Reported':'Report player'}"${done?' disabled':''}>${done?REP_TICK:REP_FLAG}</button>`;
+}
+const REP_FLAG='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 5h12l-3 4.5 3 4.5H6" fill="currentColor"/></svg>';
+const REP_TICK='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>';
+function reportPlayer(){
+  const o=repOthers();if(o.length!==1)return;
+  const p=o[0],k=repKey(p.name);
+  try{track('report',{k:isPub?1:2,hb:p.hb?1:0,n:G.players.length})}catch(e){}
+  if(k&&k!=='bean'&&!repList.includes(k)){repList.push(k);repList=repList.slice(-REPCAP);LS.set(REPK,repList)}
+  repPids.add(p.pid);repFix(p);
+  const b=$('#repBtn');if(b){b.innerHTML=REP_TICK;b.disabled=true;b.classList.add('done');b.setAttribute('aria-label','Reported')}
+  render(true);
+}
 let tnN=Math.floor(Date.now()/1000),tnSeen={},popId=0,newHatIdx=null;
+let babAt=0;
+/* Other phones can send taunts as fast as they like: at most one babble sound per 300 ms. */
+function babOk(){const n=Date.now();if(n-babAt<300)return false;babAt=n;return true}
 function addPop(pid,e){
+  if(repPids.has(pid))return;
+  if(ui.pops.length>=24)return;
   const id=++popId;ui.pops.push({pid,e,id,until:Date.now()+1600});
   later(()=>{ui.pops=ui.pops.filter(x=>x.until>Date.now());render(true)},1660);
 }
@@ -51,7 +81,7 @@ function trackTaunts(){
   if(G&&G.bt)for(const pid in G.bt){
     const tn=G.bt[pid],k='b:'+pid+':'+G.gid;
     if(!(k in tnSeen)){tnSeen[k]=view==='game'&&G.phase!=='lobby'?0:tn.n}
-    if(tn.n>tnSeen[k]){tnSeen[k]=tn.n;addPop(pid,TAUNTS[tn.e]);const p=byPid(pid);sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07})}
+    if(tn.n>tnSeen[k]){tnSeen[k]=tn.n;addPop(pid,TAUNTS[tn.e]);const p=byPid(pid);if(babOk())sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07})}
   }
   for(const [pid,v] of peerMap){
     const tn=v.pres.tn,n=tn&&Number.isInteger(tn.n)?tn.n:0;
@@ -60,7 +90,7 @@ function trackTaunts(){
       tnSeen[pid]=n;
       if(Number.isInteger(tn.e)&&tn.e>=0&&tn.e<TAUNTS.length){
         addPop(pid,TAUNTS[tn.e]);botHear(pid,tn.e);
-        const p=byPid(pid);sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07});
+        const p=byPid(pid);if(babOk())sfx('babble'+rnd(1,3),{rate:0.9+((p?p.c:0)%6)*0.07});
       }
     }
   }
@@ -73,7 +103,7 @@ function tauntSend(e){
 }
 function tauntBar(){
   const dis=Date.now()<ui.tauntUntil;
-  return `<div class="taunt-bar" role="group" aria-label="Taunts">${TAUNTS.map((e,i)=>`<button class="taunt-btn" data-tn="${i}" ${dis?'disabled':''}>${e}</button>`).join('')}</div>`;
+  return `<div class="taunt-bar" role="group" aria-label="Taunts">${TAUNTS.map((e,i)=>`<button class="taunt-btn" data-tn="${i}" aria-label="${TAUNT_NAMES[i]}" ${dis?'disabled':''}>${e}</button>`).join('')}</div>`;
 }
 function countWin(){
   const key=G.gid+':'+G.en;
@@ -84,18 +114,19 @@ function countWin(){
   newHatIdx=null;
   for(let i=6;i<hatCount();i++){const nd=HAT_NEED[i]||99;if(nd>prev&&nd<=now)newHatIdx=i}
 }
-const AWARD_DEFS=[['Most Deadly',1,'kills'],['Worst Guesser',2,'misses'],['Closest Call',3,'closest'],['Most Curious',0,'questions']];
 function awardsHTML(){
   const st=G.st||{},rows=[];
   const best=(i,min)=>{let b=null,bv=null;for(const p of G.players){const a=st[p.pid];if(!a||a[i]==null)continue;const v=a[i];if(bv===null||(min?v<bv:v>bv)){b=p;bv=v}}return b?{p:b,v:bv}:null};
   const add=(name,r,txt)=>{if(r)rows.push(`<div class="award"><span class="aw-bean">${charSVG(pv(r.p),'idle')}</span><span class="aw-txt"><b>${name}</b><span>${esc(r.p.name)}</span></span><span class="aw-stat">${txt}</span></div>`)};
-  let r=best(1);if(r&&r.v>0)add('Most Deadly',r,r.v+(r.v>1?' kills':' kill'));
-  r=best(2);if(r&&r.v>0)add('Worst Guesser',r,r.v+(r.v>1?' misses':' miss'));
-  r=best(3,true);if(r)add('Closest Call',r,'survived down to '+fmt(r.v)+(r.v===1?' number':' numbers'));
-  r=best(0);if(r&&r.v>0)add('Most Curious',r,r.v+(r.v>1?' questions':' question'));
+  let r=best(1);if(r&&r.v>0)add('Most deadly',r,r.v+(r.v>1?' kills':' kill'));
+  r=best(2);if(r&&r.v>0)add('Worst guesser',r,r.v+(r.v>1?' misses':' miss'));
+  r=best(3,true);if(r)add('Closest call',r,fmt(r.v)+' left');
+  r=best(0);if(r&&r.v>0)add('Most curious',r,r.v+(r.v>1?' questions':' question'));
   return rows.length?`<div class="awards">${rows.slice(0,4).join('')}</div>`:'';
 }
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
+/* My own seat was taken over by a bot while I was away (see takeOver). It keeps my pid, so wins and rating must not count for me. */
+const replaced=()=>{const m=byPid(PID);return !!(m&&m.bot)};
 function kn(aPid,tPid){
   if(!G)return{lo:1,hi:10000,x:[]};
   const m=G.kn&&G.kn[aPid],k=m&&m[tPid];
@@ -132,7 +163,7 @@ function rebuildPeers(list){
   for(const p of list){
     if(p.isMe)continue;
     const pr=p.presence||{};
-    if(pr.code!==code||typeof pr.pid!=='string'||pr.pid===PID)continue;
+    if(pr.code!==code||!okPid(pr.pid)||pr.pid===PID)continue;
     const prev=peerMap.get(pr.pid);
     if(!prev||p.updatedAt>prev.updatedAt)peerMap.set(pr.pid,{pres:pr,updatedAt:p.updatedAt});
     lastSeen[pr.pid]=Date.now();
@@ -164,46 +195,48 @@ function cleanG(g){
     if(!['lobby','secrets','play','over'].includes(g.phase))return null;
     g.max=[100,1000,10000,100000].includes(g.max)?g.max:10000;g.pub=g.pub?1:0;
     const hats=typeof hatCount==='function'?hatCount():12;
-    g.players=g.players.slice(0,6).filter(p=>p&&typeof p==='object'&&typeof p.pid==='string'&&p.pid).map(p=>{
-      p.pid=p.pid.slice(0,40);p.name=clean(p.name)||'Player';p.c=int(p.c,0,0,5);p.k=p.k==null?null:int(p.k,0,0,hats-1);
+    g.players=g.players.slice(0,6).filter(p=>p&&typeof p==='object'&&okPid(p.pid)).map(p=>{
+      for(const k in p){const v=p[k];if(k!=='name'&&(typeof v==='object'||typeof v==='function'||(typeof v==='string'&&v.length>40)))delete p[k]}
+      p.name=safeName(clean(p.name)||'Player',!g.pub);repFix(p);p.c=int(p.c,0,0,5);p.k=p.k==null?null:int(p.k,0,0,hats-1);
       p.dg=int(p.dg,0,0,3);if('el' in p)p.el=int(p.el,ELO0,100,3000);
       p.a=p.a?1:0;p.bot=p.bot?1:0;p.hb=p.hb?1:0;p.ez=p.ez?1:0;p.sh=p.sh?1:0;p.fz=p.fz?1:0;p.d=DEATHS.includes(p.d)?p.d:'';
       if('co' in p)p.co=int(p.co,0,0,99999);return p});
     if(!g.players.length)return null;
+    const ids=new Set(g.players.map(p=>p.pid)),key=k=>ids.has(k);
     {const o={};
       for(const a in obj(g.kn)){
-        if(a==='__proto__')continue;
+        if(!key(a))continue;
         const m=obj(g.kn[a]),r={};
         for(const t in m){
-          const k=m[t];if(t==='__proto__'||!k||typeof k!=='object'||!Number.isInteger(k.lo)||!Number.isInteger(k.hi))continue;
+          const k=m[t];if(!key(t)||!k||typeof k!=='object'||!Number.isInteger(k.lo)||!Number.isInteger(k.hi))continue;
           const lo=int(k.lo,1,1,g.max);
           r[t.slice(0,40)]={lo,hi:int(k.hi,g.max,lo,g.max),x:Array.isArray(k.x)?k.x.filter(Number.isInteger).slice(0,40):[]};
         }
         o[a.slice(0,40)]=r;
       }
       g.kn=o}
-    {const o={},b=obj(g.bt);let c=0;for(const k in b){const t=b[k];if(k==='__proto__'||c++>=6||!t||!Number.isInteger(t.n)||!Number.isInteger(t.e)||t.e<0||t.e>5)continue;o[k.slice(0,40)]={n:int(t.n,0,0,1e6),e:t.e}}g.bt=o}
+    {const o={},b=obj(g.bt);let c=0;for(const k in b){const t=b[k];if(!key(k)||c++>=6||!t||!Number.isInteger(t.n)||!Number.isInteger(t.e)||t.e<0||t.e>5)continue;o[k.slice(0,40)]={n:int(t.n,0,0,1e6),e:t.e}}g.bt=o}
     g.gid=str(g.gid,24);g.turn=int(g.turn,0,0,g.players.length-1);g.seq=int(g.seq,0,0,1e9);
     g.stage=['await','show','wheel','power'].includes(g.stage)?g.stage:'await';
     g.en=int(g.en,0,0,1e9);g.asked=int(g.asked,0,0,1e9);g.turnNo=int(g.turnNo,0,0,1e9);g.pwTurn=int(g.pwTurn,-1,-1,1e9);
-    g.sub=Array.isArray(g.sub)?g.sub.filter(s=>typeof s==='string').slice(0,12):[];
+    g.sub=Array.isArray(g.sub)?g.sub.filter(s=>typeof s==='string').slice(0,12).map(s=>s.slice(0,40)):[];
     g.subN=int(g.subN,g.sub.length,0,12);g.timer=[0,20,40].includes(g.timer)?g.timer:0;
     g.win=typeof g.win==='string'?g.win.slice(0,40):null;g.bs=typeof g.bs==='number'?g.bs:0.5;
     if(g.q){const q=g.q;
       if(typeof q!=='object'||!['ask','guess','askall'].includes(q.t)||typeof q.a!=='string'||(q.t!=='askall'&&typeof q.tg!=='string'))g.q=null;
       else{q.dir=q.dir==='l'?'l':'h';q.x=int(q.x,1,0,g.max);q.n=int(q.n,1,0,g.max);q.seq=int(q.seq,0,0,1e9);
-        if(q.t==='askall'){q.tg='';const xs={};for(const k in obj(q.xs)){if(k==='__proto__')continue;if(Number.isInteger(q.xs[k]))xs[k.slice(0,40)]=int(q.xs[k],1,1,g.max)}q.xs=xs}}}
+        if(q.t==='askall'){q.tg='';const xs={};for(const k in obj(q.xs)){if(!key(k))continue;if(Number.isInteger(q.xs[k]))xs[k.slice(0,40)]=int(q.xs[k],1,1,g.max)}q.xs=xs}}}
     if(g.ev){const e=g.ev;
       if(typeof e!=='object'||typeof e.t!=='string')g.ev=null;
       else{e.id=int(e.id,0,0,1e9);e.t=e.t.replace(/[^a-z]/g,'').slice(0,12);e.a=str(e.a,40);e.tg=str(e.tg,40);
         e.n=int(e.n,0,0,g.max);e.x=int(e.x,0,0,g.max);e.k=DEATHS.includes(e.k)?e.k:'anvil';e.dir=e.dir==='l'?'l':'h';e.ans=e.ans?1:0;
-        if(e.t==='askall'){const rs={};for(const k in obj(e.rs)){if(k==='__proto__')continue;const v=e.rs[k];if(v&&typeof v==='object'&&Number.isInteger(v.x))rs[k.slice(0,40)]={x:int(v.x,1,0,g.max),ans:v.ans?1:0}}e.rs=rs;e.bl=Array.isArray(e.bl)?e.bl.filter(z=>typeof z==='string').map(z=>z.slice(0,40)).slice(0,6):[]}}}
-    const st={};for(const k in obj(g.st)){const v=g.st[k];if(Array.isArray(v))st[k.slice(0,40)]=v.slice(0,4).map(n=>Number.isInteger(n)?n:null)}g.st=st;
-    const bx={};for(const k in obj(g.bx)){bx[k]={};for(const j in obj(g.bx[k]))if(Number.isInteger(g.bx[k][j]))bx[k][j]=g.bx[k][j]}g.bx=bx;
-    const pk={};for(const k in obj(g.pk)){pk[k]={};for(const j in obj(g.pk[k]))if(g.pk[k][j]==='odd'||g.pk[k][j]==='even')pk[k][j]=g.pk[k][j]}g.pk=pk;
+        if(e.t==='askall'){const rs={};for(const k in obj(e.rs)){if(!key(k))continue;const v=e.rs[k];if(v&&typeof v==='object'&&Number.isInteger(v.x))rs[k.slice(0,40)]={x:int(v.x,1,0,g.max),ans:v.ans?1:0}}e.rs=rs;e.bl=Array.isArray(e.bl)?e.bl.filter(z=>typeof z==='string').map(z=>z.slice(0,40)).slice(0,6):[]}}}
+    const st={};for(const k in obj(g.st)){const v=g.st[k];if(key(k)&&Array.isArray(v))st[k.slice(0,40)]=v.slice(0,4).map(n=>Number.isInteger(n)?n:null)}g.st=st;
+    const bx={};for(const k in obj(g.bx)){if(!key(k))continue;bx[k]={};for(const j in obj(g.bx[k]))if(key(j)&&Number.isInteger(g.bx[k][j]))bx[k][j]=g.bx[k][j]}g.bx=bx;
+    const pk={};for(const k in obj(g.pk)){if(!key(k))continue;pk[k]={};for(const j in obj(g.pk[k]))if(key(j)&&(g.pk[k][j]==='odd'||g.pk[k][j]==='even'))pk[k][j]=g.pk[k][j]}g.pk=pk;
     if(g.pr){const r=g.pr;
       if(typeof r!=='object'||!['snap','peek'].includes(r.k))g.pr=null;
-      else{r.id=str(String(r.id),24);r.by=str(r.by,40);r.need=Array.isArray(r.need)?r.need.filter(s=>typeof s==='string').slice(0,6):[];r.until=typeof r.until==='number'?r.until:0;if(r.tg!=null)r.tg=str(r.tg,40)}}
+      else{r.id=str(String(r.id),24);r.by=str(r.by,40);r.need=Array.isArray(r.need)?r.need.filter(s=>typeof s==='string').slice(0,6).map(s=>s.slice(0,40)):[];r.until=typeof r.until==='number'?r.until:0;if(r.tg!=null)r.tg=str(r.tg,40)}}
     return g;
   }catch(e){return null}
 }
@@ -212,21 +245,23 @@ function update(){
   if(view==='game'){
     if(!isHost){
       let h=null;for(const v of peerMap.values())if(v.pres.role==='host'&&v.pres.game&&typeof v.pres.game==='object')h=v;
-      if(h&&h.pres.gone){const wp=G&&G.pub;eloSkip=true;leaveGame().then(()=>{if(!wp)ui.homeErr='The host left.';render(true)});return}
+      if(h&&h.pres.gone){const wp=G&&G.pub;/* the host left on purpose mid-duel: the stayer wins */try{const m=G&&byPid(PID);if(wp&&G.phase==='play'&&m&&m.a&&!replaced()){eloApply(true);stGame(true,true);if(eloLast&&eloLast.gid===G.gid&&eloLast.d>0){const d=eloLast.d;setTimeout(()=>eloShow(d),400)}}}catch(e){}eloSkip=true;leaveGame().then(()=>{if(!wp)ui.homeErr='The host left';render(true)});return}
       if(h){hostSeenAt=Date.now()}
-      else if(hostSeenAt&&Date.now()-hostSeenAt>(window.HL_TEST_HOSTLOST_MS||60000)){hostSeenAt=0;const wp=G&&G.pub;eloSkip=true;leaveGame().then(()=>{if(!wp)ui.homeErr='Lost the host.';render(true)});return}
+      else if(hostSeenAt&&Date.now()-hostSeenAt>(window.HL_TEST_HOSTLOST_MS||60000)){hostSeenAt=0;const wp=G&&G.pub;eloSkip=true;leaveGame().then(()=>{if(!wp)ui.homeErr='Lost the host';render(true)});return}
       G=h?cleanG(h.pres.game):null;
+      if(G&&G.pub&&!isPub)G.pub=0; // a rated room is only one this phone joined through Play
     } else hostTick();
-    syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
+    syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();a11Watch();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
     if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
     if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
-    if(G&&G.phase==='over'&&G.win===PID)try{countWin()}catch(e){}
-    if(G&&G.phase==='over'&&G.pub)eloApply(G.win===PID);
+    if(G&&G.phase==='over'&&G.win===PID&&!replaced())try{countWin()}catch(e){}
+    if(G&&G.phase==='play'&&G.pub){eloPlayGid=G.gid;eloPend()}
+    if(G&&G.phase==='over'&&G.pub){const w=G.win===PID&&!replaced();eloApply(w);stGame(w,true);pendClear(G.gid)}
     if(G&&G.phase==='over')try{botGameDone()}catch(e){}
     try{trackTaunts()}catch(e){}
     trackTick();
-    if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;later(showWinner,900)}
+    if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;if(!replaced())later(showWinner,900)}
   }
   render();
 }
@@ -245,7 +280,7 @@ function stateSounds(){
         sfxSeen.seq.add(key);
         const cur=G.players[G.turn];
         if(G.seq===1&&!sfxSeen.go.has(G.gid)){sfxSeen.go.add(G.gid);sfx('vo_go')}
-        else if(cur&&cur.pid===PID&&G.sub&&G.sub.length===G.subN)sfx('yourturn');
+        else if(cur&&cur.pid===PID&&G.sub&&G.sub.length===G.subN){sfx('yourturn');haptic('tap')}
       }
     }
     if(G.phase==='play'&&G.players.length>=3&&G.players.filter(p=>p.a).length===2&&!sfxSeen.final.has(G.gid)){sfxSeen.final.add(G.gid);sfx('vo_final',{delay:0.6})}
@@ -270,18 +305,19 @@ function heartCheck(){
 }
 function sceneMs(k){return (typeof SCENE_MS!=='undefined'&&SCENE_MS&&SCENE_MS[k])||3900}
 function deathSfx(k){
-  const d=(window.DEATH_SFX&&window.DEATH_SFX[k])||Object.assign({anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]},window.EXTRA_DEATH_SFX||{})[k]||[];
+  const d=(window.DEATH_SFX&&window.DEATH_SFX[k])||[];
   d.forEach(x=>sfx(x[0],{delay:x[1],rate:x[2]||1,vol:x[3]==null?1:x[3]}));
+  later(()=>haptic('thud'),Math.round(hapticImpactAt(k)*1000));
 }
 
 /* ---------- Host engine ---------- */
 function newLobby(){
-  return{gid:uid(),phase:'lobby',max:1000,timer:0,players:[Object.assign({pid:PID,name:NAME||'Host',c:0,bot:0,a:1,d:'',dg:0},myLook()||{})],st:{},
+  return{gid:uid(),phase:'lobby',max:1000,timer:0,players:[Object.assign({pid:PID,name:safeName(NAME||'Host',!isPub),c:0,bot:0,a:1,d:'',dg:0},myLook()||{})],st:{},
     turn:0,seq:0,stage:'await',q:null,ev:null,en:0,asked:0,win:null};
 }
 function publishG(){
   if(isHost&&G&&G.phase==='play')try{setDanger()}catch(e){}
-  setP({game:JSON.parse(JSON.stringify(G))});
+  {const c=JSON.parse(JSON.stringify(G));c.players.forEach(p=>{if(repOrig[p.pid])p.name=repOrig[p.pid]});setP({game:c})}
   if(!G.pub)LS.set('hl-host-'+code,{G,botSecrets,at:Date.now()});
 }
 function applyLooks(){
@@ -300,6 +336,7 @@ let wdSig='',wdAt=0,hostSeenAt=0,wakeLock=null;
 /* Keep the screen on during a game so phones do not lock and drop out. */
 function keepAwake(){
   const want=view==='game'&&document.visibilityState==='visible';
+  try{const N=window.HLNative;if(N&&N.keepAwake&&keepAwake.n!==want){keepAwake.n=want;N.keepAwake(want)}}catch(e){} /* f02: app WebViews have no navigator.wakeLock; the native plugin does it, the web path below stays as fallback */
   try{
     if(want&&!wakeLock&&navigator.wakeLock){wakeLock=1;navigator.wakeLock.request('screen').then(l=>{wakeLock=l;l.addEventListener('release',()=>{wakeLock=null})}).catch(()=>{wakeLock=null})}
     else if(!want&&wakeLock&&wakeLock.release){wakeLock.release().catch(()=>{});wakeLock=null}
@@ -320,24 +357,22 @@ function watchdog(){
   return true;
 }
 const FILL_NAMES=['Mia','Leo','Zoe','Kai','Ava','Max','Ivy','Sam','Noa','Eli','Luna','Theo','Ruby','Finn','Maya','Jude','Nova','Otis','Remy','Cleo'];
-const BAD=['fuck','shit','bitch','cunt','nigg','fagg','whore','slut','bastard','dildo','penis','vagina','rapist','nazi','hitler','retard','twat','wank','porn','pussy','asshole','dickhead','blowjob','kike','chink'];
-function tameName(n){const l=String(n||'').toLowerCase().replace(/[^a-z]/g,'');return BAD.some(w=>l.includes(w))?'Bean':n}
 function addFillBot(){
   if(G.players.length>=6)return;
   const nm=freshName(G.players.map(p=>p.name));
   const np={pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,hb:1,a:1,d:'',dg:0};
   const k=fillLook();if(k!=null)np.k=k;
-  np.el=Math.max(700,myElo()+rnd(-80,80));
-  G.players.push(np);
+  np.el=Math.min(3000,Math.max(100,myElo()+rnd(-80,80)));
+  repFix(np);G.players.push(np);
 }
 /* Public room pacing (host side): fill bots at 1.5, 2.5, 3.5 steps, start 1.5 s after 4 players. Returns true when the game was started. */
-let pubAt=0,pubFills=0,pubFullAt=0;
+let pubAt=0,pubFills=0,pubFullAt=0,pubJit=0;
 function pubTick(){
   const step=window.HL_TEST_FILL_MS||2000,now=Date.now();
-  if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0}
+  if(!pubAt){pubAt=now;pubFills=0;pubFullAt=0;pubJit=Math.random()*1.5}
   if(G.max!==playMode().max)G.max=playMode().max;
   if(G.timer!==40)G.timer=40;
-  if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubFills)){pubFills++;addFillBot();publishG()}
+  if(G.players.length<PUB_N&&pubFills<PUB_N-1&&now-pubAt>=step*(2.5+pubJit+pubFills)){pubFills++;addFillBot();publishG()}
   if(G.players.length>=PUB_N){
     if(!pubFullAt)pubFullAt=now;
     if(now-pubFullAt>=1500){pubFullAt=0;hostStart();return true}
@@ -349,15 +384,15 @@ function hostTick(){
   botLifeTick();
   if(watchdog()){publishG();return}
   let ch=false;
-  const me=byPid(PID);const myNm=G.pub?tameName(NAME||'Host'):(NAME||'Host');if(me&&me.name!==myNm){me.name=myNm;ch=true}
+  const me=byPid(PID);const myNm=safeName(NAME||'Host',!G.pub);if(me&&me.name!==myNm){me.name=myNm;ch=true}
   if(me&&G.phase==='lobby'&&me.el!==myElo()){me.el=myElo();ch=true}
   if(G.phase==='lobby'&&mode==='online'){
     for(const [pid,v] of peerMap){
       if(v.pres.role!=='player'||v.pres.gone)continue;
-      const nm0=clean(v.pres.name)||'Player',nm=G.pub?tameName(nm0):nm0;
+      const nm0=clean(v.pres.name)||'Player',nm=safeName(nm0,!G.pub);
       const p=byPid(pid);
-      if(p){if(p.name!==nm){p.name=nm;ch=true}}
-      else if(G.players.length<(G.pub?PUB_N:6)){const l=validLook(v.pres.look);const np={pid,name:nm,el:Number.isInteger(v.pres.el)?Math.min(3000,Math.max(100,v.pres.el)):ELO0,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;G.players.push(np);ch=true}
+      if(p){if((repOrig[pid]&&p.name==='Bean'?repOrig[pid]:p.name)!==nm){p.name=nm;repFix(p);ch=true}}
+      else if(G.players.length<(G.pub?PUB_N:6)){const l=validLook(v.pres.look);const np={pid,name:nm,el:Number.isInteger(v.pres.el)?Math.min(3000,Math.max(100,v.pres.el)):ELO0,c:l&&!G.players.some(q=>q.c===l.c)?l.c:freeColor(),bot:0,a:1,d:'',dg:0};if(l)np.k=l.k;repFix(np);G.players.push(np);ch=true}
     }
     const before=G.players.length;
     G.players=G.players.filter(p=>p.bot||p.pid===PID||(peerMap.has(p.pid)&&!peerMap.get(p.pid).pres.gone));
@@ -369,13 +404,13 @@ function hostTick(){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
       const pp=peerMap.get(p.pid);
-      if(pp&&pp.pres.gone){takeOver(p);ch=true}
+      if(pp&&pp.pres.gone){if(G.pub&&G.phase==='play'&&G.players.length===2){G.phase='over';G.win=PID;publishG();return} /* the opponent left a rated duel: I win */takeOver(p);ch=true}
       else if(pp)lastSeen[p.pid]=Date.now();
-      else if(Date.now()-(lastSeen[p.pid]||Date.now())>90000){takeOver(p);ch=true}
+      else if(Date.now()-(lastSeen[p.pid]||Date.now())>(window.HL_TEST_GONE_MS||90000)){takeOver(p);ch=true}
     }
   }
   if(G.phase==='secrets'){
-    const ready=G.players.every(p=>!p.a||p.bot||(getPres(p.pid)||{}).ready===G.gid);
+    const ready=G.players.every(p=>!p.a||(p.bot&&!(G.bw&&G.bw[p.pid]))||(getPres(p.pid)||{}).ready===G.gid);
     if(ready){G.phase='play';G.stage='wheel';G.seq=0;G.q=null;G.sub=[];G.subN=0;ch=true}
   }
   if(G.phase==='play'&&G.stage==='wheel'&&wheelSched!==G.gid){
@@ -389,7 +424,7 @@ function hostTick(){
     if(!G.q){fixSub();if(!G.sub.length){G.stage='show';const s0=G.seq;later(()=>advance(s0),300);publishG();return}}
     if(!G.q){
       if(cur.bot){
-        if(botSched!==G.seq||Date.now()-botAt>4000){const s=G.seq;botSched=s;botAt=Date.now();later(()=>{if(G&&G.seq===s&&G.stage==='await'&&!G.q&&G.phase==='play'){const c=G.players[G.turn];if(!c||!c.bot||!c.a)return;G.q=botChoose(c);if(!G.q){G.sub.shift();G.stage='show';later(()=>advance(s),300)}publishG()}},1500)}
+        if(botSched!==G.seq||Date.now()-botAt>botWait+4000){const s=G.seq;botSched=s;botAt=Date.now();botWait=botWaitMs(cur);later(()=>{if(G&&G.seq===s&&G.stage==='await'&&!G.q&&G.phase==='play'){const c=G.players[G.turn];if(!c||!c.bot||!c.a)return;G.q=botChoose(c);if(!G.q){G.sub.shift();G.stage='show';later(()=>advance(s),300)}publishG()}},botWait)}
       } else {
         const act=(getPres(cur.pid)||{}).act;
         if(act&&act.gid===G.gid&&act.seq===G.seq&&validAct(cur,act)){
@@ -568,11 +603,11 @@ function takeOver(p){
 function botChoose(me){
   const base={seq:G.seq,a:me.pid};
   if(G.sub[0]==='*'){
-    const dir=Math.random()<.5?'h':'l',xs={};
+    const dir=isFill(me)?botDirFor(me.pid):Math.random()<.5?'h':'l',xs={};
     for(const o of nzOpp(me.pid)){
       const t=vw(me.pid,o);
       const sk=me.ez?0.15:(G.pub&&me.hb&&Number.isInteger(me.el))?eloSkill(me.el):Math.max(0.1,Math.min(1,(G.bs==null?0.5:G.bs)+botLeaderBias(me.pid,o)));
-      xs[o.pid]=botSplit(t,sk,dir,Math.random(),Math.random());
+      xs[o.pid]=isFill(me)?botAskX(t,sk,dir,G.max):botSplit(t,sk,dir,Math.random(),Math.random());
     }
     return{...base,tg:'',t:'askall',dir,xs};
   }
@@ -586,7 +621,8 @@ function hostStart(){
   {const hn=G.players.filter(p=>!p.bot).length;G.bs=hn===1?botSkillBase():0.5}
   G.kn={};
   for(const a of G.players){G.kn[a.pid]={};for(const t of G.players)if(t!==a)G.kn[a.pid][t.pid]={lo:1,hi:G.max,x:[]}}
-  for(const p of G.players){Object.assign(p,{a:1,d:'',dg:0});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=rnd(1,G.max)}
+  for(const p of G.players){Object.assign(p,{a:1,d:'',dg:0});lastSeen[p.pid]=Date.now();if(p.bot)botSecrets[p.pid]=isFill(p)?botSecretPick(G.max):rnd(1,G.max)}
+  botLockInit();
   pwReset();
   publishG();
 }
@@ -628,6 +664,7 @@ function playNewEvent(){
   const A=byPid(ev.a),T=byPid(ev.tg);
   try{pwEvent(ev)}catch(e){}
   const inv=ev.a===PID||ev.tg===PID;
+  if(ev.t==='ask'||ev.t==='miss'||ev.t==='askall')try{announce(evText(ev))}catch(e){}
   if(ev.t==='askall'){
     const rs=ev.rs||{},bl=ev.bl||[],mine=rs[PID];
     if(ev.a===PID)sfx(Object.values(rs).some(r=>r.ans)?'yes':'nope');
@@ -687,10 +724,45 @@ function qText(q){
 }
 
 /* ---------- Overlays ---------- */
-function openOv(html,onTap){const o=$('#ov');o.innerHTML=html;o.hidden=false;o.onclick=onTap||null}
-function closeOv(){const o=$('#ov');o.hidden=true;o.innerHTML='';o.onclick=null}
+/* perf: while a sheet or scene covers the screen, endless decorative loops underneath (home scenery, bobbing beans, blinking eyes) are paused and resumed on close. One-shot animations keep running. */
+let ovHeld=[];
+function ovLoops(){
+  try{
+    const o=document.getElementById('ov'),app=document.getElementById('app');
+    if(!o||!app||!document.getAnimations)return;
+    if(o.hidden){const h=ovHeld;ovHeld=[];h.forEach(a=>{try{a.play()}catch(e){}});return}
+    document.getAnimations().forEach(a=>{
+      if(a.playState!=='running'||!a.effect||!a.effect.target||!app.contains(a.effect.target))return;
+      if(a.effect.getComputedTiming().iterations!==Infinity)return;
+      a.pause();ovHeld.push(a);
+    });
+  }catch(e){}
+}
+/* a11y: focus moves into the sheet on open and returns to the opener on close; announce() feeds one polite live region */
+let ovOpener=null;
+function a11Sel(el){if(!el||el===document.body)return null;let sel=null;if(el.id)sel='#'+el.id;else{const k=Object.keys(el.dataset||{})[0];if(k)sel='[data-'+k.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())+'="'+String(el.dataset[k]).replace(/["\\]/g,'')+'"]'}return {el,sel}}
+function openOv(html,onTap){
+  const o=$('#ov');if(o.hidden)ovOpener=a11Sel(document.activeElement);
+  o.innerHTML=html;o.hidden=false;o.onclick=onTap||null;
+  const s=o.querySelector('.sheet');
+  if(s){s.setAttribute('role','dialog');s.setAttribute('aria-modal','true');s.tabIndex=-1;const h=s.querySelector('h2');if(h){h.id='ovTitle';s.setAttribute('aria-labelledby','ovTitle')}try{s.focus({preventScroll:true})}catch(e){}}
+  ovLoops();
+}
+function closeOv(){
+  const o=$('#ov'),was=!o.hidden;o.hidden=true;o.innerHTML='';o.onclick=null;
+  if(was&&ovOpener){const t=ovOpener;ovOpener=null;try{const el=t.el&&t.el.isConnected?t.el:(t.sel&&document.querySelector(t.sel));if(el&&!el.disabled&&el.focus)el.focus({preventScroll:true})}catch(e){}}
+  ovLoops();
+}
+function announce(t){
+  if(!t)return;let l=document.getElementById('live');
+  if(!l){l=document.createElement('div');l.id='live';l.className='sr-only';l.setAttribute('role','status');l.setAttribute('aria-live','polite');l.setAttribute('aria-atomic','true');document.body.appendChild(l)}
+  l.textContent='';clearTimeout(announce.t);announce.t=setTimeout(()=>{l.textContent=t},60);
+}
+let a11Turn='';
+function a11Watch(){if(canAct()){const k=G.gid+':'+G.turnNo;if(a11Turn!==k){a11Turn=k;announce('Your turn')}}}
 function showScene(kind,p,title,text,ms,killer,n){
   const id=++sceneSeq;
+  try{MUSIC.duck(ms)}catch(e){}
   openOv(`<div class="sheet center"><div class="stage">${SCENES[kind](pv(p),killer?pv(killer):null,n!=null?fmt(n):'')}</div><h2>${esc(title)}</h2><p>${esc(text)}</p></div>`,()=>{if(id===sceneSeq)closeOv()});
   later(()=>{if(id===sceneSeq)closeOv()},ms);
 }
@@ -698,59 +770,80 @@ function showWinner(){
   if(!G||G.phase!=='over')return;
   ++sceneSeq;
   const w=byPid(G.win);
-  let conf='';for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
-  sfx('win');sfx(w&&w.pid===PID?'vo_youwin':'vo_gameover',{delay:0.9});
+  const lo=G.pub&&G.players.length===2&&w?G.players.find(p=>p.pid!==w.pid):null;
+  let conf='';if(!(lo&&lo.pid===PID))for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
+  sfx('win');sfx(w&&w.pid===PID?'vo_youwin':'vo_gameover',{delay:0.9});haptic(w&&w.pid===PID?'win':'lose');
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
+  announce(w?(w.pid===PID?'You win':w.name+' wins'):'Nobody survived');
   let hatBlock='';const nh=newHatIdx;newHatIdx=null;
-  if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
-  openOv(`<div class="sheet center has-x"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
-<div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>':`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
+  if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat: ${esc(hatName(nh))}</b></div>`;sfx('lock',{delay:0.5})}
+  openOv(`<div class="sheet center has-x"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="stage">${conf}${w?`<div class="actor a-hop${lo?' pw2 pw-w':''}">${charSVG(pv(w),'happy')}</div>`:''}${lo?`<div class="actor a-slump pw2 pw-l">${charSVG(pv(lo),'scared')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
+<div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>'+shareBtnHTML()+repBtnHTML():`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}${shareBtnHTML()}${repBtnHTML()}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
   {const c=$('#ovClose');if(c)c.onclick=()=>{closeOv();HLAds.between()}}
-  {const x=$('#ovX');if(x)x.onclick=()=>{closeOv();if(G&&G.pub)HLAds.between().then(leaveGame);else HLAds.between()}}
+  {const x=$('#ovX');if(x)x.onclick=()=>{closeOv();if(G&&G.pub){const g=G.gid;HLAds.between().then(()=>{if(G&&G.gid===g)return leaveGame()})}else HLAds.between()}}
   {const a=$('#againBtn');if(a)a.onclick=playAgain}
-  const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();HLAds.between().then(toLobby)};
+  {const sb=$('#shareBtn');if(sb)sb.onclick=()=>shareWin(sb)}
+  {const rb=$('#repBtn');if(rb&&!rb.disabled)rb.onclick=reportPlayer}
+  const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();const g=G&&G.gid;HLAds.between().then(()=>{if(G&&G.gid===g)toLobby()})};
+  if($('.er.ru'))later(()=>{if(!$('.er.ru'))return;sfx('d_ding');if(typeof haptic==='function')haptic('win');later(()=>{const c=$('.er-conf');if(c)c.remove()},2600)},950);
 }
 function toLobby(){if(!isHost||!G)return;G.players=G.players.filter(p=>!p.hb);G.phase='lobby';G.q=null;G.ev=null;G.gid=uid();publishG()}
 
 /* ---------- Play (quick match) ---------- */
 let qp=null,pubTimer=null;
+const QFAIL=new Map(); // room code -> time a join to it failed on this phone
+function qFailed(c){const t=QFAIL.get(c);if(t&&Date.now()-t<120000)return true;QFAIL.delete(c);return false}
 function pubWake(){clearInterval(pubTimer);pubTimer=setInterval(schedule,250)}
 function quickStop(){
   clearInterval(pubTimer);pubTimer=null;
   if(qp){clearInterval(qp.ann);try{qp.q&&qp.q.leave()}catch(e){}qp=null}
 }
-function playAgain(){closeOv();track('again');HLAds.between().then(leaveGame).then(quickPlay)}
+/* The ad may take up to 15 s: if the player left or started something else meanwhile, this old request must not leave or search again. */
+function playAgain(){closeOv();track('again',{m:trackMode(playMode().max)});const g=G&&G.gid;HLAds.between().then(()=>{if(G&&G.gid===g)return leaveGame().then(quickPlay)})}
 function waitHTML(players){
   let list=players;
-  if(!list){const l=myLook()||{};list=[{pid:PID,name:NAME||'You',c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
+  if(!list){const l=myLook()||{};list=[{pid:PID,name:safeName(NAME||'You'),c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
   const rows=list.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}</span><span></span></div>`).join('');
   return `<main class="scroll waitv"><h1 class="logo small">High<span>&amp;</span>Low</h1><section class="panel"><div class="plist">${rows}</div></section>
 <p class="finding">Finding a match<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
 <button class="btn" id="leaveBtn">Leave</button></main>`;
 }
 async function quickPlay(){
-  quickStop();
+  quickStop();trackSearchStart();
   if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
-  if(offline()){render(true);return}
+  if(offline()){trackQ0=0;render(true);return}
   if(roomState!=='ok'||!roomNS||!window.makeSupabaseQueue||!window.HL_CONFIG){startSolo(true);return}
-  const my={q:null,ann:0};qp=my;
+  const my={q:null,ann:0,merge:null,merged:0};qp=my;
   mode='search';view='game';G=null;code=null;isHost=false;isPub=true;myPres={};peerMap=new Map();
   render(true);
   const opens=[];
   try{
     my.q=window.makeSupabaseQueue(window.HL_CONFIG);
-    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1&&m.max===playMode().max)opens.push({code:m.code,n:m.n,t:Date.now()})});
+    my.q.onOpen(m=>{if(m&&typeof m.code==='string'&&/^[A-Z]{4}$/.test(m.code)&&Number.isInteger(m.n)&&m.n<PUB_N&&m.n>=1&&m.max===playMode().max&&opens.length<64){opens.push({code:m.code,n:m.n,t:Date.now()});if(my.merge)my.merge()}});
     my.q.join();
   }catch(e){my.q=null}
-  const qms=window.HL_TEST_Q_MS||2000;
+  const qms=window.HL_TEST_Q_MS||2000,joinMs=window.HL_TEST_QJOIN_MS||3000;
+  let waited=0;
   await new Promise(r=>setTimeout(r,qms));
   if(qp!==my)return;
-  const now=Date.now();
-  const best=opens.filter(o=>now-o.t<5000).sort((a,b)=>b.n-a.n)[0];
+  // newest-first pick of the fullest live advert, skipping codes that failed on this phone in the last 2 minutes
+  const pick=()=>{const t=Date.now();return opens.filter(o=>t-o.t<5000&&!qFailed(o.code)).sort((a,b)=>(b.n-a.n)||(b.t-a.t))[0]};
+  // the queue stays open while we try, so a failed join can use the next advert or announce our own room
+  const reset=async()=>{const q=my.q,q0=trackQ0;my.q=null;trackQ0=0;await leaveGame();trackQ0=q0;my.q=q;qp=my;mode='search';view='game';isPub=true;render(true)};
+  const tryJoin=async o=>{
+    const s0=Date.now();
+    startOnline(false,o.code,true);
+    await new Promise(r=>setTimeout(r,joinMs));
+    if(qp!==my)return 'gone';
+    if(G&&byPid(PID)){my.merge=null;try{my.q&&my.q.leave()}catch(e){}my.q=null;return 'ok'}
+    QFAIL.set(o.code,Date.now());
+    await reset();waited+=Date.now()-s0;
+    return qp===my?'fail':'gone';
+  };
   const host=()=>{
     if(qp!==my)return;
     let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];
-    pubAt=Date.now();pubFills=0;pubFullAt=0;
+    pubAt=Date.now()-Math.min(waited,5000);pubFills=0;pubFullAt=0;pubJit=Math.random()*1.5;
     startOnline(true,c,true);
     G.pub=1;publishG();pubWake();
     if(my.q){
@@ -760,25 +853,37 @@ async function quickPlay(){
         if(G.players.length<PUB_N)my.q.announce({code,n:G.players.length,max:playMode().max,at:Date.now()});
       };
       my.ann=setInterval(ann,Math.min(1500,Math.round(qms*0.75)));ann();
+      // two phones that both decided to host: the one with the larger code joins the other (once)
+      my.merge=()=>{
+        if(qp!==my||my.merged||!G||!isHost||!G.pub||G.phase!=='lobby'||G.players.length!==1)return;
+        for(const v of peerMap.values())if(v.pres.role==='player'&&!v.pres.gone)return;
+        const t=Date.now(),o=opens.filter(o=>o.code<code&&o.n===1&&t-o.t<5000&&!qFailed(o.code)).sort((a,b)=>a.code<b.code?-1:1)[0];
+        if(!o)return;
+        my.merged=1;my.merge=null;clearInterval(my.ann);my.ann=0;
+        (async()=>{
+          await reset();
+          if(qp!==my)return;
+          const r=await tryJoin(o);
+          if(r==='fail')host();
+        })();
+      };
     }
   };
-  if(!best||!my.q){host();return}
-  try{my.q.leave()}catch(e){}my.q=null;
-  startOnline(false,best.code,true);
-  await new Promise(r=>setTimeout(r,window.HL_TEST_QJOIN_MS||6000));
-  if(qp!==my)return;
-  if(G&&byPid(PID))return;
-  await leaveGame();
-  qp=my;mode='search';view='game';isPub=true;render(true);
-  if(qp!==my)return;
-  try{my.q=window.makeSupabaseQueue(window.HL_CONFIG);my.q.join()}catch(e){my.q=null}
+  for(let i=0;i<2&&my.q;i++){
+    const o=pick();
+    if(!o)break;
+    const r=await tryJoin(o);
+    if(r!=='fail')return;
+  }
   host();
 }
 /* ---------- Actions ---------- */
 async function startOnline(asHost,c,pub){
   if(!roomNS)return;
+  /* A second tap or a reconnect race must not open a second channel: the first one would keep sending its stale presence forever. */
+  if(mode==='online'&&view==='game'&&code===c&&isHost===asHost&&isPub===!!pub)return;
   mode='online';isHost=asHost;code=c;view='game';tnSeen={};isPub=!!pub;
-  myPres={pid:PID,name:NAME||'Player',code,role:asHost?'host':'player',el:myElo()};{const l=myLook();if(l)myPres.look=l}
+  myPres={pid:PID,name:safeName(NAME||'Player',!pub),code,role:asHost?'host':'player',el:myElo()};{const l=myLook();if(l)myPres.look=l}
   if(asHost){const saved=pub?null:LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
   if(!pub)LS.set(LSK('hl-session'),{code,host:asHost,at:Date.now()});
@@ -790,9 +895,9 @@ async function startOnline(asHost,c,pub){
 function startSolo(pub){
   mode='solo';isHost=true;code='solo';view='game';R=null;peerMap=new Map();isPub=!!pub;
   G=newLobby();
-  if(pub){G.pub=1;pubAt=Date.now();pubFills=0;pubFullAt=0;pubWake()}
+  if(pub){G.pub=1;pubAt=Date.now();pubFills=0;pubFullAt=0;pubJit=Math.random()*1.5;pubWake()}
   else for(let i=0;i<2;i++)addBot();
-  myPres={pid:PID,name:NAME||'You',code,role:'host'};tnSeen={};
+  myPres={pid:PID,name:safeName(NAME||'You',!pub),code,role:'host'};tnSeen={};
   schedule();
 }
 function addBot(){
@@ -801,15 +906,16 @@ function addBot(){
   G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
 async function leaveGame(){
-  if(G&&G.pub&&G.phase==='play'&&!eloSkip){const m=byPid(PID);if(m&&m.a)eloApply(false)}eloSkip=false;
-  trackLeave();hostSeenAt=0;quickStop();isPub=false;
+  if(G&&G.pub&&G.phase==='play'&&!eloSkip){const m=byPid(PID);if(m&&m.a&&!oppVanished()){eloApply(false);stGame(false,false)}}eloSkip=false;eloRoom='';pendClear();
+  trackLeave();hostSeenAt=0;quickStop();isPub=false;clearInterval(hbTimer);hbTimer=null;hbPeriod=0;
   clearTimers();clearInterval(tickTimer);closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
   LS.del(LSK('hl-session'));if(isHost&&code)LS.del('hl-host-'+code);
   R=null;view='home';mode=null;G=null;code=null;pubAt=0;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,leaveArmed:false,bubble:null};
-  render(true);
+  keepAwake();render(true);
 }
 function lockSecret(n){
+  haptic('tap');
   ui.sec='';mySecret={gid:G.gid,n};LS.set('hl-sec-'+code+'-'+G.gid+'-'+PID,mySecret);
   setP({ready:G.gid});
 }
@@ -818,7 +924,7 @@ function doAsk(){
   const t=curTarget();if(!t||!askViewOn())return;
   const sl=askSlots(mv(t)),x=Number(sl.prefix+ui.num);
   const lo=sl.lo, hi=sl.hi;
-  if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick a whole number from ${fmt(lo)} to ${fmt(hi)}.`;sfx('error');render(true);return}
+  if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick ${fmt(lo)} to ${fmt(hi)}`;sfx('error');render(true);return}
   ui.err='';sfx('send');sendAct({tg:t.pid,t:'askall',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
 }
 
@@ -846,8 +952,9 @@ function render(force){
   if(winY)window.scrollTo(0,winY);
   bind();
   kiteStart();
+  if(!$('#ov').hidden)ovLoops();
   try{MUSIC.set(view==='home'||!G||G.phase==='lobby'?'home':'play')}catch(e){}
-  if(keepId){const el=document.getElementById(keepId);if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
+  if(keepId){const el=document.getElementById(keepId);if(el&&el.getAttribute('role')==='slider')el.focus({preventScroll:true});else if(el&&el.tagName==='INPUT'){el.focus({preventScroll:true});try{if(selS!=null)el.setSelectionRange(selS,selS)}catch(e){}}}
 }
 const SCENE_T0=Date.now();
 function ph(dur,off){return `animation-delay:-${(((Date.now()-SCENE_T0)/1000+(off||0))%dur).toFixed(2)}s`}
@@ -878,15 +985,21 @@ ${flower(4,84,'#F0503C',0)}${flower(15,98,'#FFD23F',.5)}${flower(33,82,'#fff',1.
 </div>`;
 }
 /* The kite: flown with a little physics-free maths so the string always reaches the bean's hand. */
-let kiteOn=false;
+let kiteOn=false,kiteLast=0,kiteC=null,kiteHand=0;
 function kiteFrame(now){
   const svg=document.getElementById('kiteSvg'),bn=document.getElementById('kiteBean');
-  if(!svg||!bn||view!=='home'){kiteOn=false;return}
-  const W=innerWidth,H=innerHeight,br=bn.getBoundingClientRect();
-  const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!svg||!bn||view!=='home'){kiteOn=false;kiteC=null;return}
+  /* perf: 30 fps is plenty for a slow kite, and nothing needs drawing while a sheet covers the scene */
+  const ovEl=document.getElementById('ov');
+  if(now-kiteLast<30||(ovEl&&!ovEl.hidden&&kiteLast)){requestAnimationFrame(kiteFrame);return}
+  kiteLast=now;
+  /* perf: layout facts that do not change between frames are read once per render (kiteStart clears the cache) */
+  if(!kiteC){const gap=document.querySelector('.skygap');kiteC={W:innerWidth,gr:gap?gap.getBoundingClientRect():{top:80,height:70},still:!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)}}
+  const W=kiteC.W,gr=kiteC.gr,still=kiteC.still;
   const t=still?2.2:now/1000;
-  const hx=br.left+br.width*0.16,hy=br.top+br.height*0.52;
-  const gap=document.querySelector('.skygap'),gr=gap?gap.getBoundingClientRect():{top:80,height:70};
+  /* the bean only leans a few px over seconds, so its hand position is re-read about 5 times a second, not every frame (a rect read forces style and layout while animations run) */
+  if(!kiteC.h||now-kiteHand>200){const br=bn.getBoundingClientRect();kiteC.h=[br.left+br.width*0.16,br.top+br.height*0.52];kiteHand=now}
+  const hx=kiteC.h[0],hy=kiteC.h[1];
   const cx=hx-Math.min(W*0.24,260),cy=gr.top+gr.height*0.5,ax=Math.min(W*0.2,200),ay=Math.max(8,gr.height*0.16);
   const kx=cx+ax*Math.sin(t*0.55)+6*Math.sin(t*2.3),ky=cy+ay*Math.sin(t*1.1+0.6)+4*Math.sin(t*3.1);
   const rot=-18+16*Math.cos(t*0.55)+5*Math.sin(t*2.3);
@@ -894,25 +1007,28 @@ function kiteFrame(now){
   const r=rot*Math.PI/180,tx=kx-38*Math.sin(r),ty=ky+38*Math.cos(r);
   const mx=(tx+hx)/2,my=(ty+hy)/2,d=Math.hypot(hx-tx,hy-ty);
   const st=document.getElementById('kiteStr');if(st)st.setAttribute('d',`M${hx.toFixed(1)} ${hy.toFixed(1)}Q${(mx+d*0.1).toFixed(1)} ${(my+d*0.16).toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`);
-  let dd=`M${tx.toFixed(1)} ${ty.toFixed(1)}`,bows='';
+  let dd=`M${tx.toFixed(1)} ${ty.toFixed(1)}`;
+  /* perf: the three tail bows are created once and only their path data changes (was innerHTML every frame) */
+  const bw=document.getElementById('kiteBows');
+  if(bw&&bw.childElementCount!==3){let h='';for(let i=2;i<=6;i+=2)h+=`<path fill="${i===4?'#FFD23F':'#4A7BF7'}" stroke="#1E2240" stroke-width="2" stroke-linejoin="round"/>`;bw.innerHTML=h}
   for(let i=1;i<=6;i++){
     const lag=t-i*0.16,px=tx+i*9*Math.cos(r+1.25)+7*Math.sin(lag*3.2+i*0.9)+i*2.2*Math.cos(lag*0.55)*-3,py=ty+i*11+3*Math.cos(lag*3.2+i);
     dd+=`L${px.toFixed(1)} ${py.toFixed(1)}`;
-    if(i%2===0)bows+=`<path d="M${(px-6).toFixed(1)} ${(py-4).toFixed(1)}l12 8v-8l-12 8z" fill="${i===4?'#FFD23F':'#4A7BF7'}" stroke="#1E2240" stroke-width="2" stroke-linejoin="round"/>`;
+    if(i%2===0&&bw&&bw.children[i/2-1])bw.children[i/2-1].setAttribute('d',`M${(px-6).toFixed(1)} ${(py-4).toFixed(1)}l12 8v-8l-12 8z`);
   }
   const tl=document.getElementById('kiteTail');if(tl)tl.setAttribute('d',dd);
-  const bw=document.getElementById('kiteBows');if(bw)bw.innerHTML=bows;
   if(still){kiteOn=false;return}
   requestAnimationFrame(kiteFrame);
 }
-function kiteStart(){if(kiteOn||typeof requestAnimationFrame!=='function'||!document.getElementById('kiteSvg'))return;kiteOn=true;requestAnimationFrame(kiteFrame)}
+function kiteStart(){kiteC=null;if(kiteOn||typeof requestAnimationFrame!=='function'||!document.getElementById('kiteSvg'))return;kiteOn=true;kiteLast=0;requestAnimationFrame(kiteFrame)}
+window.addEventListener('resize',()=>{kiteC=null});
 function homeHTML(){
-  const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&sess.code&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
+  const sess=LS.get(LSK('hl-session'));const canRejoin=sess&&/^[A-Z]{4}$/.test(sess.code)&&Date.now()-sess.at<3*3600e3&&roomState==='ok';
   const lineup=COLORS.map((c,i)=>`<span class="lu">${charSVG({color:c,acc:i,id:i},'idle','bob')}</span>`).join('');
   const online=roomState==='ok';
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
   return `<main class="scroll home">${homeSceneHTML()}
-<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${eloPill()}${pwHomePill()}</section>
+<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${stPillRow(eloPill())}${pwHomePill()}</section>
 ${offline()?offlineHTML():''}<section class="panel" ${offline()?'hidden':''}>
  <div class="field"><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
  ${modesHTML()}
@@ -925,11 +1041,11 @@ ${offline()?offlineHTML():''}<section class="panel" ${offline()?'hidden':''}>
   ${ui.homeErr?`<p class="err">${esc(ui.homeErr)}</p>`:''}
   <button class="btn full" id="soloBtn" ${NEED_NET?'hidden':''}>Practice</button>
  </div>
- ${roomState==='checking'?'<p class="tip">Connecting to rooms…</p>':''}
+ ${roomState==='checking'?'<p class="tip">Connecting…</p>':''}
 </section>
 </main>`;
 }
-function inviteURL(){return location.origin+location.pathname+'#room='+code}
+function inviteURL(){const app=window.HLNative||location.protocol==='capacitor:';return (app&&window.HL_SITE?window.HL_SITE:location.origin+location.pathname)+'#room='+code} /* e04: inside the app the origin is capacitor://localhost or https://localhost, useless to a friend, so use the public address */
 function qrHTML(){
   if(!window.qrcode||!code)return '';
   try{const q=window.qrcode(0,'M');q.addData(inviteURL());q.make();
@@ -959,23 +1075,23 @@ function muteHTML(){
 function headerHTML(){
   const st=mode==='solo'?'<span class="status solo"><i></i>Practice</span>':(connected?'<span class="status"><i></i>Live</span>':'<span class="status off"><i></i>Connecting</span>');
   const ban=connBanner()?'<div class="conn-banner">Reconnecting…</div>':'';
-  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Tap to leave':'Leave'}</button></header>${ban}`;
+  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Leave?':'Leave'}</button></header>${ban}`;
 }
 function gameHTML(){
   if(mode==='search'||(isPub&&!G))return waitHTML(null);
   if(!G){
     const long=Date.now()-joinedAt>7000;
     return headerHTML()+`<main class="scroll"><section class="panel center"><div class="big-bean">${charSVG({color:COLORS[2],acc:4,id:2},'scared','bob')}</div><h2>Looking for room ${esc(code)}…</h2>
-${long?'<p class="tip">Make sure the host has the game open on their phone and the code is right. The host may also need to share this game with you in Claude.</p>':'<p class="tip">Hang tight.</p>'}</section></main>`;
+</section></main>`;
   }
   if(G.phase==='lobby')return G.pub?waitHTML(G.players):headerHTML()+lobbyHTML();
   if(G.phase==='secrets')return headerHTML()+secretsHTML();
-  if(!byPid(PID)&&G.phase!=='over')return headerHTML()+`<main class="cast">${G.players.map(cardHTML).join('')}</main><section class="tray"><p class="hint">A round is already going. You're watching, and you'll be in the next one.</p></section>`;
+  if((!byPid(PID)||replaced())&&G.phase!=='over')return headerHTML()+`<main class="cast">${G.players.map(cardHTML).join('')}</main><section class="tray"><p class="hint">Watching</p></section>`;
   if(askViewOn())return headerHTML()+askViewHTML();
   if(guessViewOn())return headerHTML()+guessViewHTML();
   const duel=G.players.length===2,me0=G.players.findIndex(p=>p.pid===PID);
   const order=duel&&me0===0?[1,0]:G.players.map((_,i)=>i);
-  return headerHTML()+`<main class="cast ${duel?'duel':''}"><div class="clock-corner">${timerPill()}</div>${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray" aria-live="polite">${trayHTML()}</section>`;
+  return headerHTML()+`<main class="cast ${duel?'duel':''}"><div class="clock-corner">${timerPill()}</div>${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray">${trayHTML()}</section>`;
 }
 function canAct(){
   if(!G||G.phase!=='play')return false;
@@ -1034,7 +1150,7 @@ function sliderParts(tv,x){
 function sliderHTML(tv){
   const x=askX();if(x===null)return '';
   const q=sliderParts(tv,x),seg=(c,fl,fr)=>`<i class="${c} ${fr<0.17?'tiny':''}" style="flex:${fl} 1 0"><em>${c.toUpperCase()}</em></i>`;
-  return `<div class="sld" id="sld" role="slider" tabindex="0" aria-label="Number" aria-valuemin="${askSlots(tv).lo}" aria-valuemax="${askSlots(tv).hi}" aria-valuenow="${x}">
+  return `<div class="sld" id="sld" role="slider" tabindex="0" aria-label="Number" aria-valuemin="${askSlots(tv).lo}" aria-valuemax="${askSlots(tv).hi}" aria-valuenow="${x}" aria-valuetext="${ui.dir==='l'?'Lower':'Higher'} than ${fmt(x)}">
 <div class="sld-track" id="sldTrack">${seg(q.lc,q.leftN,q.f)}${seg(q.rc,q.T-q.leftN,1-q.f)}<b class="sld-thumb" id="sldThumb" style="left:${(q.f*100).toFixed(3)}%"></b></div>
 <div class="rl-caps"><span class="${q.lc}" id="sldL">${q.lt}</span><span class="${q.rc}" id="sldR">${q.rt}</span></div></div>`;
 }
@@ -1048,11 +1164,12 @@ function sliderPaint(){
   const th=$('#sldThumb');if(th)th.style.left=(q.f*100).toFixed(3)+'%';
   const l=$('#sldL'),r=$('#sldR');if(l)l.textContent=q.lt;if(r)r.textContent=q.rt;
   const bn=$('#bigNum');if(bn)bn.textContent=fmt(x);
-  const sd=$('#sld');if(sd)sd.setAttribute('aria-valuenow',x);
+  const sd=$('#sld');if(sd){sd.setAttribute('aria-valuenow',x);sd.setAttribute('aria-valuetext',(ui.dir==='l'?'Lower':'Higher')+' than '+fmt(x))}
 }
 function secPaint(){
   const tr=$('#secTrack');if(!tr)return false;
   const n=Math.min(G.max,Math.max(1,Number(ui.sec)||1)),f=G.max>1?(n-1)/(G.max-1):0,pc=(f*100).toFixed(3)+'%';
+  {const sd=$('#secSld');if(sd){sd.setAttribute('aria-valuenow',n);sd.setAttribute('aria-valuetext',fmt(n))}}
   $('#secFill').style.width=pc;$('#secThumb').style.left=pc;$('#secNum').textContent=fmt(n);
   const lb=$('#lockBtn');if(lb)lb.disabled=false;
   return true;
@@ -1062,13 +1179,22 @@ function secBind(){
   const at=e=>{
     const r=tr.getBoundingClientRect(),f=Math.min(1,Math.max(0,((e.clientX-r.left)/Math.max(1,r.width)-0.04)/0.92));
     const n=String(1+Math.round(f*(G.max-1)));
-    if(n!==ui.sec){ui.sec=n;ui.secTyped=false;ui.err='';secPaint();const now=Date.now();if(now-sldTickAt>70){sldTickAt=now;sfx('tick',{vol:0.5,rate:0.9+f*0.5})}}
+    if(n!==ui.sec){ui.sec=n;ui.secTyped=false;ui.err='';secPaint();haptic('tick');const now=Date.now();if(now-sldTickAt>70){sldTickAt=now;sfx('tick',{vol:0.5,rate:0.9+f*0.5})}}
   };
   let down=false;
   sd.onpointerdown=e=>{down=true;sldDown=true;try{sd.setPointerCapture(e.pointerId)}catch(_){}sd.classList.add('drag');at(e);e.preventDefault()};
   sd.onpointermove=e=>{if(down)at(e)};
   const up=()=>{if(down){down=false;sldDown=false;sd.classList.remove('drag');buzz(8);if(sldPend){sldPend=false;render(true)}}};
   sd.onpointerup=up;sd.onpointercancel=up;
+  sd.onkeydown=e=>{const x=a11SldKey(e,Number(ui.sec)||1,1,G.max);if(x===null)return;e.preventDefault();ui.sec=String(x);ui.secTyped=false;ui.err='';secPaint();sfx('tick',{vol:0.5})};
+}
+/* keyboard for both sliders: Left/Right 1, Shift 10, PageUp/PageDown 10% of the range, Home/End. Returns the new value or null. */
+function a11SldKey(e,x,lo,hi){
+  if(e.ctrlKey||e.metaKey||e.altKey)return null;
+  const k=e.key,st=e.shiftKey?10:1,pg=Math.max(1,Math.round((hi-lo+1)/10));let n=null;
+  if(k==='ArrowLeft'||k==='ArrowDown')n=x-st;else if(k==='ArrowRight'||k==='ArrowUp')n=x+st;
+  else if(k==='PageDown')n=x-pg;else if(k==='PageUp')n=x+pg;else if(k==='Home')n=lo;else if(k==='End')n=hi;
+  return n===null?null:Math.min(hi,Math.max(lo,n));
 }
 let sldTickAt=0;
 function sliderBind(){
@@ -1079,13 +1205,14 @@ function sliderBind(){
     const f=Math.min(1,Math.max(0,((e.clientX-r.left)/Math.max(1,r.width)-0.04)/0.92));
     const leftN=Math.min(T-1,Math.max(1,Math.round(f*T)));
     const before=ui.num;setAskX(ui.dir!=='l'?tv.lo+leftN-1:tv.lo+leftN);
-    if(ui.num!==before){sliderPaint();const now=Date.now();if(now-sldTickAt>70){sldTickAt=now;sfx('tick',{vol:0.5,rate:0.9+f*0.5})}}
+    if(ui.num!==before){sliderPaint();haptic('tick');const now=Date.now();if(now-sldTickAt>70){sldTickAt=now;sfx('tick',{vol:0.5,rate:0.9+f*0.5})}}
   };
   let down=false;
   sd.onpointerdown=e=>{down=true;sldDown=true;try{sd.setPointerCapture(e.pointerId)}catch(_){}sd.classList.add('drag');at(e);e.preventDefault()};
   sd.onpointermove=e=>{if(down)at(e)};
   const up=()=>{if(down){down=false;sldDown=false;sd.classList.remove('drag');buzz(8);if(sldPend){sldPend=false;render(true)}}};
   sd.onpointerup=up;sd.onpointercancel=up;
+  sd.onkeydown=e=>{const t=curTarget(),cur=askX();if(!t||cur===null)return;const sl=askSlots(mv(t)),x=a11SldKey(e,cur,sl.lo,sl.hi);if(x===null)return;e.preventDefault();if(x!==cur){setAskX(x);sliderPaint();sfx('tick',{vol:0.5})}};
 }
 function askRowHTML(f,fv){
   const o=nzOpp(PID).filter(x=>x.pid!==f.pid);
@@ -1111,23 +1238,12 @@ ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-row">${askRowHTML
   const x=askX();
   return `<section class="askv">${top}
 <div class="say"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span>
-<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="Switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot"><span class="bignum" id="bigNum">${fmt(x)}</span><span class="qm">?</span></span></div></div>
+<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="${ui.dir==='l'?'Lower':'Higher'}, switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot"><span class="bignum" id="bigNum">${fmt(x)}</span><span class="qm">?</span></span></div></div>
 ${sliderHTML(tv)}
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 <div class="nudge"><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key mid" data-k="mid">HALF</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
-<button class="btn primary big full" id="askGo">Ask!</button>
+<button class="btn primary big full" id="askGo">Ask</button>
 </section>`;
-}
-function slotsHTML(str,n,pfx){
-  pfx=pfx||'';const pl=pfx.length,open=n-pl;
-  const pad=pl?0:Math.max(0,n-str.length);let h='';
-  for(let i=0;i<n;i++){
-    if(i>0&&(n-i)%3===0)h+=`<i class="sep ${!pl&&i<=pad?'e':''}">,</i>`;
-    if(i<pl){h+=`<span class="slot fixed">${pfx[i]}</span>`;continue}
-    const ch=pl?str[i-pl]:(i<pad?'':str[i-pad]);
-    h+=`<span class="slot ${ch?'':'e'}">${ch||'&nbsp;'}</span>`;
-  }
-  return `<span class="slots" aria-label="${str||pfx?fmt(pfx+str):'empty'}">${h}</span>`;
 }
 function wheelSVG(){
   const ps=G.players,n=ps.length,R=134,c=140;
@@ -1148,7 +1264,7 @@ function showWheel(){
   const final=360*6-(G.turn+.5)*w+(Math.random()-.5)*w*.6;
   openOv(`<div class="sheet center"><h2>Who goes first?</h2><div class="wheel-wrap"><div class="wheel" id="wheel">${wheelSVG()}</div>
 <svg class="pointer" viewBox="0 0 40 44" aria-hidden="true"><path d="M20 42L4 6h32z" fill="#EE4B3B" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></svg></div>
-<p id="wheelMsg" class="wheel-msg">Spinning…</p></div>`);
+<p id="wheelMsg" class="wheel-msg"></p></div>`);
   const el=$('#wheel');
   sfx('spin');sfx('vo_ready',{delay:0.3});
   {let prev=null,cum=0,idx=0;
@@ -1187,17 +1303,17 @@ function lobbyHTML(){
 ${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:(p.pid===PID?`<button class="btn sm" id="lookBtn" aria-expanded="${!!ui.picker}">Change look</button>`:'<span></span>')}</div>`).join('');
   const full=!byPid(PID)&&G.players.length>=6;
   return `<main class="scroll">
-${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Link copied!':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}${isHost&&G.players.filter(q=>!q.bot).length<2?`<div class="join-row lob-join"><input id="lobCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Friend's room code"><button class="btn" id="lobJoin">Join a room</button></div>${ui.lobErr?`<p class="err">${esc(ui.lobErr)}</p>`:''}`:''}</section>`:''}
+${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Copied':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}${isHost&&G.players.filter(q=>!q.bot).length<2?`<div class="join-row lob-join"><input id="lobCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Friend's room code"><button class="btn" id="lobJoin">Join</button></div>${ui.lobErr?`<p class="err">${esc(ui.lobErr)}</p>`:''}`:''}</section>`:''}
 <section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
 ${ui.picker&&byPid(PID)?pickerHTML():''}
 ${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" style="justify-self:start">+ Add a bot</button>':''}
-${full?'<p class="err">This room is full.</p>':''}</section>
+${full?'<p class="err">This room is full</p>':''}</section>
 ${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
 <section class="panel"><h2>Number range</h2>
 ${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
 <h2>Turn timer</h2>
-${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' seconds per question':'Off'}</p>`}</section>
-${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host to start…</p>'}
+${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' sec':'Off'}</p>`}</section>
+${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host…</p>'}
 </main>`;
 }
 const LOCK_SVG='<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1E2240"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#1E2240" stroke-width="2"/></svg>';
@@ -1221,13 +1337,13 @@ function setLook(patch){
 }
 function secretsHTML(){
   const me=byPid(PID);
-  const list=G.players.map(p=>{const r=p.bot||(getPres(p.pid)||{}).ready===G.gid;return `<div class="prow2"><span>${charSVG(pv(p),r?'idle':'scared')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="${r?'state-ok':'state-wait'}">${r?'Ready':'Picking…'}</span></div>`}).join('');
+  const list=G.players.map(p=>{const r=(p.bot&&!(G.bw&&G.bw[p.pid]))||(getPres(p.pid)||{}).ready===G.gid;return `<div class="prow2"><span>${charSVG(pv(p),r?'idle':'scared')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="${r?'state-ok':'state-wait'}">${r?'Ready':'Picking…'}</span></div>`}).join('');
   if(me&&!mySecret){
     if(ui.secGid!==G.gid){ui.secGid=G.gid;ui.sec=String(rnd(1,G.max));ui.secTyped=false}
     const n=Math.min(G.max,Math.max(1,Number(ui.sec)||1)),f=G.max>1?(n-1)/(G.max-1):0;
     return `<main class="scroll"><section class="panel center secpick"><div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">Pick your number</h2>
 <div class="secret-big entry" id="secNum">${ui.sec?fmt(n):'&nbsp;'}</div>
-<div class="sld one" id="secSld" role="slider" tabindex="0" aria-label="Your number" aria-valuemin="1" aria-valuemax="${G.max}" aria-valuenow="${n}"><div class="sld-track" id="secTrack"><i class="pick" id="secFill" style="width:${(f*100).toFixed(3)}%"></i><b class="sld-thumb" id="secThumb" style="left:${(f*100).toFixed(3)}%"></b></div>
+<div class="sld one" id="secSld" role="slider" tabindex="0" aria-label="Your number" aria-valuemin="1" aria-valuemax="${G.max}" aria-valuenow="${n}" aria-valuetext="${fmt(n)}"><div class="sld-track" id="secTrack"><i class="pick" id="secFill" style="width:${(f*100).toFixed(3)}%"></i><b class="sld-thumb" id="secThumb" style="left:${(f*100).toFixed(3)}%"></b></div>
 <div class="sld-ends"><span>1</span><span>${fmt(G.max)}</span></div></div>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 <div class="nudge"><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key mid" data-k="rand">RANDOM</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
@@ -1235,7 +1351,7 @@ ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 <button class="btn go big full" id="lockBtn" ${ui.sec?'':'disabled'}>Lock it in</button></section>
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
   }
-  return `<main class="scroll"><section class="panel center"><div class="secret-big">${ui.show&&mySecret?fmt(mySecret.n):'• • • •'}</div><button class="link" id="showBtn">${ui.show?'Hide':'Show'} it</button></section>
+  return `<main class="scroll"><section class="panel center"><div class="secret-big">${ui.show&&mySecret?fmt(mySecret.n):'••••'}</div><button class="link" id="showBtn">${ui.show?'Hide':'Show'}</button></section>
 <section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
 }
 let hpPrev={},hpGid='';
@@ -1266,18 +1382,18 @@ function cardHTML(p,i){
   const v=mv(p),total=G.max,lf=(v.lo-1)/total*100,w=Math.max((v.hi-v.lo+1)/total*100,2);
   const ct=curTarget(),z=!mine&&zone(v),isT=G.q?(G.q.t==='askall'?!!(G.q.xs&&p.pid in G.q.xs):G.q.tg===p.pid):!!(ct&&ct.pid===p.pid);
   const dg=mine?(p.dg|0):0;
-  const bb=bubOf(p.pid),bub=bb?`<span class="bubble ${bb.up?'up':'down'}">${esc(bb.text)}</span>`:'';
+  const bb=bubOf(p.pid),bub=bb?`<span class="bubble ${bb.up?'up':'down'}${bb.ic&&pwIcon(bb.ic)?' pw-bub':''}"${bb.ic&&pwIcon(bb.ic)?` role="img" aria-label="${esc(bb.text)}">${pwIcon(bb.ic,'pw-i28')}`:`>${esc(bb.text)}`}</span>`:'';
   const turnTag='';
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${G.pub&&Number.isInteger(p.el)?`<span class="elo">${p.el}</span>`:''}${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
 ${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`${hpHTML(p.pid,v,z)}${z?`<span class="zone">${leftX(v)} LEFT</span>`:''}`}
-${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'hide':'show'}</button></span>`:''}</span>`;
+${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'Hide':'Show'}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''} ${dg>=3?'dg3':''}">${inner}</div>`;
-  return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${v.lo} and ${v.hi}">${inner}</button>`;
+  return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${fmt(v.lo)} and ${fmt(v.hi)}">${inner}</button>`;
 }
 function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
 function trayInner(){
-  if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host to start another round.</p>'}`}
+  if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w&&!(w.pid===PID&&replaced())?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host…</p>'}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID&&!(me&&me.bot);
   const evLine=G.ev&&(myTurn||G.ev.a===cur.pid)?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
   const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${''}</div>${evLine}</div></div>`;
@@ -1285,7 +1401,7 @@ function trayInner(){
     const ct=curTarget();
     let body=G.stage==='wheel'?'':G.q?`<p class="hint">${esc(qText(G.q))}</p>`:(ct?'':`<p class="hint">Waiting for ${esc(cur.name)}…</p>`);
     if((G.q&&G.q.tg===PID)||(!G.q&&ct&&ct.pid===PID))body+=hint('asked','Your phone answers for you. No lying!');
-    if(me&&!me.a)body+=`<p class="sub">You're out.</p>`;
+    if(me&&!me.a)body+=`<p class="sub">You're out</p>`;
     return head+body;
   }
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
@@ -1304,11 +1420,11 @@ function bind(){
   if(view==='home'){
     const ni=$('#nameIn');ni.oninput=()=>{NAME=clean(ni.value);LS.set(LSK('hl-name'),NAME)};
     const ci=$('#codeIn');ci.oninput=()=>{ci.value=ci.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=ci.value};
-    const need=()=>{if(!NAME){ui.homeErr='Type your name first.';render(true);$('#nameIn').focus();return false}ui.homeErr='';return true};
+    const need=()=>{if(!NAME){ui.homeErr='Type your name first';render(true);$('#nameIn').focus();return false}ui.homeErr='';return true};
     on('hostBtn',()=>{if(!need())return;let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
-    const join=()=>{if(!need())return;const c=ci.value;if(!/^[A-Z]{4}$/.test(c)){ui.homeErr='Room codes are 4 letters.';render(true);return}track('join');startOnline(false,c)};
+    const join=()=>{if(!need())return;const c=ci.value;if(!/^[A-Z]{4}$/.test(c)){ui.homeErr='Room codes are 4 letters';render(true);return}track('join');startOnline(false,c)};
     on('joinBtn',join);ci.onkeydown=e=>{if(e.key==='Enter')join()};
-    on('rejoinBtn',()=>{const s=LS.get(LSK('hl-session'));if(s)startOnline(!!s.host,s.code)});
+    on('rejoinBtn',()=>{const s=LS.get(LSK('hl-session'));if(s&&/^[A-Z]{4}$/.test(s.code))startOnline(!!s.host,s.code)});
     on('soloBtn',()=>{if(!NAME){NAME='You'}track('practice');startSolo()});
     on('friendsBtn',()=>{
       ui.homeErr='';if(!NAME)NAME=FILL_NAMES[rnd(0,FILL_NAMES.length-1)];
@@ -1316,21 +1432,23 @@ function bind(){
       if(roomState!=='ok'||!roomNS){track('practice');startSolo();return}
       let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[rnd(0,CODE_CHARS.length-1)];track('host');startOnline(true,c)});
     on('retryNet',()=>{sfx('pick');initRooms()});
-    on('playBtn',()=>{ui.homeErr='';track('play_tap',{max:playMode().max});quickPlay()});
+    on('playBtn',()=>{ui.homeErr='';track('play_tap',{m:trackMode(playMode().max)});quickPlay()});
     $$('[data-mode]').forEach(b=>b.onclick=()=>{pmSel=b.dataset.mode;LS.set('hl-pm',pmSel);sfx('pick');render(true)});
-    on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney, rubberduck and others (CC0). Piano: FluidR3 GM (CC BY 3.0).</p><p class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{HLAds.buy().then(closeOv)}});
+    on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney, rubberduck and others (CC0). Piano: FluidR3 GM (CC BY 3.0).</p><p class="legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="support.html">Support</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}${window.HLNative&&window.HLNative.restore&&!HLAds.noAds()?'<button class="link" id="restoreBtn">Restore purchases</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{track('noads_tap');HLAds.buy().then(closeOv)};const rs=$('#restoreBtn');if(rs)rs.onclick=()=>{HLAds.restore().then(closeOv)}});
     return;
   }
-  on('leaveBtn',()=>{const stake=eloAtStake();if(stake>0){openOv(`<div class="sheet center"><h2>Leave the duel?</h2><p class="stake">You'll lose <b>${stake}</b> rating.</p><div class="btn-row"><button class="btn primary" id="stayBtn">Keep playing</button><button class="btn" id="quitBtn">Leave</button></div></div>`);$('#stayBtn').onclick=closeOv;$('#quitBtn').onclick=()=>{closeOv();leaveGame()};return}
+  on('leaveBtn',()=>{const stake=eloAtStake();if(stake>0){openOv(`<div class="sheet center"><h2>Leave the duel?</h2><p class="stake">You'll lose <b>${stake}</b> rating</p><div class="btn-row"><button class="btn primary" id="stayBtn">Keep playing</button><button class="btn" id="quitBtn">Leave</button></div></div>`);$('#stayBtn').onclick=closeOv;$('#quitBtn').onclick=()=>{closeOv();leaveGame()};return}
     if(ui.leaveArmed||mode==='search'||(G&&G.pub&&G.phase==='lobby')||(isPub&&!G)){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
   if(!G)return;
   on('inviteBtn',()=>{
     const url=inviteURL();
-    if(navigator.share){try{const r=navigator.share({title:'High & Low',text:'Join my High & Low game! Room '+code,url});if(r&&r.catch)r.catch(()=>{})}catch(e){}return}
     const fail=()=>{ui.inviteUrl=url;render(true)};
-    try{
+    const copy=()=>{try{
       navigator.clipboard.writeText(url).then(()=>{ui.inviteCopied=true;ui.inviteUrl='';render(true);later(()=>{ui.inviteCopied=false;render(true)},2000)},fail);
-    }catch(e){fail()}
+    }catch(e){fail()}};
+    /* e04: a share that fails for a reason other than the player cancelling (WebViews can expose navigator.share and then refuse it) falls back to copy */
+    if(navigator.share){try{const r=navigator.share({title:'High & Low',text:'Join my High & Low game! Room '+code,url});if(r&&r.catch)r.catch(e=>{if(!e||e.name!=='AbortError')copy()})}catch(e){copy()}return}
+    copy();
   });
   on('lookBtn',()=>{sfx('pick');ui.picker=!ui.picker;render(true)});
   $$('[data-lc]').forEach(b=>b.onclick=()=>setLook({c:+b.dataset.lc}));
@@ -1349,7 +1467,7 @@ function bind(){
   on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
   $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.secTyped=false;ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   {const lc=$('#lobCode');if(lc){lc.oninput=()=>{lc.value=lc.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=lc.value;ui.lobErr=''};
-    const go=()=>{const c=ui.codeIn;if(!/^[A-Z]{4}$/.test(c)){ui.lobErr='Room codes are 4 letters.';render(true);return}if(c===code){ui.lobErr='That is this room.';render(true);return}ui.lobErr='';track('join');leaveGame().then(()=>startOnline(false,c))};
+    const go=()=>{const c=ui.codeIn;if(!/^[A-Z]{4}$/.test(c)){ui.lobErr='Room codes are 4 letters';render(true);return}if(c===code){ui.lobErr='That is this room';render(true);return}ui.lobErr='';track('join');leaveGame().then(()=>startOnline(false,c))};
     on('lobJoin',go);lc.onkeydown=e=>{if(e.key==='Enter')go()}}}
   on('askGo',doAsk);sliderBind();secBind();
   $$('.key.nb').forEach(b=>{b.onpointerdown=()=>{nbStop();const k=b.dataset.k;nbN=0;nbTimer=setTimeout(()=>{nbIv=setInterval(()=>{if(++nbN>300||!document.querySelector('.key.nb')){nbStop();return}padPress(k)},60)},380)};b.onpointerleave=nbStop});
@@ -1358,8 +1476,17 @@ function bind(){
 }
 
 function buzz(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
-function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick a whole number from 1 to ${fmt(G.max)}.`;sfx('error');render(true);return}ui.err='';sfx('send');sfx('lock',{delay:0.15});lockSecret(n);seen('secret')}
+function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick 1 to ${fmt(G.max)}`;sfx('error');render(true);return}ui.err='';sfx('send');sfx('lock',{delay:0.15});lockSecret(n);seen('secret')}
 document.addEventListener('keydown',e=>{
+  const ov=$('#ov');
+  if(ov&&!ov.hidden){
+    if(e.key==='Escape'){const b=ov.querySelector('#ovX,#ovClose,#stayBtn,#pwClose,#pwBack');if(b)b.click();else if(ov.onclick)ov.onclick({target:ov});return}
+    if(e.key==='Tab'){const f=[...ov.querySelectorAll('button:not(:disabled),a[href],input,[tabindex="0"]')].filter(x=>x.offsetParent!==null);const s=ov.querySelector('.sheet');
+      if(!f.length){e.preventDefault();if(s)s.focus();return}
+      const i=f.indexOf(document.activeElement);
+      if(e.shiftKey&&(i<=0)){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i<0||i===f.length-1)){e.preventDefault();f[0].focus()}
+    }
+  }
   if(view!=='game'||!G||e.target.tagName==='INPUT')return;
   if(askViewOn()&&ui.step==='dir'&&(e.key==='ArrowUp'||e.key==='ArrowDown')){const b=$('[data-pickdir="'+(e.key==='ArrowUp'?'h':'l')+'"]');if(b){e.preventDefault();b.click()}return}
   if(askViewOn()&&ui.step==='num'&&e.key==='Escape'){const b=$('#askBack');if(b)b.click();return}
@@ -1370,8 +1497,11 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Enter'){if(G.phase==='secrets')lockFromPad();else doAsk()}
 });
 function wake(){
+  keepAwake();
   if(document.visibilityState!=='visible')return;
   if(view==='game'&&R){
+    /* A frozen phone wakes with an empty peer list and an old host timestamp: give the host time to be heard before calling it lost. */
+    if(hostSeenAt)hostSeenAt=Date.now();
     try{R.presence(myPres).catch(()=>{})}catch(e){}
     try{if(R.connected&&!R.connected()&&R.reconnect)R.reconnect()}catch(e){}
     schedule();
@@ -1390,7 +1520,7 @@ setInterval(()=>{
 /* ---------- Internet required (web and app builds) ---------- */
 const NEED_NET=!!window.HL_NEED_NET;
 function offline(){return NEED_NET&&(navigator.onLine===false||roomState==='none')}
-function offlineHTML(){return `<section class="panel center nonet"><svg viewBox="0 0 64 56" aria-hidden="true"><path d="M6 22a38 38 0 0 1 52 0M15 32a25 25 0 0 1 34 0M24 42a12 12 0 0 1 16 0" fill="none" stroke="#1E2240" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="50" r="4" fill="#1E2240"/><path d="M10 6 54 52" stroke="#F0503C" stroke-width="7" stroke-linecap="round"/></svg><h2>No internet</h2><p>Connect to play.</p><button class="btn primary full" id="retryNet">Try again</button></section>`}
+function offlineHTML(){return `<section class="panel center nonet"><svg viewBox="0 0 64 56" aria-hidden="true"><path d="M6 22a38 38 0 0 1 52 0M15 32a25 25 0 0 1 34 0M24 42a12 12 0 0 1 16 0" fill="none" stroke="#1E2240" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="50" r="4" fill="#1E2240"/><path d="M10 6 54 52" stroke="#F0503C" stroke-width="7" stroke-linecap="round"/></svg><h2>No internet</h2><button class="btn primary full" id="retryNet">Try again</button></section>`}
 async function initRooms(){
   roomState='checking';render(true);
   try{if(navigator.onLine===false&&NEED_NET)roomNS=null;else if(window.HL_CONFIG&&window.makeSupabaseRoom)roomNS=window.makeSupabaseRoom(window.HL_CONFIG);else roomNS=window.claude&&window.claude.use?await window.claude.use('room'):null}catch(e){roomNS=null}
@@ -1404,15 +1534,41 @@ const DEEP=(()=>{
   try{let h=location.hash.replace(/room=[A-Za-z]{4}&?/,'').replace(/&$/,'');if(h==='#')h='';history.replaceState(null,'',location.pathname+location.search+h)}catch(e){}
   return m[1].toUpperCase();
 })();
+/* ---------- Back button and screen wake lock (c10) ---------- */
+function hlBack(){
+  try{
+    const o=$('#ov');
+    if(o&&!o.hidden){
+      const b=$('#stayBtn')||$('#ovX')||$('#ovClose');
+      if(b)b.click();
+      else if(!(o.querySelector('#wheel')||o.querySelector('.stage')))closeOv();
+      return true;
+    }
+    if(view==='game'){const l=$('#leaveBtn');if(l)l.click();return true}
+    if(window.HLNative&&typeof window.HLNative.exit==='function')window.HLNative.exit();
+    return false;
+  }catch(e){return true}
+}
+window.hlBack=hlBack;
+if(!window.HLNative&&window.history&&history.pushState){
+  const arm=()=>{try{if(!(history.state&&history.state.hl))history.pushState({hl:1},'',location.href)}catch(e){}};
+  arm();
+  document.addEventListener('pointerup',arm,{capture:true,passive:true}); // Chrome skips history entries made without a tap, so re-arm on taps
+  window.addEventListener('popstate',()=>{if(hlBack())arm();else{setTimeout(()=>{try{history.back()}catch(e){}},0);setTimeout(arm,1500)}});
+}
+document.addEventListener('gesturestart',e=>{e.preventDefault()});
+/* e04: iOS leaves the page scrolled up after the keyboard closes. Put it back once no field has focus. */
+if(/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))document.addEventListener('focusout',e=>{if(e.target&&e.target.tagName==='INPUT')setTimeout(()=>{try{const a=document.activeElement;if(!a||a.tagName!=='INPUT')scrollTo(0,0)}catch(x){}},150)});
 render(true);
 (async()=>{
   await initRooms();
-track('open',{inv:/[#&]room=/.test(location.hash)?1:0,wide:innerWidth>=820?1:0,app:window.HLNative?1:0});
+  eloPendBoot();
+track('open',{inv:DEEP?1:0,wide:innerWidth>=820?1:0,app:window.HLNative?1:0});
   if(DEEP){
     if(roomState==='ok'&&NAME)startOnline(false,DEEP);
-    else{ui.codeIn=DEEP;ui.friends=true;if(!NAME)ui.homeErr='Type your name, then tap Join.';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}
+    else{ui.codeIn=DEEP;ui.friends=true;if(!NAME)ui.homeErr='Type your name first';render(true);if(!NAME){const ni=$('#nameIn');if(ni)ni.focus()}}
   }else{
     const s=LS.get(LSK('hl-session'));
-    if(s&&s.code&&Date.now()-s.at<3*3600e3&&roomState==='ok')startOnline(!!s.host,s.code);
+    if(s&&/^[A-Z]{4}$/.test(s.code)&&Date.now()-s.at<3*3600e3&&roomState==='ok')startOnline(!!s.host,s.code);
   }
 })();

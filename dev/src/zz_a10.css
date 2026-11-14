@@ -1,0 +1,2 @@
+/* a10 perf: the home landscape is a fixed full-screen layer. Containment keeps its many animations from invalidating layout or paint of the page above it. */
+.hscene{contain:layout paint style}

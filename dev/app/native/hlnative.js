@@ -1,0 +1,402 @@
+/* High & Low: native bridge. Loaded ONLY in the app build (sync-web.sh bundles it and adds it to app/www/index.html).
+   Defines window.HLNative, the contract read by src/ads.js:
+     showInterstitial()  Promise<boolean>  true if an ad was shown and closed
+     showRewarded()      Promise<boolean>  true only if the player earned the reward
+     buyNoAds()          Promise<boolean>  true once "Remove ads" is owned
+     ownsNoAds()         Promise<boolean>
+     restore()           Promise<boolean>  true if "Remove ads" is owned after asking the store to restore (UNVERIFIED on a device)
+     keepAwake(on)       boolean  true if the native keep-screen-on plugin was called (iOS/Android WebViews have no Screen Wake Lock API)
+   Extras: haptic(kind), restorePurchases(), exit(). Also in this file: the localStorage mirror (Preferences) and the invite-link
+   listener (appUrlOpen -> #room=CODE). Every call resolves false instead of throwing when a
+   plugin is missing, not configured, or fails. Plugins are reached through window.Capacitor.Plugins,
+   which native/entry.js fills by importing the plugin packages (sync-web.sh bundles both with esbuild). */
+(function () {
+  'use strict';
+
+  /* ---------- CONFIG: the owner edits this block ---------- */
+  var CONFIG = {
+    // true = Google's official demo ad units + isTesting. Set to false only for the store build,
+    // after the real ids below are filled in. While false, any id still containing "REPLACE" is refused.
+    TEST_MODE: true,
+    // Always request non-personalised ads (no ATT prompt needed, see app/README.md).
+    NON_PERSONALISED: true,
+    // Demo ad units, from Google's test-ads pages:
+    //   Android https://developers.google.com/admob/android/test-ads#demo_ad_units
+    //   iOS     https://developers.google.com/admob/ios/test-ads#demo_ad_units
+    // Android interstitial/rewarded also appear in the plugin source (AdOptions.java), iOS rewarded in AdMobPlugin.swift.
+    // iOS interstitial 4411468910 is from Google's docs and was NOT re-verified here.
+    TEST_IDS: {
+      android: { interstitial: 'ca-app-pub-3940256099942544/1033173712', rewarded: 'ca-app-pub-3940256099942544/5224354917' },
+      ios:     { interstitial: 'ca-app-pub-3940256099942544/4411468910', rewarded: 'ca-app-pub-3940256099942544/1712485313' }
+    },
+    // TODO(owner): real ad UNIT ids from the AdMob console (format ca-app-pub-XXXXXXXXXXXXXXXX/NNNNNNNNNN).
+    // The AdMob APP ids go into Info.plist / AndroidManifest.xml, not here (see app/README.md).
+    REAL_IDS: {
+      android: { interstitial: 'REPLACE_ANDROID_INTERSTITIAL_UNIT_ID', rewarded: 'REPLACE_ANDROID_REWARDED_UNIT_ID' },
+      ios:     { interstitial: 'REPLACE_IOS_INTERSTITIAL_UNIT_ID',     rewarded: 'REPLACE_IOS_REWARDED_UNIT_ID' }
+    },
+    // TODO(owner): RevenueCat public SDK keys (Project settings > API keys) and the store product id.
+    IAP: {
+      productId: 'remove_ads',
+      apiKey: { ios: 'REPLACE_REVENUECAT_IOS_PUBLIC_KEY', android: 'REPLACE_REVENUECAT_ANDROID_PUBLIC_KEY' }
+    },
+    LOAD_TIMEOUT_MS: 10000,   // give up waiting for an ad to load
+    SHOW_TIMEOUT_MS: 120000   // safety net if a close event never arrives
+  };
+  // Tests may override before this script runs: window.HL_NATIVE_CONFIG = { LOAD_TIMEOUT_MS: 50, ... }
+  try { var ov = window.HL_NATIVE_CONFIG; if (ov) for (var k in ov) CONFIG[k] = ov[k]; } catch (e) {}
+
+  /* ---------- helpers ---------- */
+  function plug(name) {
+    try { var C = window.Capacitor, P = C && C.Plugins; return (P && P[name]) || null; } catch (e) { return null; }
+  }
+  function platform() {
+    try { var p = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform(); return p === 'ios' ? 'ios' : 'android'; } catch (e) { return 'android'; }
+  }
+  function isPlaceholder(v) { return !v || /REPLACE/.test(String(v)); }
+  function adId(kind) {
+    var set = (CONFIG.TEST_MODE ? CONFIG.TEST_IDS : CONFIG.REAL_IDS)[platform()];
+    var id = set && set[kind];
+    return isPlaceholder(id) ? null : id;
+  }
+  function withTimeout(promise, ms, fallback) {
+    return new Promise(function (resolve) {
+      var done = false, t = setTimeout(function () { if (!done) { done = true; resolve(fallback); } }, ms);
+      Promise.resolve(promise).then(function (v) { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+                                   function () { if (!done) { done = true; clearTimeout(t); resolve(fallback); } });
+    });
+  }
+  function listen(plugin, event, fn) {
+    // addListener returns a Promise<handle>. Resolves to a function that removes the listener.
+    try {
+      var r = plugin.addListener(event, fn);
+      return Promise.resolve(r).then(function (h) { return function () { try { h && h.remove && h.remove(); } catch (e) {} }; },
+                                     function () { return function () {}; });
+    } catch (e) { return Promise.resolve(function () {}); }
+  }
+
+
+  /* ---------- durable storage: mirror hl-* localStorage keys into Capacitor Preferences ----------
+     iOS can purge WKWebView localStorage and Android loses it on "clear data" / origin change. This script loads BEFORE the game
+     script, so: (1) take a synchronous snapshot of which keys localStorage has, (2) wrap Storage.prototype.setItem/removeItem to
+     note changed hl-* keys, (3) asynchronously read Preferences and copy back every durable key the snapshot lacked, (4) if
+     anything was restored, reload once so the game boots with its real data (guarded against loops), (5) only then start writing
+     through (debounced) so the fresh defaults the game wrote during that boot can never overwrite the backup. */
+  var MIRROR_SKIP = /^hl-(host-|sec-|session|sid$)/;   // transient or throwaway: room hosting state, secrets of a running game, rejoin record, stats session id
+  var MIRROR_MAX = 20000;                              // chars per value; nothing the game stores comes close
+  function durable(k) { return typeof k === 'string' && k.indexOf('hl-') === 0 && !MIRROR_SKIP.test(k); }
+  var mir = { snap: {}, dirty: {}, timer: 0, ready: false, off: false, restored: 0, reloaded: false, done: null };
+  var rawSet, rawRemove, ls = null;
+  try {
+    ls = window.localStorage;
+    for (var i = 0; i < ls.length; i++) mir.snap[ls.key(i)] = 1;
+    var SP = window.Storage && window.Storage.prototype;   // wrap the prototype: assigning ls.setItem would create a stored item
+    rawSet = SP.setItem; rawRemove = SP.removeItem;
+    SP.setItem = function (k) { var r = rawSet.apply(this, arguments); try { if (this === ls && durable(k)) note(k); } catch (e) {} return r; };
+    SP.removeItem = function (k) { var r = rawRemove.apply(this, arguments); try { if (this === ls && durable(k)) note(k); } catch (e) {} return r; };
+  } catch (e) { ls = null; }
+  function note(k) { mir.dirty[k] = 1; if (mir.ready) schedule(); }
+  function schedule() { if (!mir.timer && !mir.off) mir.timer = setTimeout(flush, 400); }
+  function flush() {
+    mir.timer = 0;
+    var P = plug('Preferences');
+    if (!P || !ls || !mir.ready || mir.off) return Promise.resolve(false);
+    var keys = Object.keys(mir.dirty); mir.dirty = {};
+    var jobs = keys.map(function (k) {
+      try {
+        var v = ls.getItem(k);   // current value wins, so a burst of writes costs one call per key
+        var p = (v === null || v.length > MIRROR_MAX) ? P.remove({ key: k }) : P.set({ key: k, value: v });
+        return Promise.resolve(p).catch(function () { mir.dirty[k] = 1; });
+      } catch (e) { return Promise.resolve(); }
+    });
+    return Promise.all(jobs).then(function () { return true; });
+  }
+  function restoreMirror() {
+    var P = plug('Preferences');
+    if (!P || !ls) { mir.off = true; return Promise.resolve(); }
+    return Promise.resolve().then(function () { return P.keys(); }).then(function (r) {
+      var keys = ((r && r.keys) || []).filter(durable);
+      return Promise.all(keys.map(function (k) {
+        if (mir.snap[k]) return null;   // localStorage had it when the app started: it is newer, keep it
+        return Promise.resolve(P.get({ key: k })).then(function (g) {
+          var v = g && g.value;
+          if (typeof v !== 'string' || v.length > MIRROR_MAX) return;
+          rawSet.call(ls, k, v); delete mir.dirty[k]; mir.restored++;
+        });
+      }));
+    }).then(function () {
+      // bring the backup up to date with what localStorage holds now (also fills a first install)
+      for (var i = 0; i < ls.length; i++) { var k = ls.key(i); if (durable(k)) mir.dirty[k] = 1; }
+      mir.ready = true;
+      if (mir.restored > 0) {
+        var again = false;
+        try { again = window.sessionStorage.getItem('hl-mirror-reload') === '1'; window.sessionStorage.setItem('hl-mirror-reload', '1'); } catch (e) { again = true; }
+        if (!again) { mir.reloaded = true; try { window.location.reload(); } catch (e) {} return; }   // game booted on empty storage: boot it again with the data
+      }
+      schedule();
+    }).catch(function () { mir.off = true; });   // Preferences unreadable: never write through (could overwrite a good backup with defaults)
+  }
+  mir.done = restoreMirror();
+  try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(); }); } catch (e) {}
+  try { window.addEventListener('pagehide', function () { flush(); }); } catch (e) {}
+
+  /* ---------- audio: pause while the app is in the background or an ad is on screen ---------- */
+  var audioHolds = 0;
+  function audioPause() {
+    try { if (typeof SFX !== 'undefined' && SFX.ctx && SFX.ctx.state === 'running') SFX.ctx.suspend(); } catch (e) {}
+    try { if (typeof MUSIC !== 'undefined' && MUSIC.el) for (var k in MUSIC.el) { try { MUSIC.el[k].pause(); } catch (e) {} } } catch (e) {}
+  }
+  function audioResume() {
+    try { if (typeof SFX !== 'undefined' && SFX.ctx && SFX.ctx.state !== 'running') SFX.ctx.resume(); } catch (e) {}
+    try { if (typeof MUSIC !== 'undefined' && MUSIC.sync) MUSIC.sync(); } catch (e) {}
+  }
+  function holdAudio(on) {
+    if (on) { if (audioHolds++ === 0) audioPause(); } else if (audioHolds > 0 && --audioHolds === 0) audioResume();
+  }
+
+  /* ---------- AdMob: consent (UMP) then initialize ---------- */
+  var adReady = null;
+  function initAds() {
+    if (adReady) return adReady;
+    adReady = (async function () {
+      var A = plug('AdMob');
+      if (!A) return false;
+      try {
+        var info = await A.requestConsentInfo({});
+        if (info && info.isConsentFormAvailable && info.status === 'REQUIRED') info = await A.showConsentForm();
+        if (!info || !info.canRequestAds) return false;
+        await A.initialize({});
+        return true;
+      } catch (e) { adReady = null; return false; }   // allow a retry on the next call
+    })();
+    return adReady;
+  }
+
+  function adOptions(kind) {
+    var id = adId(kind);
+    if (!id) return null;
+    var o = { adId: id, npa: !!CONFIG.NON_PERSONALISED };
+    if (CONFIG.TEST_MODE) o.isTesting = true;
+    return o;
+  }
+
+  var ads = { interstitial: null, rewarded: null };   // preloaded: Promise<boolean> (true = loaded)
+  function preload(kind) {
+    var A = plug('AdMob'), o = adOptions(kind);
+    if (!A || !o) return Promise.resolve(false);
+    var fn = kind === 'interstitial' ? A.prepareInterstitial : A.prepareRewardVideoAd;
+    if (!fn) return Promise.resolve(false);
+    ads[kind] = withTimeout((async function () {
+      if (!(await initAds())) return false;
+      await fn.call(A, o);
+      return true;
+    })(), CONFIG.LOAD_TIMEOUT_MS, false);
+    return ads[kind];
+  }
+
+  // Shows a prepared ad. closeEvents resolve the wait. Returns { shown, rewarded }.
+  async function showAd(kind) {
+    var A = plug('AdMob');
+    if (!A) return { shown: false, rewarded: false };
+    var loaded = await (ads[kind] || preload(kind));
+    ads[kind] = null;
+    if (!loaded) { preload(kind); return { shown: false, rewarded: false }; }
+    var ev = kind === 'interstitial'
+      ? { dismiss: 'interstitialAdDismissed', fail: 'interstitialAdFailedToShow' }
+      : { dismiss: 'onRewardedVideoAdDismissed', fail: 'onRewardedVideoAdFailedToShow', reward: 'onRewardedVideoAdReward' };
+    var off = [], rewarded = false, shown = true;
+    holdAudio(true);
+    try {
+      var closed = new Promise(function (resolve) {
+        listen(A, ev.dismiss, function () { resolve(); }).then(function (f) { off.push(f); });
+        listen(A, ev.fail, function () { shown = false; resolve(); }).then(function (f) { off.push(f); });
+        if (ev.reward) listen(A, ev.reward, function () { rewarded = true; }).then(function (f) { off.push(f); });
+      });
+      // Let listener registration settle before the ad can possibly close.
+      await Promise.resolve(); await Promise.resolve();
+      var call;
+      try {
+        call = kind === 'interstitial' ? A.showInterstitial() : A.showRewardVideoAd();
+      } catch (e) { shown = false; call = null; }
+      if (!call) return { shown: false, rewarded: false };
+      // A rejected show call means the ad did not appear. A resolved one is NOT enough to stop waiting:
+      // wait for the close event (or the safety timeout).
+      var failed = Promise.resolve(call).then(function (r) { if (kind === 'rewarded' && r && typeof r.amount === 'number') rewarded = true; return false; },
+                                              function () { shown = false; return true; });
+      var early = await Promise.race([failed, closed.then(function () { return false; })]);
+      if (early) return { shown: false, rewarded: false };
+      await withTimeout(closed, CONFIG.SHOW_TIMEOUT_MS, undefined);
+      return { shown: shown, rewarded: rewarded };
+    } catch (e) {
+      return { shown: false, rewarded: false };
+    } finally {
+      off.forEach(function (f) { try { f(); } catch (e) {} });
+      holdAudio(false);
+      preload(kind);   // next one
+    }
+  }
+
+  /* ---------- In-app purchase: RevenueCat, one non-consumable ---------- */
+  var iapReady = null;
+  function initIap() {
+    if (iapReady) return iapReady;
+    iapReady = (async function () {
+      var P = plug('Purchases');
+      var key = CONFIG.IAP.apiKey[platform()];
+      if (!P || isPlaceholder(key)) return false;
+      try { await P.configure({ apiKey: key }); return true; } catch (e) { iapReady = null; return false; }
+    })();
+    return iapReady;
+  }
+  function ownsIn(customerInfo) {
+    try {
+      var ids = (customerInfo && customerInfo.allPurchasedProductIdentifiers) || [];
+      return ids.indexOf(CONFIG.IAP.productId) !== -1;
+    } catch (e) { return false; }
+  }
+
+  /* ---------- haptics ---------- */
+  function haptic(kind) {
+    try {
+      var H = plug('Haptics');
+      if (!H) return false;
+      // Game kinds (src/haptics.js): tap, tick, thud, win, lose. Older names kept for the vibrate shim.
+      var impact = { light: 'LIGHT', medium: 'MEDIUM', heavy: 'HEAVY', tap: 'LIGHT', thud: 'HEAVY' };
+      var note = { success: 'SUCCESS', warning: 'WARNING', error: 'ERROR', win: 'SUCCESS', lose: 'ERROR' };
+      var p;
+      if (impact[kind]) p = H.impact({ style: impact[kind] });
+      else if (note[kind]) p = H.notification({ type: note[kind] });
+      else if (kind === 'select' || kind === 'tick') p = H.selectionChanged && H.selectionChanged();
+      else p = H.impact({ style: 'LIGHT' });
+      if (p && p.catch) p.catch(function () {});
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ---------- the contract ---------- */
+  var HLNative = {
+    showInterstitial: async function () {
+      try { return (await showAd('interstitial')).shown; } catch (e) { return false; }
+    },
+    showRewarded: async function () {
+      try { var r = await showAd('rewarded'); return r.shown && r.rewarded; } catch (e) { return false; }
+    },
+    buyNoAds: async function () {
+      try {
+        var P = plug('Purchases');
+        if (!P || !(await initIap())) return false;
+        var res = await P.getProducts({ productIdentifiers: [CONFIG.IAP.productId], type: 'NON_SUBSCRIPTION' });
+        var product = res && res.products && res.products[0];
+        if (!product) return false;
+        var out = await P.purchaseStoreProduct({ product: product });
+        return ownsIn(out && out.customerInfo);
+      } catch (e) { return false; }   // includes "user cancelled"
+    },
+    ownsNoAds: async function () {
+      try {
+        var P = plug('Purchases');
+        if (!P || !(await initIap())) return false;
+        var res = await P.getCustomerInfo();
+        return ownsIn(res && res.customerInfo);
+      } catch (e) { return false; }
+    },
+    // Called by the "Restore purchases" button in the "i" sheet (src/main.js via HLAds.restore).
+    restore: async function () {
+      try {
+        var P = plug('Purchases');
+        if (!P || !(await initIap())) return false;
+        var res = await P.restorePurchases();
+        return ownsIn(res && res.customerInfo);
+      } catch (e) { return false; }
+    },
+    haptic: haptic,
+    // Screen stays on while a game is running. Neither WKWebView nor Android WebView has navigator.wakeLock.
+    // Returns true when the plugin was called. src/main.js keepAwake() also tries the web API, so a false here costs nothing.
+    keepAwake: function (on) {
+      try {
+        var K = plug('KeepAwake');
+        if (!K) return false;
+        var p = on ? K.keepAwake() : K.allowSleep();
+        if (p && p.catch) p.catch(function () {});
+        return true;
+      } catch (e) { return false; }
+    },
+    // Android back button on the home screen: leave the app. No-op without the App plugin.
+    exit: function () {
+      try { var A = plug('App'); if (A && A.exitApp) { var r = A.exitApp(); if (r && r.catch) r.catch(function () {}); return true; } } catch (e) {}
+      return false;
+    }
+  };
+  HLNative.restorePurchases = HLNative.restore;   // old name, kept for compatibility
+  HLNative.mirror = { flush: flush, done: mir.done, state: mir };   // for tests and debugging
+  window.HLNative = HLNative;
+
+
+  /* ---------- invite links: https://<site>/#room=ABCD opened with the installed app (optional, needs deeplink setup, see app/deeplink/) ----------
+     The game reads #room= once at boot (DEEP in src/main.js), so the listener sets the hash and reloads. A running game is never interrupted. */
+  function roomFromUrl(u) {
+    var m = /[#?&]room=([A-Za-z]{4})(?![A-Za-z])/.exec(String(u || ''));
+    return m ? m[1].toUpperCase() : null;
+  }
+  function openRoom(u, launch) {
+    try {
+      var code = roomFromUrl(u);
+      if (!code) return false;
+      if (launch) {   // getLaunchUrl keeps returning the same URL after our own reload: handle it once per app session
+        try { if (window.sessionStorage.getItem('hl-launch-url') === String(u)) return false; window.sessionStorage.setItem('hl-launch-url', String(u)); } catch (e) { return false; }
+      }
+      if (typeof view !== 'undefined' && view === 'game') return false;   // `view` is the game's global; do not drop a live game
+      window.location.hash = 'room=' + code;
+      window.location.reload();
+      return true;
+    } catch (e) { return false; }
+  }
+  HLNative.openRoom = openRoom;
+
+  /* ---------- navigator.vibrate shim: src/main.js buzz(ms) works unchanged ---------- */
+  try {
+    var shim = function (ms) {
+      var n = Array.isArray(ms) ? (ms[0] || 0) : (ms || 0);
+      return haptic(n <= 10 ? 'light' : n <= 25 ? 'medium' : 'heavy');
+    };
+    Object.defineProperty(navigator, 'vibrate', { value: shim, configurable: true, writable: true });
+  } catch (e) {}
+
+  /* ---------- app lifecycle ---------- */
+  function lifecycle() {
+    var App = plug('App');
+    if (!App) return;
+    try {
+      var r = App.addListener('appStateChange', function (s) {
+        if (s && s.isActive === false) audioPause(); else if (audioHolds === 0) audioResume();
+      });
+      if (r && r.catch) r.catch(function () {});
+    } catch (e) {}
+    try {
+      var u = App.addListener('appUrlOpen', function (e) { openRoom(e && e.url); });
+      if (u && u.catch) u.catch(function () {});
+      // cold start from a link: the event may fire before the listener exists, so ask for the launch URL too
+      if (App.getLaunchUrl) Promise.resolve(App.getLaunchUrl()).then(function (r) { if (r && r.url) openRoom(r.url, true); }, function () {});
+    } catch (e) {}
+    // Android back button: the game decides (close sheet, leave flow, or exit via HLNative.exit on the home screen).
+    try {
+      var b = App.addListener('backButton', function () {
+        try { if (typeof window.hlBack === 'function') { window.hlBack(); return; } } catch (e) {}
+        HLNative.exit();
+      });
+      if (b && b.catch) b.catch(function () {});
+    } catch (e) {}
+  }
+
+  function start() {
+    lifecycle();
+    try {
+      var SB = plug('StatusBar');
+      if (SB) { var a = SB.setStyle({ style: 'LIGHT' }); if (a && a.catch) a.catch(function () {}); }
+    } catch (e) {}
+    // consent first, then load the first interstitial
+    initAds().then(function (ok) { if (ok) { preload('interstitial'); } });
+    initIap();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else setTimeout(start, 0);
+})();

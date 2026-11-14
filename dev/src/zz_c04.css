@@ -1,0 +1,17 @@
+/* c04: report button, info sheet links, powers bolt, rotate cover */
+.btn.round.rep-btn{width:52px;min-width:52px;height:52px;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--white);flex:none}
+.btn.round.rep-btn svg{width:24px;height:24px}
+.btn.round.rep-btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn.round.rep-btn.done{background:var(--green);opacity:1}
+.btn.round.rep-btn:disabled{cursor:default}
+.legal{display:flex;justify-content:center;gap:18px;font-size:14px;margin:6px 0 2px}
+.legal a{text-decoration:underline;text-underline-offset:3px}
+.sheet .btn-row .link{font-size:15px;padding:8px 6px;align-self:center}
+.pw-bolt{width:18px;height:18px;vertical-align:-3px;margin-right:6px}
+h2 .pw-bolt{width:22px;height:22px;vertical-align:-3px}
+.rotate-cover{display:none}
+@media (orientation:landscape) and (max-height:499px) and (pointer:coarse){
+  .rotate-cover{display:grid;position:fixed;inset:0;z-index:99999;place-items:center;background:var(--sky,#7FD0E4)}
+  .rotate-cover svg{width:96px;height:96px;color:var(--ink,#1b1b3a);animation:rotPhone 2.4s ease-in-out infinite}
+}
+@keyframes rotPhone{0%,20%{transform:rotate(90deg)}60%,100%{transform:rotate(0)}}

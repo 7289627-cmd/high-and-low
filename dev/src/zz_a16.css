@@ -1,0 +1,25 @@
+/* a16: polish for chomp, melt, zap deaths. Individual transform properties (translate, rotate, scale) are used so these loops never fight the existing x3 transform keyframes. */
+@keyframes x6hop{0%,100%{translate:0 0}50%{translate:0 -11px}}
+@keyframes x6step{0%{translate:0 -34px}100%{translate:0 0}}
+@keyframes x6chewt{0%{translate:0 0}100%{translate:0 -6px}}
+@keyframes x6chewb{0%{translate:0 0}100%{translate:0 6px}}
+@keyframes x6breathe{0%{scale:1 1}100%{scale:1.03 .9}}
+@keyframes x6sway{0%,100%{rotate:-2.5deg}50%{rotate:2.5deg}}
+@keyframes x6spark{0%{opacity:0;scale:.3;rotate:0deg}30%{opacity:1;scale:1.1;rotate:50deg}70%{opacity:1;scale:.8;rotate:110deg}100%{opacity:0;scale:.3;rotate:160deg}}
+@keyframes x6hatland{0%{opacity:0;transform:translateY(-70px) rotate(-40deg)}1%{opacity:1}55%{opacity:1;transform:translateY(0) rotate(14deg) scale(1.12,.8)}75%{opacity:1;transform:translateY(-8px) rotate(-6deg) scale(.96,1.06)}100%{opacity:1;transform:translateY(0) rotate(-8deg)}}
+
+/* chomp: killer steps forward to the foreground (feet on the lower jaw, not inside the mouth) and cheers at the end */
+.x3-kc{bottom:6px;z-index:10;animation:x3kc 1.9s linear both,x6step .5s ease-out .5s both,x6hop .5s ease-in-out 3.1s infinite}
+.x3-bib{width:96px;margin-left:-48px;top:-8px}
+
+/* melt: lens is held at the killer's hand and hops with him, killer cheers, puddle wears the hat */
+.x6-lensk{right:52px;top:70px;animation:x3on .01s linear .9s forwards,x3km 3.2s linear both}
+.x3-km{animation:x3km 3.2s linear both,x6hop .5s ease-in-out 3.1s infinite}
+.x6-lhat{position:absolute;left:calc(50% - 24px - 62px);bottom:46px;width:40px;z-index:2;opacity:0;transform-origin:50% 100%;animation:x6hatland .7s ease-out 2.15s both}
+
+/* zap: fried bean sways and crackles, killer cheers, remote sits in his hand */
+.x3-zb{transform-origin:50% 100%}
+.x3-kz{animation:x3kz 3.2s linear both,x6hop .5s ease-in-out 3.3s infinite}
+.x3-rem{left:-15px}
+.x6-sp{position:absolute;width:16px;height:16px;margin:0 0 0 -8px;z-index:8;opacity:0;pointer-events:none;animation:x6spark .5s ease-out infinite both}
+.x6-sp svg{display:block;width:100%;height:100%}

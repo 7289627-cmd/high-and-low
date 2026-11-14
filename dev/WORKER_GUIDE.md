@@ -7,7 +7,7 @@ You are a worker on a mobile party game. Follow these rules exactly. Do not rede
 - `src/extra.css` – newer screens (lobby, ask screen, number pad, wheel). Append new CSS at the END of this file.
 - `src/base.js` – art only: `charSVG()`, props, `SCENES` (death animations). Touch only for new art or deaths.
 - `src/main.js` – everything else: networking, host engine, rendering, bindings.
-- Output: `python3 /home/claude/hl/build.py` writes `/home/claude/high-and-low.html`. Never edit that file by hand.
+- Output: `python3 /home/claude/hl2/build.py` writes `/home/claude/hl2/artifact.html`. Never edit that file by hand.
 
 ## How the game works (do not change unless the brief says so)
 - One phone is the host. The host's phone runs the game state `G` and shares it through room presence.
@@ -30,6 +30,6 @@ You are a worker on a mobile party game. Follow these rules exactly. Do not rede
 - Do not add libraries or network calls.
 
 ## Done means
-1. `bash /home/claude/hl/run_tests.sh` prints only PASS lines.
+1. `bash /home/claude/hl2/run_tests.sh` prints only PASS lines.
 2. You report: what you changed (file + function names), and the PASS lines. Keep it under 10 lines. Do not paste whole files.
 3. Do not publish. The lead publishes after review.

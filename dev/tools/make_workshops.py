@@ -3,7 +3,7 @@
 import pathlib,re,json,html
 H=pathlib.Path('/home/claude/hl')
 rd=lambda p:(H/p).read_text()
-FONTS='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Baloo+2:wght@500;600;700;800&display=swap">'
+FONTS='<style>'+re.search(r'/\*FONTS\*/.*?/\*/FONTS\*/',(H/'src/zz_a02.css').read_text(),re.S).group(0)+'</style>'  # local fonts, same rules as the game
 WS_CSS='''
 html,body{height:auto!important;overflow:auto!important;position:static!important}
 body{margin:0;padding:16px 14px 60px!important;background:#7FD0E4!important;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.35;-webkit-user-select:auto;user-select:auto}
@@ -168,7 +168,7 @@ function render(){
   }
   document.getElementById('list').innerHTML=h;
 }
-const SEQ={turn:[['yourturn',0],['pick',900],['land',1000],['tick',1500],['tick',1620],['tick',1740],['send',2300],['yes',3100]],miss:[['send',0],['nope',700],['bonk',760]],win:[['send',0],['anvil',900],['anvil2',940],['sad',2600],['win',3600],['vo_youwin',4500]]};
+const SEQ={turn:[['yourturn',0],['pick',900],['land',1000],['tick',1500],['tick',1620],['tick',1740],['send',2300],['yes',3100]],miss:[['send',0],['nope',700],['bonk',760]],win:[['send',0],['win',900],['vo_youwin',1800]]};
 const mus={home:new Audio(),play:new Audio()};for(const k in mus){mus[k].loop=true}
 document.addEventListener('click',e=>{
   const t=e.target.closest('button');if(!t)return;const d=t.dataset;

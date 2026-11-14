@@ -1,0 +1,3 @@
+/* c05: finishing pass for the death scenes (keyframes x8*) */
+/* a delayed "both" animation showed its 0% frame (opacity 1) during the delay: piano keys and calc keycaps sat on the bean from the start */
+.x7-key,.x7-cap{animation-fill-mode:forwards!important}

@@ -1,0 +1,47 @@
+/* d01: small phones. Nothing here applies at 390x844 and up. Width rules: under 360px. Height rules: under 600px
+   (320x568, and "Safari with bars" 375x553). The default look is untouched above those sizes. */
+
+/* ---- tap targets: chip hit area. a11's ::after used 100% of the padding box (28px), so it only reached about 36px ---- */
+.chip-btn::after{top:-6px;bottom:-6px;height:auto;transform:translateX(-50%)}
+
+/* ---- friends lobby, phones under 390 wide: YOU / HOST tags wrap under the name instead of squeezing it to an ellipsis ---- */
+@media (max-width:389px){
+  .prow2 .who{flex-wrap:wrap;row-gap:2px}
+  .prow2 .who b{max-width:100%}
+}
+
+/* ---- narrow phones (320): header on one row, short names, join box ---- */
+@media (max-width:359px){
+  .bar{gap:6px}
+  .logo.small{font-size:22px;-webkit-text-stroke-width:3.5px}
+  .bar .btn.sm{padding:5px 9px}
+  .tray{padding-left:10px;padding-right:10px}
+  .taunt-bar{gap:4px}
+  .join-row input{font-size:22px;letter-spacing:.12em;padding:4px 8px}
+  .join-row input::placeholder{letter-spacing:.08em}
+}
+
+/* ---- short phones (568 high, or 553 with browser bars) ---- */
+@media (max-height:600px){
+  #app{gap:6px}
+  .askv{gap:6px}
+  .askv .say{min-height:0}
+  .key{height:44px}
+  .big-bean{width:72px}
+  .secpick{gap:6px}
+  .cast.duel{padding-top:30px;padding-bottom:14px;gap:4px}
+  .cast.duel .card{grid-template-columns:86px minmax(0,1fr);gap:10px;padding:10px 12px}
+  .cast.duel .card .pic{width:86px}
+  .cast.duel .card.mine{grid-template-columns:56px minmax(0,1fr);padding:8px 12px}
+  .cast.duel .card.mine .pic{width:56px}
+  /* pick direction: smaller arrows, words and speaker so the bean and bubble sit in the gap between the two halves */
+  .half{padding:12px 12px}
+  .half .arrow{width:44px}
+  .half .word{font-size:36px;-webkit-text-stroke-width:5px}
+  .split{gap:10px}
+  .split .spk-bean{width:54px}
+  .split .speech{font-size:20px;padding:3px 12px}
+  /* result sheet: shorter picture so Play again is visible */
+  .sheet.has-x{padding:12px;gap:6px}
+  .sheet.has-x .stage{height:168px}
+}

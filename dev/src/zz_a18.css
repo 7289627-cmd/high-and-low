@@ -1,0 +1,9 @@
+.st-row{display:flex;align-items:center;justify-content:center;gap:8px}
+.st-row .wins-pill{margin:8px 0 0}
+.st-flame{display:inline-flex;align-items:center;gap:2px;margin-top:8px;font-family:var(--display);font-size:22px;line-height:1}
+.st-flame svg{width:30px;height:30px;display:block}
+.st-dots{display:flex;gap:6px;justify-content:center;margin-top:-2px}
+.st-dots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:var(--white);box-sizing:border-box}
+.st-dots i.on{background:var(--green)}
+.st-sheet{display:flex;justify-content:center;margin:2px 0}
+.pw-won .st-sun{display:inline-flex}

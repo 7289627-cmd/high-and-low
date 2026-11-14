@@ -1,0 +1,24 @@
+/* a11 : accessibility and touch ergonomics. Nothing here changes layout or what sighted touch users see, except the ink text outline on small white-on-red/green labels. */
+.sr-only{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.sheet:focus{outline:none}
+.sld:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:14px}
+
+/* ---- tap targets: invisible 44px minimum hit area centred on the control (visual size unchanged) ---- */
+:where(.mute-btn,.info-btn,.taunt-btn,.x,.chip-btn,.btn.sm,.dirword,.link,.legal a){position:relative}
+.mute-btn::after,.info-btn::after,.taunt-btn::after,.x::after,.chip-btn::after,.btn.sm::after,.dirword::after,.link::after{
+  content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+/* chips wrap with an 8px row gap, so they only grow by that much (to ~40px) to keep neighbouring hit areas apart */
+.chip-btn::after{height:calc(100% + 8px)}
+.pk-sw::after{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:max(100%,44px);transform:translateY(-50%)}
+/* text links in the info sheet: grow only vertically, they sit 6px apart */
+.legal a{display:inline-block;padding:0}
+.legal a::after{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:40px;transform:translateY(-50%)}
+
+/* ---- contrast ---- */
+/* white 10-18px labels on red or green: add the game's ink outline (stroke is painted under the fill) */
+.btn.primary:not(.big),.btn.go:not(.big),.tag.up,.mode em,.sld-track i em{-webkit-text-stroke:3px var(--ink);paint-order:stroke fill}
+.tag.up{-webkit-text-stroke-width:2px}
+.mode em{-webkit-text-stroke-width:3px}
+/* green and red small text on paper: same hues, mixed toward ink */
+.state-ok{color:#2A7C5E;color:color-mix(in srgb,var(--green) 70%,var(--ink))}
+.pw-why{color:#B03F3C;color:color-mix(in srgb,var(--red) 70%,var(--ink))}

@@ -1,0 +1,6 @@
+/* a01: phone app shell. Safe-area insets and dynamic viewport height. */
+html,body{height:100vh;height:100dvh}
+html{background:var(--sky)}
+#app{height:100vh;height:100dvh;
+  padding-top:calc(10px + env(safe-area-inset-top,0px));
+  padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}

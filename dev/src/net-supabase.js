@@ -1,6 +1,8 @@
+var hlClient=null,hlClientKey='';
+// one Supabase client for the whole page: the queue and every room share it
+function hlSharedClient(cfg){var k=cfg.url+'|'+cfg.key;if(!hlClient||hlClientKey!==k){hlClient=window.supabase.createClient(cfg.url,cfg.key);hlClientKey=k}return hlClient}
 window.makeSupabaseRoom=function(cfg){
-  var client=null;
-  function getClient(){if(!client)client=window.supabase.createClient(cfg.url,cfg.key);return client}
+  function getClient(){return hlSharedClient(cfg)}
   var myKey=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
   return {
     join:function(name){
@@ -48,6 +50,7 @@ window.makeSupabaseRoom=function(cfg){
         ch.on('broadcast',{event:'p'},function(m){
           var pl=m&&m.payload;if(!pl||pl.k===myKey)return;
           var cur=peers.get(pl.k),now=Date.now();
+          if(typeof pl.k!=='string'||pl.k.length>40||(!cur&&peers.size>=40))return; // a room never holds that many phones
           var p=pl.p||{};
           if(!cur)peers.set(pl.k,{presence:p,updatedAt:now,lastHeard:now});
           else{
@@ -119,8 +122,7 @@ window.makeSupabaseRoom=function(cfg){
   };
 };
 window.makeSupabaseQueue=function(cfg){
-  var client=null;
-  function getClient(){if(!client)client=window.supabase.createClient(cfg.url,cfg.key);return client}
+  function getClient(){return hlSharedClient(cfg)}
   var ch=null,cbs=[],subscribed=false,left=false,pending=null;
   function rawSend(payload){
     try{var r=ch.send({type:'broadcast',event:'open',payload:payload});if(r&&r.catch)r.catch(function(){})}catch(e){}

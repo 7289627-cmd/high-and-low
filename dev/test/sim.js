@@ -1,5 +1,5 @@
 const {JSDOM}=require('jsdom');const act=require('./act.js');const fs=require('fs');
-const html=fs.readFileSync('/home/claude/high-and-low.html','utf8');
+const html=fs.readFileSync('/home/claude/hl/artifact.html','utf8');
 const dom=new JSDOM('<!doctype html><body>'+html+'</body>',{runScripts:'dangerously',pretendToBeVisual:true,url:'https://x.test/'});
 const w=dom.window; const errs=[]; w.addEventListener('error',e=>errs.push(e.message));
 const $=s=>w.document.querySelector(s);
@@ -10,7 +10,7 @@ setTimeout(()=>{
     console.log('lobby players', w.document.querySelectorAll('.prow2').length);
     $('#startBtn').click();
     setTimeout(()=>{
-      ['4','2','4','2'].forEach(k=>$('.key[data-k="'+k+'"]').click()); console.log('entry',$('.secret-big').textContent); $('#lockBtn').click();
+      ['4','2','4'].forEach(k=>$('.key[data-k="'+k+'"]').click()); console.log('entry',$('.secret-big').textContent); $('#lockBtn').click();
       let ticks=0;
       const iv=setInterval(()=>{
         ticks++;

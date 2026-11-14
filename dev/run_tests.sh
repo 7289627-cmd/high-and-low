@@ -26,4 +26,16 @@ cd ..
 python3 build.py >/dev/null
 cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 400 node leave.js 2>&1 | tail -1); (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null
 (cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 1500 node chaos.js 11,29,47 2>/dev/null | tail -1)
-(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 120 node quick.js 2>&1 | grep -E "^(PASS|FAIL) quick play" || echo "FAIL quick play: no output")
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 300 node quick.js 2>&1 | grep -E "^(PASS|FAIL) quick play" || echo "FAIL quick play: no output")
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 700 node duel.js 2>&1 | grep -E "^(PASS|FAIL) duel" || echo "FAIL duel: no output")
+(cd /home/claude/hl/test && node names.js)
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 120 node streak.js 2>&1 | grep -E "^(PASS|FAIL) streak" || echo "FAIL streak: no output")
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 100 node share.js 2>&1 | grep -E "^(PASS|FAIL) share" || echo "FAIL share: no output")
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 400 node match.js 2>&1 | grep -E "^(PASS|FAIL) match" || echo "FAIL match: no output")
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 700 node resume.js 2>/dev/null | tail -1)
+
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 600 node track.js 2>&1 | grep -E "^(PASS|FAIL) track" || echo "FAIL track: no output")
+(cd /home/claude/hl/test && node haptics.js 2>&1 | grep -E "^(PASS|FAIL)" || echo "FAIL haptics: no output")
+(cd /home/claude/hl/test && node hlnative.js 2>&1 | grep -E "^(PASS|FAIL)" | tail -1 || echo "FAIL hlnative: no output")
+(cd /home/claude/hl/test && node sound_levels.js 2>&1 | grep -E "^(PASS|FAIL)" | tail -1 || echo "FAIL sound levels: no output")
+(cd /home/claude/hl && python3 build.py web >/dev/null && timeout 600 python3 test/real_browser.py 2>&1 | grep -E "^(PASS|FAIL) real browser" || echo "FAIL real browser: no output")

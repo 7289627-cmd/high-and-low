@@ -1,0 +1,32 @@
+/* c09: tablet and desktop scale. One mechanism: --z drives CSS zoom on <html> by viewport height (0.7 to 1.8, about 860px of effective height), so beans, type, buttons, slider,
+   scene and sheets all scale together. Phones (width < 600 or height < 600) are untouched. */
+@media (min-width:600px) and (min-height:600px){
+  :root{--z:1}
+  #app{max-width:520px}
+  #ov .sheet{max-width:480px;margin-left:auto;margin-right:auto}
+}
+@supports (zoom:1){@media (min-width:600px) and (min-height:600px){
+  html{zoom:var(--z);--zh:calc(100dvh / var(--z))}
+  html,body,#app{height:100vh;height:var(--zh)}
+}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:600px){:root{--z:0.7}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:645px){:root{--z:0.75}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:688px){:root{--z:0.8}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:731px){:root{--z:0.85}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:774px){:root{--z:0.9}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:817px){:root{--z:0.95}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:903px){:root{--z:1.05}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:946px){:root{--z:1.1}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:989px){:root{--z:1.15}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1032px){:root{--z:1.2}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1075px){:root{--z:1.25}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1118px){:root{--z:1.3}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1161px){:root{--z:1.35}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1204px){:root{--z:1.4}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1247px){:root{--z:1.45}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1290px){:root{--z:1.5}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1333px){:root{--z:1.55}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1376px){:root{--z:1.6}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1462px){:root{--z:1.7}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:1548px){:root{--z:1.8}}}
+@supports (zoom:1){@media (min-width:600px) and (min-height:600px) and (orientation:portrait){.hsun{left:-40px;top:66px;width:128px;height:128px}.hill.far{height:210px}.hill.near{height:130px}}}

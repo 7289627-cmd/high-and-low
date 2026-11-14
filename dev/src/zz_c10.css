@@ -1,0 +1,7 @@
+/* c10: stop the web view feeling like a web page. ui2.css already has overscroll none, user-select none,
+   no callout, transparent tap highlight and touch-action manipulation (no double-tap zoom, no 300 ms delay).
+   Added here: block pinch zoom, and make sure inputs and the invite link stay selectable. */
+html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,.btn,.key,.sld{-webkit-tap-highlight-color:transparent}
+img,svg{-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none}
+input,textarea,.invite-url{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}

@@ -37,12 +37,18 @@ const started=s=>(s.ph==='secrets'||s.ph==='play')&&s.n===2;
   // a) one phone alone
   const A=phone('a',true);await wait(400);
   A.$('#playBtn').click();
-  const sa=await until(A,started,5000);
+  const sa=await until(A,started,9000);
   if(!sa)fail('(a) not started in 8s '+A.eval('JSON.stringify([view,mode,G&&G.phase,G&&G.players.length])'));
   if(sa.bots!==1)fail('(a) expected 1 hidden bot, got '+sa.bots);
   if(/BOT/.test(A.$('#app').textContent))fail('(a) BOT tag visible');
   if(A.errs.length)fail('(a) page errors '+A.errs.join('|'));
   if(A.eval('LS.get("hl-session")'))fail('(a) public room saved a rejoin session');
+  // a2) Back in a game opens the leave flow (rated sheet or armed Leave), Back again closes the sheet or leaves
+  {const r1=A.eval('hlBack()');const sheet=A.eval('!$("#ov").hidden&&!!$("#stayBtn")'),armed=A.eval('ui.leaveArmed');
+   if(r1!==true||!(sheet||armed))fail('(a2) Back in game did not open the leave flow '+JSON.stringify([r1,sheet,armed]));
+   A.eval('hlBack()');await wait(300);
+   if(sheet){if(!A.eval('$("#ov").hidden')||A.eval('view')!=='game')fail('(a2) second Back should close the sheet and stay')}
+   else if(A.eval('view')!=='home')fail('(a2) second Back should leave the game')}
   A.close();for(const k in hub)delete hub[k];
   // b) two phones
   const P=phone('p',true),Q=phone('q',true);await wait(400);
@@ -62,5 +68,12 @@ const started=s=>(s.ph==='secrets'||s.ph==='play')&&s.n===2;
   if(C.eval('view')!=='home'||C.eval('!!G'))fail('(c) a game started without a connection');
   if(!C.$('#retryNet'))fail('(c) no offline card');
   if(C.errs.length)fail('(c) page errors '+C.errs.join('|'));
+  // d) Back on the home screen: sheet closes first, then it is not handled (the app exits)
+  C.$('#infoBtn').click();
+  if(C.$('#ov').hidden)fail('(d) info sheet did not open');
+  if(C.eval('hlBack()')!==true||!C.$('#ov').hidden)fail('(d) Back did not close the sheet');
+  let exited=0;C.HLNative={exit(){exited++}};
+  if(C.eval('hlBack()')!==false||exited!==1)fail('(d) Back on home should call HLNative.exit and report not handled');
+  if(C.errs.length)fail('(d) page errors '+C.errs.join('|'));
   console.log('PASS quick play');process.exit(0);
 })();

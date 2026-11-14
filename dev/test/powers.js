@@ -38,6 +38,7 @@ const PLAN=['freeze','shield','double','peek','snap'];
   B.$('#nameIn').value='Jose';B.$('#nameIn').dispatchEvent(new B.Event('input'));
   B.$('#codeIn').value=code;B.$('#joinBtn').click();await wait(400);
   A.$('#addBot').click();await wait(100);
+  A.$('[data-max="10000"]').click();await wait(100);
   A.$('#startBtn').click();await wait(300);
   ['7','7','7'].forEach(k=>A.$('.key[data-k="'+k+'"]').click());A.$('#lockBtn').click();
   ['9','1','0','0'].forEach(k=>B.$('.key[data-k="'+k+'"]').click());B.$('#lockBtn').click();
@@ -47,13 +48,16 @@ const PLAN=['freeze','shield','double','peek','snap'];
   A.eval("LS.set(LSK('hl-coins'),50)");B.eval("LS.set(LSK('hl-coins'),50)");
   await wait(300);
   const evs={},snapSeen={};let idx=0,sentTurn=-1,doneTurn=-1,snapChecked=false,peekChecked=false,userPid=null;
-  let won=false,b0=null;
+  let won=false,b0=null,lastEvId=-1,dblTurn=-1;const askPerTurn={};
   const bad=[];
   const t0=Date.now();
   for(let t=0;t<3000&&Date.now()-t0<460000;t++){
     // record events seen by host
     const ev=A.eval('G.ev&&JSON.stringify(G.ev)');
-    if(ev){const e=JSON.parse(ev);evs[e.t]=(evs[e.t]||0)+1;if(e.t==='snap'&&!snapChecked){
+    if(ev){const e=JSON.parse(ev);evs[e.t]=(evs[e.t]||0)+1;
+      if(e.t==='askall'&&e.bl&&e.bl.length)evs.blocked=(evs.blocked||0)+1;
+      if(e.id!==lastEvId){lastEvId=e.id;const tn=JSON.parse(A.eval('G.turnNo'));if(e.t==='askall')askPerTurn[tn]=(askPerTurn[tn]||0)+1;if(e.t==='double')dblTurn=tn}
+if(e.t==='snap'&&!snapChecked){
         snapChecked=true;
         const r=JSON.parse(A.eval('JSON.stringify({ps:G.players.filter(p=>p.a).flatMap(a=>G.players.filter(t=>t.a&&t.pid!==a.pid).map(t=>[a.pid+">"+t.pid,G.kn[a.pid][t.pid].hi-G.kn[a.pid][t.pid].lo+1])),bx:G.bx})'));
         if(r.ps.some(x=>x[1]>10))bad.push('range >10 after snap '+JSON.stringify(r.ps));
@@ -98,6 +102,7 @@ const PLAN=['freeze','shield','double','peek','snap'];
   console.log('events',JSON.stringify(evs),'idx',idx);
   const errs=A.errs.concat(B.errs);
   if(miss.length)bad.push('missing events '+miss);
+  if(dblTurn>=0&&!(askPerTurn[dblTurn]>=2))bad.push('double down did not ask twice '+JSON.stringify(askPerTurn[dblTurn]));
   if(errs.length)bad.push('page errors '+JSON.stringify(errs));
   if(!won)bad.push('no winner');
   console.log(bad.length?'FAIL powers: '+bad.join('; '):'PASS powers');

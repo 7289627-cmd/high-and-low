@@ -1,5 +1,5 @@
 const {JSDOM}=require('jsdom');const act=require('./act.js');const fs=require('fs');
-const html=fs.readFileSync('/home/claude/high-and-low.html','utf8');
+const html=fs.readFileSync('/home/claude/hl/artifact.html','utf8');
 // fake room hub
 const rooms={};let pc=0;
 function makeRoomNS(){

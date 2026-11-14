@@ -1,0 +1,13 @@
+/* e04: WebKit and old WebView fallbacks. Nothing here changes a browser that already renders correctly. */
+
+/* 1. build.py's web reset puts the safe-area insets on <html> as padding, and a01 puts them on #app again. On a notched iPhone (viewport-fit=cover)
+   that doubled the top inset and pushed the bottom of #app 59px below the screen. #app alone owns the insets (env() is 0 in desktop browsers, so no change there). */
+:root{padding-top:0;padding-bottom:0}
+
+/* 2. c09 sizes the zoomed tablet page with var(--zh) = calc(100dvh / zoom). A browser without dvh (iOS before 15.4, WebView before 108)
+   drops that declaration at computed-value time, so height became auto instead of falling back to 100vh. Give it a vh based value. */
+@supports not (height:1dvh){@media (min-width:600px) and (min-height:600px){html{--zh:calc(100vh / var(--z))}}}
+
+/* 3. Android resizes the web view when the keyboard opens. A 360x300 portrait window then matched the landscape rotate cover and hid the game
+   while a name or room code was typed. Real landscape phones are 16:9 or wider. */
+@media (orientation:landscape) and (max-height:499px) and (pointer:coarse) and (max-aspect-ratio:3/2){.rotate-cover{display:none}}

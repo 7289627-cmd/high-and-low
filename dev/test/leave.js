@@ -45,14 +45,20 @@ const names=()=>A.eval('G.players.map(p=>p.name).join(",")');
   await join(C,'Mia',code);
   if(names()!=='Dodgy,Jose,Mia')fail('rejoin failed: '+names());
   console.error('rejoin ok');
-  // 2) Leave mid-game knocks the player out within 3 s and the game goes on
+  // 2) Leave mid-game: a hidden easy bot takes over and the game goes on
+  A.$('[data-max="10000"]').click();await wait(100);
   A.$('#startBtn').click();await wait(400);
   for(const P of [A,B,C]){for(const k of '4321')P.$('.key[data-k="'+k+'"]').click();P.$('#lockBtn').click()}
   for(let i=0;i<100&&!(A.eval('G.phase')==='play'&&A.eval('G.stage')==='await');i++)await wait(200);
   if(A.eval('G.phase')!=='play')fail('game did not start '+A.eval('JSON.stringify([G.phase,G.stage,G.players.map(p=>[p.name,p.a,(getPres(p.pid)||{}).ready===G.gid])])')+' APEERS:'+A.eval('JSON.stringify([...peerMap.entries()].map(([k,v])=>[k.slice(0,6),v.pres.name,v.pres.ready,v.pres.gone,v.pres.code]))')+' UPD:'+B.eval('(()=>{try{update();return "ok"}catch(e){return String(e.stack).slice(0,300)}})()')+' BNET:'+B.eval('JSON.stringify([!!R,R&&R.connected&&R.connected(),[...peerMap.values()].map(v=>[v.pres.name,v.pres.role,v.pres.gone,!!v.pres.game])])')+' ERR:'+JSON.stringify([A.errs,B.errs,C.errs]).slice(0,300)+' B:'+B.eval('JSON.stringify([view,!!mySecret,myPres.ready,G&&G.gid,G&&G.phase])')+' C:'+C.eval('JSON.stringify([view,!!mySecret,!!G,G&&G.phase,myPres.ready])')+C.$('#app').textContent.slice(0,80));
   await tapLeave(C);await wait(2500);
   const mia=JSON.parse(A.eval('JSON.stringify(G.players.find(p=>p.name==="Mia"))'));
-  if(mia.a!==0)fail('mid-game leaver still alive');
+  if(mia.bot!==1||mia.a!==1)fail('leaver not taken over by a bot '+JSON.stringify(mia));
+  if(mia.hb!==1||mia.ez!==1)fail('leaver bot not hidden/easy '+JSON.stringify(mia));
+  {const r=JSON.parse(A.eval('JSON.stringify((()=>{const s=botSecrets['+JSON.stringify(mia.pid)+'];let lo=1,hi=G.max,x=[];for(const o of G.players)if(o.pid!=='+JSON.stringify(mia.pid)+'){const k=kn(o.pid,'+JSON.stringify(mia.pid)+');lo=Math.max(lo,k.lo);hi=Math.min(hi,k.hi);x=x.concat(k.x)}return{s,lo,hi,x}})())'));
+    if(!Number.isInteger(r.s)||r.s<r.lo||r.s>r.hi||r.x.includes(r.s))fail('bot secret outside others ranges '+JSON.stringify(r))}
+  if(/BOT/.test(A.$('#app').textContent))fail('hidden bot shows a BOT tag');
+  if(C.$('[data-pickdir]')||C.$('.g[data-n]'))fail('leaver phone can still act');
   console.error('midgame leave ok',A.eval('JSON.stringify([G.stage,G.turn,G.sub,G.q,G.players.map(p=>p.a)])'));
   let over=false;
   for(let t=0;t<1500&&!over;t++){act(A);act(B);await wait(120);if(t%100===99)console.error(t,A.eval('JSON.stringify([G.stage,G.seq,G.turn,G.sub,G.q,G.players.map(p=>p.a)])'));over=A.eval('G.phase')==='over'}

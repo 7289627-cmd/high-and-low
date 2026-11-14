@@ -38,6 +38,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   console.log('A lobby',A.$('.plist').textContent.replace(/\s+/g,' '));
   console.log('B lobby',B.$('.plist')&&B.$('.plist').textContent.replace(/\s+/g,' '));
   A.$('#addBot').click();await wait(100);
+  A.$('[data-max="10000"]').click();await wait(100);
   A.$('#startBtn').click();await wait(300);
   ['7','7','7'].forEach(k=>A.$('.key[data-k="'+k+'"]').click());A.$('#lockBtn').click();
   ['9','1','0','0'].forEach(k=>B.$('.key[data-k="'+k+'"]').click());B.$('#lockBtn').click();

@@ -15,15 +15,8 @@ leave     interface-sounds/addons/kenney_interface_sounds/close_001.wav
 hint      interface-sounds/addons/kenney_interface_sounds/pluck_001.wav
 error     interface-sounds/addons/kenney_interface_sounds/error_004.wav
 bonk      zips/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg
-sad       zips/kenney_music-jingles/Audio/Sax jingles/jingles_SAX01.ogg
-anvil     zips/kenney_impact-sounds/Audio/impactMetal_heavy_000.ogg
-anvil2    zips/kenney_impact-sounds/Audio/impactBell_heavy_001.ogg
 zap       interface-sounds/addons/kenney_interface_sounds/glitch_002.wav
-whoosh    interface-sounds/addons/kenney_interface_sounds/maximize_006.wav
-chomp     zips/kenney_impact-sounds/Audio/impactSoft_heavy_000.ogg
-melt      zips/kenney_music-jingles/Audio/Sax jingles/jingles_SAX14.ogg
 pop       zips/kenney_impact-sounds/Audio/impactPunch_heavy_000.ogg
-pop2      zips/kenney_impact-sounds/Audio/impactGlass_light_001.ogg
 heart     zips/kenney_impact-sounds/Audio/impactSoft_medium_000.ogg
 babble1   ui-audio/addons/kenney_ui_audio/rollover1.wav
 babble2   ui-audio/addons/kenney_ui_audio/rollover2.wav
@@ -37,21 +30,14 @@ vo_final  zips/kenney_voiceover-pack/Male/final_round.ogg
 vo_hurry  zips/kenney_voiceover-pack/Male/hurry_up.ogg
 vo_timeover zips/kenney_voiceover-pack/Male/time_over.ogg
 vo_wrong  zips/kenney_voiceover-pack/Male/wrong.ogg
-vo_correct zips/kenney_voiceover-pack/Male/correct.ogg
 k_clang   zips2/cc0lav/kenney_rpgaudio/Audio/metalPot3.ogg
 k_ring    zips2/cc0lav/100-CC0-SFX/bell_01.ogg
 k_slam    zips2/cc0lav/100-CC0-wood-metal-SFX/metal_slam_01.ogg
 k_rattle  zips2/cc0lav/100-CC0-wood-metal-SFX/metal_falling_02.ogg
-k_fall    zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Fast Drop.wav
 k_falllongzips2/cc0lav/bb - Slide Whistle (Aug 2021)/Tone Drop Fast.wav
-k_rise    zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Fast Rise.wav
-k_riseq   zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Quick Rise 2.wav
-k_wobble  zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Wobble Fall.wav
-k_womp    zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Wobble Drop.wav
 k_boing   zips2/cc0lav/100-CC0-SFX/spring_07.ogg
 k_boing2  zips2/cc0lav/100-CC0-SFX/spring_02.ogg
 k_yelp    zips2/cc0lav/80-CC0-creature-SFX/cute_04.ogg
-k_ouch    zips2/cc0lav/80-CC0-creature-SFX/hurt_01.ogg
 k_eat1    zips2/cc0lav/80-CC0-creature-SFX/eat_01.ogg
 k_eat2    zips2/cc0lav/80-CC0-creature-SFX/eat_02.ogg
 k_eat3    zips2/cc0lav/80-CC0-creature-SFX/eat_04.ogg
@@ -61,8 +47,8 @@ k_crack   zips2/cc0lav/25-CC0-bang-sfx/bang_07.ogg
 k_explode zips2/cc0lav/25-CC0-bang-sfx/bang_06.ogg
 k_launch  zips2/cc0lav/25-CC0-bang-sfx/fw_06.ogg
 k_crackle zips2/cc0lav/25-CC0-bang-sfx/fw_04.ogg
-k_popbang zips2/cc0lav/25-CC0-bang-sfx/shot_02.ogg
-k_zap     zips2/cc0lav/kenney_digitalaudio/Audio/zap1.ogg
+k_popbang (opengameart.org/content/balloon-sounds) balloon_pop.flac  CC0, AntumDeluge; pop credited to Gniffelbaf
+k_zap     (freesound.org/s/449013) jacobs ladder from side.wav  CC0, parabolix; 0.55 s cut at 1.45 s
 k_splash  zips2/cc0lav/40-cc0-water-splash-slime-sfx/splash_08.ogg
 k_gloop   zips2/cc0lav/40-cc0-water-splash-slime-sfx/slime_15.ogg
 k_gloop2  zips2/cc0lav/40-cc0-water-splash-slime-sfx/slime_09.ogg
@@ -70,9 +56,9 @@ k_bubble  zips2/cc0lav/40-cc0-water-splash-slime-sfx/bubble_01.ogg
 k_plop    zips2/cc0lav/100-CC0-SFX/plop_02.ogg
 k_squeak  zips2/cc0lav/100-CC0-wood-metal-SFX/wood_squeak_02.ogg
 k_woodbreakzips2/cc0lav/100-CC0-wood-metal-SFX/wood_breaking_01.ogg
-k_glass   zips2/cc0lav/75-cc0-breaking-falling-hit-sfx/bfh1_glass_breaking_06.ogg
 k_crunch  zips2/cc0lav/100-CC0-wood-metal-SFX/wood_breaking_02.ogg
-k_bug     zips2/cc0lav/80-CC0-creature-SFX/bug_04.ogg
-k_bug2    zips2/cc0lav/80-CC0-creature-sfx-2/bug_10.ogg
 k_paper   zips2/cc0lav/100-CC0-SFX/paper_02.ogg
 k_woosh   zips2/cc0lav/Micro Pack - Organic Wooshes/Classic Swish 3.wav
+k_whoop   zips2/cc0lav/bb - Slide Whistle (Aug 2021)/Quick Rise.wav
+k_sizzle  (freesound.org/s/436791) Sizzle  CC0, roboroo; middle looped to 1.5 s
+d_piano   (freesound.org/s/548430) Piano crash sound.m4a  CC0, Indian_gamer2005; from onset, 3.0 s

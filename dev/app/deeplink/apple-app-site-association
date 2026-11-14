@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_TEAM_ID.REPLACE_BUNDLE_ID"],
+        "components": [
+          { "/": "/REPLACE_SITE_PATH/*", "comment": "invite links look like https://HOST/REPLACE_SITE_PATH/#room=ABCD" }
+        ]
+      }
+    ]
+  }
+}

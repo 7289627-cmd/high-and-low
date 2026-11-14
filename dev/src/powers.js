@@ -1,23 +1,32 @@
 /* Coins and powerups. Function declarations only at top level (this file is concatenated BEFORE main.js in one script). */
 
 /* ---------- Data ---------- */
+/* Power icons: 48 px grid, 4 px ink outline, game palette (same hand as RANK_ART). Static strings only; never built from network data. */
+const PW_ART={
+  snap:'<circle cx="21" cy="27" r="17" fill="#fff" stroke="#1E2240" stroke-width="4"/><circle cx="21" cy="27" r="10.5" fill="#EE4B3B" stroke="#1E2240" stroke-width="3.5"/><circle cx="21" cy="27" r="4" fill="#FFD23F" stroke="#1E2240" stroke-width="3"/><path d="M25 23 40 8" stroke="#1E2240" stroke-width="4" stroke-linecap="round"/><path d="M34 6.5 41.5 6.5 41.5 14" fill="none" stroke="#1E2240" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 20a12 12 0 0 1 6-6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>',
+  peek:'<circle cx="13" cy="26" r="9.5" fill="#fff" stroke="#1E2240" stroke-width="4"/><circle cx="35" cy="26" r="9.5" fill="#fff" stroke="#1E2240" stroke-width="4"/><circle cx="16" cy="28" r="5" fill="#1E2240"/><circle cx="38" cy="28" r="5" fill="#1E2240"/><circle cx="17.5" cy="26" r="1.7" fill="#fff"/><circle cx="39.5" cy="26" r="1.7" fill="#fff"/><path d="M5 10 19 14M43 10 29 14" stroke="#1E2240" stroke-width="4" stroke-linecap="round"/>',
+  double:'<path d="M5 6h24a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H17l-7 6v-6H5a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z" fill="#BFE9FF" stroke="#1E2240" stroke-width="4" stroke-linejoin="round" transform="translate(1 0)"/><path d="M21 19h22a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3h-4v7l-8-7H21a3 3 0 0 1-3-3V22a3 3 0 0 1 3-3z" fill="#FFD23F" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M25 28a4.5 4.5 0 1 1 8 2.8L25 36h9" fill="none" stroke="#1E2240" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  shield:'<path d="M24 4 41 9v14c0 10-7 17-17 21C14 40 7 33 7 23V9z" fill="#3D7BFF" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M24 12 34 15v8c0 6-4 10-10 13z" fill="#FFD23F" stroke="#1E2240" stroke-width="3" stroke-linejoin="round"/><path d="M12 13v9" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".8"/>',
+  freeze:'<path d="M7 16 24 6 41 16V34L24 44 7 34z" fill="#BFE9FF" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M24 26 41 16V34L24 44z" fill="#8FD3EE" stroke="#1E2240" stroke-width="3" stroke-linejoin="round"/><path d="M7 16 24 26 41 16M24 26V44" fill="none" stroke="#1E2240" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M24 6 41 16 24 26 7 16z" fill="#fff" stroke="#1E2240" stroke-width="3" stroke-linejoin="round"/><path d="M11 24v6" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>'
+};
+function pwIcon(id,cls){const a=Object.prototype.hasOwnProperty.call(PW_ART,id)?PW_ART[id]:'';return a?`<svg class="pw-svg${cls?' '+cls:''}" viewBox="0 0 48 48" aria-hidden="true">${a}</svg>`:''}
 function pwDefs(){return [
-  {id:'snap',icon:'🎯',name:'Instant Showdown',cost:8,desc:'Pulls everyone into the guess zone.'},
-  {id:'peek',icon:'👀',name:'Peek',cost:2,desc:'Learn if a player’s number is odd or even.'},
-  {id:'double',icon:'✌️',name:'Double Down',cost:3,desc:'Ask twice this turn'},
-  {id:'shield',icon:'🛡️',name:'Shield',cost:3,desc:'Blocks the next question or guess at you.'},
-  {id:'freeze',icon:'🧊',name:'Freeze',cost:4,desc:'The next player skips their turn.'}
+  {id:'snap',name:'Instant Showdown',cost:8,desc:'Everyone into the guess zone'},
+  {id:'peek',name:'Peek',cost:2,desc:'Odd or even'},
+  {id:'double',name:'Double Down',cost:3,desc:'Ask twice'},
+  {id:'shield',name:'Shield',cost:3,desc:'Blocks the next hit'},
+  {id:'freeze',name:'Freeze',cost:4,desc:'Next player skips a turn'}
 ]}
 function pwDef(id){return pwDefs().find(d=>d.id===id)||null}
 function myCoins(){const c=LS.get(LSK('hl-coins'));return Number.isInteger(c)&&c>0?c:0}
 function pwCoins(p){if(!p||(p.bot&&!p.hb))return 0;if(p.pid===PID)return myCoins();const c=(getPres(p.pid)||{}).co;return Number.isInteger(c)&&c>0?c:0}
-function pwEarn(){LS.set(LSK('hl-coins'),myCoins()+5);window.__pwWon=1}
+function pwEarn(){const n=stWinCoins();LS.set(LSK('hl-coins'),myCoins()+n);window.__pwWon=n}
 function pwWinBlock(){
   if(!window.__pwWon)return '';
-  window.__pwWon=0;sfx('lock',{delay:0.3});
-  return `<div class="newhat pw-won">${pwCoinSVG(26)}<b>+5 coins</b></div>`;
+  const n=window.__pwWon;window.__pwWon=0;sfx('lock',{delay:0.3});
+  return `<div class="newhat pw-won" role="img" aria-label="+${n>1?n:5} coins">${pwCoinSVG(26)}<b>+${n>1?n:5}</b>${n>5?stSunSVG(24):''}</div>`;
 }
-function pwHomePill(){const c=myCoins();return c>0?`<div class="wins-pill coins-home">${pwCoinSVG(16)} Coins: ${c}</div>`:''}
+function pwHomePill(){const c=myCoins();return c>0?`<div class="wins-pill coins-home">${pwCoinSVG(16)}<b>${c}</b><span class="sr-only"> coins</span></div>`:''}
 function pwSpend(ev){
   if(!G||ev.a!==PID)return;
   const d=pwDef(ev.t);if(!d)return;
@@ -33,11 +42,11 @@ function pwCoinPill(p){if(p&&p.bot&&!p.hb)return '';return `<span class="coin-pi
 /* ---------- Shared validation (host and client). Returns '' when OK, else a short reason ---------- */
 function pwCan(p,id,tg){
   const d=pwDef(id);if(!d||!p||!p.a)return 'Not available';
-  if(G.pwTurn===G.turnNo)return 'Already used a power this turn';
+  if(G.pwTurn===G.turnNo)return 'Used this turn';
   const alive=G.players.filter(x=>x.a);
-  if(id==='double'&&!(G.sub&&G.sub[0]==='*'))return 'Use it before asking';
-  if(id==='shield'&&p.sh)return 'Shield is already up';
-  if(id==='freeze'&&alive.length<3)return 'Needs 3 or more players';
+  if(id==='double'&&!(G.sub&&G.sub[0]==='*'))return 'Before asking';
+  if(id==='shield'&&p.sh)return 'Already up';
+  if(id==='freeze'&&alive.length<3)return '3 or more players';
   if(id==='peek'){const t=byPid(tg);if(!t||!t.a||t.pid===p.pid)return 'Pick another player'}
   return '';
 }
@@ -186,15 +195,16 @@ function leftX(p){
 }
 function pwBits(p){
   let h=pwCoinPill(p);
-  if(p.a&&p.sh)h+='<span class="pw-ic-sm" title="Shield" aria-label="Shielded">🛡️</span>';
-  if(p.a&&p.fz)h+='<span class="pw-ic-sm" title="Frozen" aria-label="Frozen">❄️</span>';
+  if(p.a&&p.sh)h+=`<span class="pw-ic-sm" title="Shield" aria-label="Shielded">${pwIcon('shield','pw-i18')}</span>`;
+  if(p.a&&p.fz)h+=`<span class="pw-ic-sm" title="Frozen" aria-label="Frozen">${pwIcon('freeze','pw-i18')}</span>`;
   const pk=G&&G.pk&&G.pk[PID]&&G.pk[PID][p.pid];
   if(p.a&&pk)h+=`<span class="pw-par ${pk}">${pk==='odd'?'ODD':'EVEN'}</span>`;
   return h?`<span class="pw-bits">${h}</span>`:'';
 }
+const PW_BOLT='<svg class="pw-bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.5 5 13.5h6l-1.5 8 9-12h-6z" fill="currentColor" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>';
 function pwBtnHTML(){
   const me=byPid(PID);
-  return me&&me.a&&canAct()?'<button class="btn sm pw-btn" id="pwBtn">⚡ Powers</button>':'';
+  return me&&me.a&&canAct()?`<button class="btn sm pw-btn" id="pwBtn">${PW_BOLT}Powers</button>`:'';
 }
 
 /* ---------- Powers sheet ---------- */
@@ -205,13 +215,13 @@ function pwSheetHTML(){
     let why=pwCan(me,d.id,d.id==='peek'?'x':null);
     if(!why&&myCoins()<d.cost)why='Not enough coins';
     if(why==='Pick another player')why=G.players.some(p=>p.a&&p.pid!==PID)?'':'Nobody to peek at';
-    return `<div class="pw-card ${why?'off':''}"><span class="pw-ic">${d.icon}</span><span class="pw-tx"><span class="pw-nm"><b>${d.name}</b><span class="pw-cost">${pwCoinSVG(13)}${d.cost}</span></span><span class="pw-ds">${d.desc}</span>${why?`<em class="pw-why">${esc(why)}</em>`:''}</span><button class="btn sm go" data-pw="${d.id}" ${why?'disabled':''}>Use</button></div>`;
+    return `<div class="pw-card ${why?'off':''}"><span class="pw-ic">${pwIcon(d.id,'pw-i44')}</span><span class="pw-tx"><span class="pw-nm"><b>${d.name}</b><span class="pw-cost">${pwCoinSVG(13)}${d.cost}</span></span><span class="pw-ds">${d.desc}</span>${why?`<em class="pw-why">${esc(why)}</em>`:''}</span><button class="btn sm go" data-pw="${d.id}" aria-label="Use ${d.name}" ${why?'disabled':''}>Use</button></div>`;
   }).join('');
-  return `<div class="sheet pw-sheet"><h2>⚡ Powers</h2><div class="pw-have">${pwCoinPill(me)}</div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">Close</button></div></div>`;
+  return `<div class="sheet pw-sheet"><h2>${PW_BOLT}Powers</h2><div class="pw-have">${pwCoinPill(me)}</div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">Close</button></div></div>`;
 }
 function pwPeekHTML(){
   const others=G.players.filter(p=>p.a&&p.pid!==PID);
-  return `<div class="sheet pw-sheet"><h2>👀 Peek at who?</h2><div class="pw-targets">${others.map(p=>`<button class="pw-tg" data-pwtg="${esc(p.pid)}"><span class="mini">${charSVG(pv(p),'idle')}</span><b>${esc(p.name)}</b></button>`).join('')}</div><div class="btn-row"><button class="btn" id="pwBack">Back</button><button class="btn" id="pwClose">Close</button></div></div>`;
+  return `<div class="sheet pw-sheet"><h2>Peek at who?</h2><div class="pw-targets">${others.map(p=>`<button class="pw-tg" data-pwtg="${esc(p.pid)}"><span class="mini">${charSVG(pv(p),'idle')}</span><b>${esc(p.name)}</b></button>`).join('')}</div><div class="btn-row"><button class="btn" id="pwBack">Back</button><button class="btn" id="pwClose">Close</button></div></div>`;
 }
 function pwShow(html){
   openOv(html,e=>{if(e.target===document.getElementById('ov'))pwClose()});
@@ -244,8 +254,8 @@ function pwBind(){
 }
 
 /* ---------- Events ---------- */
-function pwBubble(ev,pid,text){
-  ui.bubble={pid,id:ev.id,up:true,text};
+function pwBubble(ev,pid,text,ic){
+  ui.bubble={pid,id:ev.id,up:true,text,ic:ic||''};
   later(()=>{if(ui.bubble&&ui.bubble.id===ev.id){ui.bubble=null;render(true)}},1800);
   render(true);
 }
@@ -255,15 +265,15 @@ function pwEvent(ev){
   if(ev.t==='snap'){
     const id=++sceneSeq,t0=Date.now();
     const who=A?(A.pid===PID?'You':esc(A.name)):'Someone';
-    openOv(`<div class="sheet center"><div class="stage pw-stage">${A?`<div class="actor a-dance">${charSVG(pv(A),'happy')}</div>`:''}</div><h2>INSTANT SHOWDOWN!</h2><p>${who} pulled everyone into the guess zone!</p></div>`,()=>{if(id===sceneSeq&&Date.now()-t0>500)closeOv()});
+    openOv(`<div class="sheet center"><div class="stage pw-stage">${A?`<div class="actor a-dance">${charSVG(pv(A),'happy')}</div>`:''}</div><h2>Instant Showdown</h2><p>${who} pulled everyone into the guess zone!</p></div>`,()=>{if(id===sceneSeq&&Date.now()-t0>500)closeOv()});
     later(()=>{if(id===sceneSeq)closeOv()},2600);
     sfx('vo_final');sfx('wheelland',{delay:0.2});
   }
-  else if(ev.t==='peek'){pwBubble(ev,ev.tg,'👀');sfx('pick')}
+  else if(ev.t==='peek'){pwBubble(ev,ev.tg,'Peek','peek');sfx('pick')}
   else if(ev.t==='double')sfx('land');
-  else if(ev.t==='shield'){pwBubble(ev,ev.a,'🛡️');sfx('lock')}
+  else if(ev.t==='shield'){pwBubble(ev,ev.a,'Shield','shield');sfx('lock')}
   else if(ev.t==='blocked'){pwBubble(ev,ev.tg,'Blocked!');sfx('bonk')}
-  else if(ev.t==='freeze'||ev.t==='frozen'){pwBubble(ev,ev.tg,'❄️');sfx('zap')}
+  else if(ev.t==='freeze'||ev.t==='frozen'){pwBubble(ev,ev.tg,'Frozen','freeze');sfx('zap')}
 }
 function pwEvText(ev,a,t){
   const T=byPid(ev.tg);
@@ -272,7 +282,7 @@ function pwEvText(ev,a,t){
     case 'peek':return `${a} peeked at ${t}.`;
     case 'double':return `${a} doubled down.`;
     case 'shield':return `${a} raised a shield.`;
-    case 'blocked':return `${T&&T.pid===PID?'Your':t+'’s'} shield blocked ${a==='You'?'you':a}!`;
+    case 'blocked':return `${T&&T.pid===PID?'Your':t+"'s"} shield blocked ${a==='You'?'you':a}!`;
     case 'freeze':return `${a} froze ${t}.`;
     case 'frozen':return `${T&&T.pid===PID?'You are':t+' is'} frozen and ${T&&T.pid===PID?'skip':'skips'} a turn.`;
   }

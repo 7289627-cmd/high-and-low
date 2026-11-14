@@ -96,38 +96,8 @@
  },
  {
   "g": "Deaths",
-  "k": "sad",
-  "d": "Sad sting 2.4 seconds after any death scene starts"
- },
- {
-  "g": "Deaths",
-  "k": "anvil",
-  "d": "Anvil death, the thud"
- },
- {
-  "g": "Deaths",
-  "k": "anvil2",
-  "d": "Anvil death, the second hit"
- },
- {
-  "g": "Deaths",
   "k": "zap",
   "d": "Lightning death, three zaps"
- },
- {
-  "g": "Deaths",
-  "k": "whoosh",
-  "d": "Rocket death, played slower"
- },
- {
-  "g": "Deaths",
-  "k": "chomp",
-  "d": "Monster death, three chomps"
- },
- {
-  "g": "Deaths",
-  "k": "melt",
-  "d": "Melt death"
  },
  {
   "g": "Deaths",
@@ -136,23 +106,8 @@
  },
  {
   "g": "Deaths",
-  "k": "pop2",
-  "d": "Pop death, the confetti layer"
- },
- {
-  "g": "Deaths",
   "k": "d_piano",
-  "d": "Piano death, the wooden crash"
- },
- {
-  "g": "Deaths",
-  "k": "d_slip",
-  "d": "Banana death, the slip scratch"
- },
- {
-  "g": "Deaths",
-  "k": "d_buzz",
-  "d": "Bees death, the angry buzz rattle"
+  "d": "Piano crashing down"
  },
  {
   "g": "Deaths",
@@ -166,28 +121,8 @@
  },
  {
   "g": "Deaths",
-  "k": "d_splat",
-  "d": "Death scenes, soft splat (melt and pop landings)"
- },
- {
-  "g": "Deaths",
-  "k": "d_sweep",
-  "d": "Death scenes, rising sweep (rocket launch, anvil lifting)"
- },
- {
-  "g": "Deaths",
   "k": "d_fuse",
   "d": "Rocket death, the fuse sizzle ticks"
- },
- {
-  "g": "Deaths",
-  "k": "d_boing",
-  "d": "Death scenes, rubbery boing (squash and stretch)"
- },
- {
-  "g": "Deaths",
-  "k": "d_tada",
-  "d": "Spare death jingle, short pizzicato tada"
  },
  {
   "g": "Voice",
@@ -230,11 +165,6 @@
   "d": "Right after bonk on a wrong guess"
  },
  {
-  "g": "Voice",
-  "k": "vo_correct",
-  "d": "Reserved, not played yet"
- },
- {
   "g": "Other",
   "k": "join",
   "d": "A player joins the lobby"
@@ -271,36 +201,6 @@
  },
  {
   "g": "Deaths",
-  "k": "k_fall",
-  "d": "Slide whistle dropping as something falls"
- },
- {
-  "g": "Deaths",
-  "k": "k_falllong",
-  "d": "Longer slide whistle drop, falling down the hole"
- },
- {
-  "g": "Deaths",
-  "k": "k_rise",
-  "d": "Slide whistle rising: banana slip, rocket launch"
- },
- {
-  "g": "Deaths",
-  "k": "k_riseq",
-  "d": "Quick slide whistle up: flag pops out"
- },
- {
-  "g": "Deaths",
-  "k": "k_wobble",
-  "d": "Wobbly slide whistle as the bean melts"
- },
- {
-  "g": "Deaths",
-  "k": "k_womp",
-  "d": "Sad wobbling drop at the end of every death"
- },
- {
-  "g": "Deaths",
   "k": "k_boing",
   "d": "Short spring boing"
  },
@@ -313,11 +213,6 @@
   "g": "Deaths",
   "k": "k_yelp",
   "d": "The bean yelps when it sees what is coming"
- },
- {
-  "g": "Deaths",
-  "k": "k_ouch",
-  "d": "The bean getting stung"
  },
  {
   "g": "Deaths",
@@ -367,12 +262,12 @@
  {
   "g": "Deaths",
   "k": "k_popbang",
-  "d": "Sharp bang when the bean pops"
+  "d": "Balloon pop when the bean pops"
  },
  {
   "g": "Deaths",
   "k": "k_zap",
-  "d": "Electric zap"
+  "d": "Electric arc when the cloud zaps the bean"
  },
  {
   "g": "Deaths",
@@ -406,28 +301,8 @@
  },
  {
   "g": "Deaths",
-  "k": "k_woodbreak",
-  "d": "Wood smashing under the piano"
- },
- {
-  "g": "Deaths",
-  "k": "k_glass",
-  "d": "Tinkling debris after the piano"
- },
- {
-  "g": "Deaths",
   "k": "k_crunch",
   "d": "Crunch under the calculator"
- },
- {
-  "g": "Deaths",
-  "k": "k_bug",
-  "d": "Angry bee"
- },
- {
-  "g": "Deaths",
-  "k": "k_bug2",
-  "d": "Second angry bee"
  },
  {
   "g": "Deaths",
@@ -438,5 +313,15 @@
   "g": "Deaths",
   "k": "k_woosh",
   "d": "Swish: banana toss, skin fluttering down"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_whoop",
+  "d": "Rising whoop as the bean slips on the banana"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_sizzle",
+  "d": "Sizzle as the bean melts or fries"
  }
 ]

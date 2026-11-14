@@ -1,0 +1,76 @@
+/* e02: art-director QA pass over the merged game (phone size, real fonts). Each block says what it fixes. */
+
+/* ---- 1. white-on-red / white-on-green small labels ----
+   a11 added an ink text outline (3px stroke) to 10-18px white labels. At phone size that fills the counters of the letters and closes the word spaces
+   ("Removeads", "Sendinvite"). Instead the fill gets a darker shade of the same hue and the outline goes (a11's rule stays, this overrides it).
+   white on #D23B2C = 4.77:1 (was 3.68 on --red), white on #217F55 = 4.96:1 (was 3.20 on --green). Big 24px+ buttons use the same shade so one family. */
+:root{--red-btn:#D23B2C;--green-btn:#217F55}
+.btn.primary,.tag.up,.mode em{background:var(--red-btn)}
+.btn.go{background:var(--green-btn)}
+.btn.primary:not(.big),.btn.go:not(.big),.btn.primary,.btn.go,.tag.up,.mode em,.sld-track i em{-webkit-text-stroke:0;paint-order:normal}
+.btn.primary,.btn.go{letter-spacing:.03em}
+/* YES / NO bar: 22px display text counts as large text (3:1 needed, white on the palette red/green is 3.68 / 3.20), so the outline can go too; its soft shadow stays */
+.sld-track i em{letter-spacing:.06em}
+
+/* ---- 2. result sheet button row: Play again, share and report as one family ---- */
+.sheet .btn-row{align-items:center;gap:12px}
+.sheet .btn-row>.btn:not(.round){min-height:52px;display:inline-flex;align-items:center;justify-content:center}
+.btn.round.share-btn{width:52px;min-width:52px;height:52px}
+/* the flag is secondary: smaller, white, same 3px outline and radius language. Hit area stays 44px */
+.btn.round.rep-btn{width:40px;min-width:40px;height:40px;box-shadow:0 3px 0 var(--ink);position:relative}
+.btn.round.rep-btn svg{width:20px;height:20px}
+.btn.round.rep-btn::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+
+/* ---- 3. "i" sheet ---- */
+/* app build: Remove ads, Restore purchases and Close become one stack of equal-width buttons (the underlined link beside a chunky button is gone) */
+.sheet .btn-row #noAdsBtn,.sheet .btn-row #restoreBtn,.sheet .btn-row #noAdsBtn~#ovClose,.sheet .btn-row #restoreBtn~#ovClose{width:min(100%,260px)}
+.sheet .btn-row #restoreBtn{font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.02em;text-decoration:none;padding:9px 18px;min-height:52px;background:var(--white);border:3px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);display:inline-flex;align-items:center;justify-content:center;position:relative}
+.sheet .btn-row #restoreBtn::after{display:none}
+.sheet .btn-row #restoreBtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+/* legal links: quiet, evenly spaced (flex gap), muted ink, not bold */
+.legal{gap:22px;margin:4px 0 6px}
+.legal a{color:var(--muted);font-weight:600;font-size:14px;text-decoration-thickness:1.5px}
+
+/* ---- 4. rank badge sits on the text baseline ---- */
+.elo-pill .rkb{vertical-align:-3px}
+.er .elo-res{align-items:baseline}
+.elo-res .rk{align-items:baseline;gap:5px}
+.elo-res .bd{align-self:auto;width:26px;height:26px;margin-bottom:-3px}
+
+/* ---- 5. rank progress bar: same outline weight as the in-game range bar (4px, 12px radius at card size) ---- */
+.er-bar{height:22px;border-width:4px;border-radius:12px}
+.er-bar i{border-right-width:3px}
+
+/* ---- 6. "Watching" is quiet status text, like the other muted lines in the tray ---- */
+.tray>p.hint:only-child{text-align:center;color:var(--muted);font-size:15px;font-weight:700}
+.tray .hint{color:var(--muted)}
+
+/* ---- 7. turn clock: its bells and top edge were cut off by the scroll area (duel cards, ask and guess screens) ---- */
+.guessv .ask-top{padding-top:8px}
+.cast.duel .clock-corner{top:16px;left:10px}
+@media (min-height:601px){.cast.duel{padding-top:44px}}
+
+/* ---- 8. header: logo, room code, status, mute and Leave fit one row in every screen (Leave was alone on a second row in rooms) ---- */
+.bar{gap:8px}
+.bar{flex-wrap:nowrap}
+.bar .logo.small{font-size:20px;-webkit-text-stroke-width:3.5px;flex:none}
+.bar .pill{padding:1px 10px}
+
+/* ---- 9. friends lobby ---- */
+.join-row{align-items:stretch}
+.join-row input{box-shadow:0 4px 0 var(--ink)}
+.chips:nth-of-type(1){display:grid;grid-template-columns:1fr 1fr}
+.chips:nth-of-type(2){display:grid;grid-template-columns:repeat(3,1fr)}
+.chips>.chip-btn{text-align:center;padding:5px 8px}
+#startBtn{justify-self:stretch!important}
+
+/* ---- 10. "Which one is it?" and other outlined display lines: the 5px outline ate the word spaces ---- */
+.ped-q{word-spacing:.18em;letter-spacing:.01em}
+
+/* ---- 11. home with the streak flag on: the rating pill stays centred on the screen (it sat 30px left of centre because the flame was centred with it) ---- */
+.st-row{display:grid;grid-template-columns:1fr auto 1fr;column-gap:8px;align-items:center}
+.st-row>.wins-pill{grid-column:2;justify-self:center}
+.st-row>.st-flame{grid-column:3;justify-self:start}
+
+/* lead: below 370px the room header does not fit one row; let it wrap as before so Leave stays on screen */
+@media (max-width:369px){.bar{flex-wrap:wrap}}

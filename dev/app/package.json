@@ -1,0 +1,36 @@
+{
+  "name": "high-and-low-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor wrapper for High & Low (iOS and Android). The game itself lives in ../src and is built into www/ by sync-web.sh.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "sync:web": "bash sync-web.sh",
+    "add:ios": "cap add ios",
+    "add:android": "cap add android",
+    "configure:native": "node scripts/configure-native.mjs",
+    "sync": "bash sync-web.sh && cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "8.3.0",
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.2",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "@revenuecat/purchases-capacitor": "14.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

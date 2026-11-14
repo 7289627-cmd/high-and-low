@@ -272,7 +272,6 @@ function sceneMs(k){return (typeof SCENE_MS!=='undefined'&&SCENE_MS&&SCENE_MS[k]
 function deathSfx(k){
   const d=(window.DEATH_SFX&&window.DEATH_SFX[k])||Object.assign({anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]},window.EXTRA_DEATH_SFX||{})[k]||[];
   d.forEach(x=>sfx(x[0],{delay:x[1],rate:x[2]||1,vol:x[3]==null?1:x[3]}));
-  sfx('k_womp',{delay:Math.max(0,(sceneMs(k)-1900)/1000),vol:0.8});
 }
 
 /* ---------- Host engine ---------- */

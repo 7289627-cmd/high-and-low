@@ -78,7 +78,7 @@ const txt=P=>P.$('#app').textContent+' '+P.$('#ov').textContent;
   let cardOk=false,cardBad='';
   while(Date.now()-t0<2500){
     {const cz=Z.$('.card[data-pid="'+yp+'"]'),cx=X.$('.card[data-pid="'+yp+'"]');
-     if(cz&&cx&&!cardOk&&ySaw){if(cz.textContent.includes('1 – 10,000')&&!cx.textContent.includes('1 – 10,000'))cardOk=true;else cardBad=cz.textContent+' | '+cx.textContent}}
+     if(cz&&cx&&!cardOk&&ySaw){const lz=cz.getAttribute('aria-label')||'',lx=cx.getAttribute('aria-label')||'';if(lz.includes('between 1 and 10000')&&!lx.includes('between 1 and 10000'))cardOk=true;else cardBad=lz+' | '+lx}}
     if(/4,321/.test(txt(Z)))leaked=true;
     if(/(asking|asked) you: higher than 4,321/.test(txt(Y)))ySaw=true;
     if(zre.test(txt(Z)))zSaw=true;

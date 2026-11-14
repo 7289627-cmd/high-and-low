@@ -1,0 +1,252 @@
+[
+ {
+  "g": "Buttons",
+  "k": "key",
+  "d": "Tapping a digit on the secret number pad"
+ },
+ {
+  "g": "Buttons",
+  "k": "del",
+  "d": "Tapping delete on either number pad"
+ },
+ {
+  "g": "Buttons",
+  "k": "pick",
+  "d": "RND, MID, HIGHER or LOWER taps, and when you unmute"
+ },
+ {
+  "g": "Buttons",
+  "k": "land",
+  "d": "Right after pick when choosing or flipping HIGHER or LOWER"
+ },
+ {
+  "g": "Buttons",
+  "k": "send",
+  "d": "Ask!, Lock it in, or tapping a guess grid number"
+ },
+ {
+  "g": "Buttons",
+  "k": "lock",
+  "d": "Just after send when you lock in your secret number"
+ },
+ {
+  "g": "Buttons",
+  "k": "error",
+  "d": "A validation error shows on a number screen"
+ },
+ {
+  "g": "Questions",
+  "k": "yes",
+  "d": "A question is answered Yes"
+ },
+ {
+  "g": "Questions",
+  "k": "nope",
+  "d": "A question is answered No, or a wrong guess with no hearts"
+ },
+ {
+  "g": "Questions",
+  "k": "yourturn",
+  "d": "Your turn starts with the first question"
+ },
+ {
+  "g": "Questions",
+  "k": "babble1",
+  "d": "Typing digits in the ask screen and the babble burst, voice 1"
+ },
+ {
+  "g": "Questions",
+  "k": "babble2",
+  "d": "Typing digits in the ask screen and the babble burst, voice 2"
+ },
+ {
+  "g": "Questions",
+  "k": "babble3",
+  "d": "Typing digits in the ask screen and the babble burst, voice 3"
+ },
+ {
+  "g": "Questions",
+  "k": "hint",
+  "d": "A tip bubble shows for the first time"
+ },
+ {
+  "g": "Questions",
+  "k": "heart",
+  "d": "Heartbeat while the target is in the guess zone"
+ },
+ {
+  "g": "Wheel",
+  "k": "spin",
+  "d": "The who goes first wheel starts spinning"
+ },
+ {
+  "g": "Wheel",
+  "k": "tick",
+  "d": "The wheel crosses a wedge boundary"
+ },
+ {
+  "g": "Wheel",
+  "k": "wheelland",
+  "d": "The wheel stops and shows who goes first"
+ },
+ {
+  "g": "Deaths",
+  "k": "bonk",
+  "d": "A wrong guess costs a heart (flowerpot bonk)"
+ },
+ {
+  "g": "Deaths",
+  "k": "sad",
+  "d": "Sad sting 2.4 seconds after any death scene starts"
+ },
+ {
+  "g": "Deaths",
+  "k": "anvil",
+  "d": "Anvil death, the thud"
+ },
+ {
+  "g": "Deaths",
+  "k": "anvil2",
+  "d": "Anvil death, the second hit"
+ },
+ {
+  "g": "Deaths",
+  "k": "zap",
+  "d": "Lightning death, three zaps"
+ },
+ {
+  "g": "Deaths",
+  "k": "whoosh",
+  "d": "Rocket death, played slower"
+ },
+ {
+  "g": "Deaths",
+  "k": "chomp",
+  "d": "Monster death, three chomps"
+ },
+ {
+  "g": "Deaths",
+  "k": "melt",
+  "d": "Melt death"
+ },
+ {
+  "g": "Deaths",
+  "k": "pop",
+  "d": "Pop death, the bang"
+ },
+ {
+  "g": "Deaths",
+  "k": "pop2",
+  "d": "Pop death, the confetti layer"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_piano",
+  "d": "Piano death, the wooden crash"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_slip",
+  "d": "Banana death, the slip scratch"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_buzz",
+  "d": "Bees death, the angry buzz rattle"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_slam",
+  "d": "Calculator death, the heavy slam"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_ding",
+  "d": "Death scenes, small ding (monster dinner bell, ghost halo)"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_splat",
+  "d": "Death scenes, soft splat (melt and pop landings)"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_sweep",
+  "d": "Death scenes, rising sweep (rocket launch, anvil lifting)"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_fuse",
+  "d": "Rocket death, the fuse sizzle ticks"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_boing",
+  "d": "Death scenes, rubbery boing (squash and stretch)"
+ },
+ {
+  "g": "Deaths",
+  "k": "d_tada",
+  "d": "Spare death jingle, short pizzicato tada"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_ready",
+  "d": "The wheel starts, a short get ready call"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_go",
+  "d": "The very first question of the game"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_youwin",
+  "d": "You win the game"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_gameover",
+  "d": "Someone else wins the game"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_final",
+  "d": "Only two players are left in a game of three or more"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_hurry",
+  "d": "5 seconds left on your timed turn"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_timeover",
+  "d": "Your timer hits zero"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_wrong",
+  "d": "Right after bonk on a wrong guess"
+ },
+ {
+  "g": "Voice",
+  "k": "vo_correct",
+  "d": "Reserved, not played yet"
+ },
+ {
+  "g": "Other",
+  "k": "join",
+  "d": "A player joins the lobby"
+ },
+ {
+  "g": "Other",
+  "k": "leave",
+  "d": "A player leaves the lobby"
+ },
+ {
+  "g": "Other",
+  "k": "win",
+  "d": "The winner overlay appears"
+ }
+]

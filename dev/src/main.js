@@ -823,6 +823,10 @@ function doAsk(){
 }
 
 /* ---------- Render ---------- */
+let nbTimer=null,nbIv=null,nbN=0;
+function nbStop(){clearTimeout(nbTimer);clearInterval(nbIv);nbTimer=nbIv=null}
+['pointerup','pointercancel','blur','contextmenu'].forEach(t=>window.addEventListener(t,nbStop,true));
+document.addEventListener('visibilitychange',nbStop);
 let sldDown=false,sldPend=false;
 function render(force){
   if(sldDown&&view==='game'&&((askViewOn()&&ui.step==='num')||(G&&G.phase==='secrets'&&!mySecret&&!force))){sldPend=true;return}
@@ -944,7 +948,7 @@ function timerLeft(){
 function timerPill(){
   const v=timerLeft();if(v===null)return '';
   const f=Math.min(1,v/Math.max(1,G.timer));
-  return `<span class="tclock ${v<6?'low':''}" style="--f:${f.toFixed(3)}" role="timer" aria-label="${v} seconds left"><i class="bell l"></i><i class="bell r"></i><i class="foot l"></i><i class="foot r"></i><span class="face"><b>${v}</b></span></span>`;
+  return `<span class="tclock ${v<6?'low':''}" style="--f:${f.toFixed(3)};${ph(v<6?0.28:3.6,0)}" role="timer" aria-label="${v} seconds left"><i class="bell l"></i><i class="bell r"></i><i class="foot l"></i><i class="foot r"></i><span class="face"><b>${v}</b></span></span>`;
 }
 const SPK='<path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
 function muteHTML(){
@@ -990,7 +994,7 @@ function guessViewHTML(){
   return `<main class="guessv"><div class="ask-top">${timerPill()}${pwBtnHTML()}</div>
 <div class="ped"><div class="ped-bean jit">${popHTML(t.pid)}${charSVG(pv(t),'scared')}</div><div class="ped-base"><b>${esc(t.name)}</b></div></div>
 <p class="ped-q">Which one is it?</p>
-<div class="guess-grid big n${btns.length}">${btns.join('')}</div></main>`;
+<div class="guess-grid big n${btns.length} ${fmt(tv.hi).length>=7?'c2':fmt(tv.hi).length>=5?'c3':''}">${btns.join('')}</div></main>`;
 }
 function askViewOn(){const t=curTarget();return canAct()&&G.sub[0]==='*'&&!!t&&t.a}
 const BIG_UP=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8l40 46H66v38H34V54H10z" fill="#fff" stroke="#1E2240" stroke-width="6" stroke-linejoin="round"/></svg>`;
@@ -1236,12 +1240,21 @@ ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 let hpPrev={},hpGid='';
 function hpHTML(pid,v,z){
   if(hpGid!==G.gid){hpGid=G.gid;hpPrev={}}
-  const n=v.hi-v.lo+1,w=Math.max(7,Math.round(Math.log(n)/Math.log(Math.max(G.max,2))*1000)/10);
-  let st=hpPrev[pid];if(!st)st=hpPrev[pid]={w,n,from:w,cut:0,at:0};
-  if(st.n!==n){st.from=st.w;st.cut=st.n-n;st.w=w;st.n=n;st.at=Date.now()}
-  const el=Date.now()-st.at,live=el<1600&&st.cut>0;
-  const tone=z?'hot':w>66?'ok':w>38?'mid':'low';
-  return `<span class="hp ${tone}">${live?`<u style="width:${st.from}%;animation-delay:-${el}ms"></u>`:''}<i style="width:${w}%;${live?`--from:${st.from}%;animation:hpdrain .7s cubic-bezier(.3,1.4,.5,1) both;animation-delay:-${el}ms`:''}"></i>${live?`<b class="dmg" style="animation-delay:-${el}ms">−${fmt(st.cut)}</b>`:''}</span>`;
+  const n=v.hi-v.lo+1;
+  let st=hpPrev[pid];if(!st)st=hpPrev[pid]={lo:v.lo,hi:v.hi,plo:v.lo,phi:v.hi,at:0};
+  if(st.lo!==v.lo||st.hi!==v.hi){st.plo=st.lo;st.phi=st.hi;st.lo=v.lo;st.hi=v.hi;st.at=Date.now()}
+  const el=Date.now()-st.at,pn=st.phi-st.plo+1,cut=pn-n,live=el<1700&&cut>0;
+  const frac=Math.log(n)/Math.log(Math.max(G.max,2)),tone=z?'hot':frac>0.66?'ok':frac>0.38?'mid':'low';
+  const d=`animation-delay:-${el}ms`;
+  const cl=live?(v.lo-st.plo)/pn*100:0,cr=live?(st.phi-v.hi)/pn*100:0;
+  const seg=(side,w)=>w>0?`<i class="cut ${side}" style="--w:${Math.max(4,w).toFixed(2)}%;${d}"></i>`:'';
+  let mid;
+  if(z){
+    const xs=myXs(v);let pips='';
+    for(let k=v.lo;k<=v.hi;k++)pips+=`<i class="pip ${xs.includes(k)?'x':''}"></i>`;
+    mid=`<span class="rb-pips">${pips}</span>`;
+  }else mid=`<i class="keep"><em>${fmt(n)} left</em></i>`;
+  return `<span class="rb ${tone} ${live?'live':''}"><span class="rb-ends"><b class="${live&&cl>0?'pop':''}" style="${d}">${fmt(v.lo)}</b><b class="${live&&cr>0?'pop':''}" style="${d}">${fmt(v.hi)}</b></span><span class="rb-track">${seg('l',cl)}${mid}${seg('r',cr)}</span>${live?`<b class="dmg" style="${d}">−${fmt(cut)}</b>`:''}</span>`;
 }
 function cardHTML(p,i){
   if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span>${pwBits(p)}<span class="rip">${typeof DEATH_ICON!=='undefined'&&DEATH_ICON[p.d]?`<span class="dicon">${DEATH_ICON[p.d]}</span>`:''}${SHORT[p.d]||'Out'}</span></span></div>`;
@@ -1256,9 +1269,7 @@ function cardHTML(p,i){
   const turnTag='';
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${G.pub&&Number.isInteger(p.el)?`<span class="elo">${p.el}</span>`:''}${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
-${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`<span class="rng"><b>${fmt(v.lo)} – ${fmt(v.hi)}</b></span>
-${hpHTML(p.pid,v,z)}
-${z?`<span class="zone">${leftX(v)} LEFT</span>`:`<span class="left"><b>${fmt(v.hi-v.lo+1)} left</b></span>`}`}
+${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`${hpHTML(p.pid,v,z)}${z?`<span class="zone">${leftX(v)} LEFT</span>`:''}`}
 ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'hide':'show'}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''} ${dg>=3?'dg3':''}">${inner}</div>`;
   return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${v.lo} and ${v.hi}">${inner}</button>`;
@@ -1340,7 +1351,7 @@ function bind(){
     const go=()=>{const c=ui.codeIn;if(!/^[A-Z]{4}$/.test(c)){ui.lobErr='Room codes are 4 letters.';render(true);return}if(c===code){ui.lobErr='That is this room.';render(true);return}ui.lobErr='';track('join');leaveGame().then(()=>startOnline(false,c))};
     on('lobJoin',go);lc.onkeydown=e=>{if(e.key==='Enter')go()}}}
   on('askGo',doAsk);sliderBind();secBind();
-  $$('.key.nb').forEach(b=>{let h=null,iv=null;const stop=()=>{clearTimeout(h);clearInterval(iv)};b.onpointerdown=()=>{stop();h=setTimeout(()=>{iv=setInterval(()=>padPress(b.dataset.k),60)},380)};b.onpointerup=stop;b.onpointerleave=stop;b.onpointercancel=stop});
+  $$('.key.nb').forEach(b=>{b.onpointerdown=()=>{nbStop();const k=b.dataset.k;nbN=0;nbTimer=setTimeout(()=>{nbIv=setInterval(()=>{if(++nbN>300||!document.querySelector('.key.nb')){nbStop();return}padPress(k)},60)},380)};b.onpointerleave=nbStop});
   pwBind();
   $$('.g[data-n]').forEach(b=>b.onclick=()=>{const t=curTarget();if(t&&canAct()){sfx('send');sendAct({tg:t.pid,t:'guess',n:+b.dataset.n});seen('guess')}});
 }

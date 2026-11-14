@@ -1,6 +1,6 @@
 /* ---------- Sound (recorded sfx, lazy AudioContext) ---------- */
 const SFX={
-  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam','d_ding','d_splat','d_sweep','d_fuse','d_boing','d_tada'],
+  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam','d_ding','d_splat','d_sweep','d_fuse','d_boing','d_tada','k_clang','k_ring','k_slam','k_rattle','k_fall','k_falllong','k_rise','k_riseq','k_wobble','k_womp','k_boing','k_boing2','k_yelp','k_ouch','k_eat1','k_eat2','k_eat3','k_burp','k_boom','k_crack','k_explode','k_launch','k_crackle','k_popbang','k_zap','k_splash','k_gloop','k_gloop2','k_bubble','k_plop','k_squeak','k_woodbreak','k_glass','k_crunch','k_bug','k_bug2','k_paper','k_woosh'],
   muted:false,ctx:null,master:null,buf:{},
   play(key,opts){
     try{

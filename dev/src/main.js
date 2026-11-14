@@ -271,8 +271,8 @@ function heartCheck(){
 function sceneMs(k){return (typeof SCENE_MS!=='undefined'&&SCENE_MS&&SCENE_MS[k])||3900}
 function deathSfx(k){
   const d=(window.DEATH_SFX&&window.DEATH_SFX[k])||Object.assign({anvil:[['anvil',.88],['anvil2',.9]],zap:[['zap',.55],['zap',.65],['zap',.78]],rocket:[['whoosh',1.1,.8]],chomp:[['chomp',1.1],['chomp',1.5],['chomp',1.85]],melt:[['melt',.7]],pop:[['pop',1.55],['pop2',1.56]]},window.EXTRA_DEATH_SFX||{})[k]||[];
-  d.forEach(x=>sfx(x[0],x[2]?{delay:x[1],rate:x[2]}:{delay:x[1]}));
-  sfx('sad',{delay:Math.max(0,(sceneMs(k)-1500)/1000)});
+  d.forEach(x=>sfx(x[0],{delay:x[1],rate:x[2]||1,vol:x[3]==null?1:x[3]}));
+  sfx('k_womp',{delay:Math.max(0,(sceneMs(k)-1900)/1000),vol:0.8});
 }
 
 /* ---------- Host engine ---------- */
@@ -704,9 +704,10 @@ function showWinner(){
   const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
   let hatBlock='';const nh=newHatIdx;newHatIdx=null;
   if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat unlocked: ${esc(hatName(nh))}!</b></div>`;sfx('lock',{delay:0.5})}
-  openOv(`<div class="sheet center"><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
+  openOv(`<div class="sheet center has-x"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="stage">${conf}${w?`<div class="actor a-dance">${charSVG(pv(w),'happy')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
 <div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>':`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
   {const c=$('#ovClose');if(c)c.onclick=()=>{closeOv();HLAds.between()}}
+  {const x=$('#ovX');if(x)x.onclick=()=>{closeOv();if(G&&G.pub)HLAds.between().then(leaveGame);else HLAds.between()}}
   {const a=$('#againBtn');if(a)a.onclick=playAgain}
   const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();HLAds.between().then(toLobby)};
 }
@@ -855,6 +856,7 @@ function homeSceneHTML(){
   const bean=(i,mood)=>charSVG({color:COLORS[i%COLORS.length],acc:i%COLORS.length,id:30+i},mood||'happy');
   const nums=['7','?','42','3','?','99'];
   const tree=(l,b,sc,d)=>`<span class="tree" style="left:${l}%;bottom:${b}px;--s:${sc};${ph(4.5,d)}"><i class="crown"></i><i class="crown c2"></i><i class="trunk"></i></span>`;
+  const pine=(l,b,sc,d)=>`<span class="tree pine" style="left:${l}%;bottom:${b}px;--s:${sc};${ph(4.5,d)}"><svg viewBox="0 0 64 100"><rect x="26" y="70" width="12" height="28" rx="3" fill="#9A6442" stroke="#1E2240" stroke-width="4"/><path d="M32 44 56 78H8Z" fill="#2E9E68" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M32 24 52 56H12Z" fill="#34AC72" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M32 4 47 34H17Z" fill="#58C98D" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></svg></span>`;
   const flower=(l,b,c,d)=>`<i class="flower" style="left:${l}%;bottom:${b}px;--c:${c};${ph(2.6,d)}"></i>`;
   const bird=(cls,dur,off)=>`<span class="bird ${cls}" style="${ph(dur,off)}"><svg viewBox="0 0 28 12"><path d="M2 9Q8 0 14 8Q20 0 26 9" fill="none" stroke="#1E2240" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   return `<div class="hscene" aria-hidden="true">
@@ -865,7 +867,7 @@ ${nums.map((n,i)=>`<span class="fnum" style="left:${8+i*16}%;animation-duration:
 <svg class="hill far" viewBox="0 0 1000 200" preserveAspectRatio="none"><path d="M0 200V96C90 40 190 34 300 92S520 150 660 84S880 20 1000 78V200Z" fill="#7AD3A6"/><path d="M0 200V96C90 40 190 34 300 92S520 150 660 84S880 20 1000 78" fill="none" stroke="#1E2240" stroke-width="5" vector-effect="non-scaling-stroke"/></svg>
 ${tree(9,150,.8,0)}${tree(27,118,.6,1.2)}${tree(63,128,.72,2.1)}${tree(88,160,.9,3)}
 <svg class="hill near" viewBox="0 0 1000 160" preserveAspectRatio="none"><path d="M0 160V70C140 16 260 30 400 74S640 120 800 60S940 40 1000 58V160Z" fill="#3FB67A"/><path d="M0 70C140 16 260 30 400 74S640 120 800 60S940 40 1000 58" fill="none" stroke="#1E2240" stroke-width="5" vector-effect="non-scaling-stroke"/></svg>
-${tree(46,74,1,.6)}
+${pine(15,112,.85,.6)}${pine(46,74,1.05,1.7)}${pine(83,96,.9,2.6)}
 ${flower(4,84,'#F0503C',0)}${flower(15,98,'#FFD23F',.5)}${flower(33,82,'#fff',1.1)}${flower(57,70,'#FF8FC7',.2)}${flower(72,84,'#FFD23F',1.6)}${flower(83,98,'#F0503C',.9)}${flower(95,92,'#fff',2)}
 <div class="path"></div>
 <svg class="kitesvg" id="kiteSvg"><path id="kiteStr" fill="none" stroke="#1E2240" stroke-width="2" stroke-linecap="round"/><path id="kiteTail" fill="none" stroke="#1E2240" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g id="kiteBows"></g><g id="kite"><path d="M0-30 20 0 0 38-20 0Z" fill="#F0503C" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/><path d="M0-30 20 0 0 0Z" fill="#FFD23F"/><path d="M0 0 0 38-20 0Z" fill="#4A7BF7"/><path d="M0-30V38M-20 0H20" stroke="#1E2240" stroke-width="3"/><path d="M0-30 20 0 0 38-20 0Z" fill="none" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></g></svg>

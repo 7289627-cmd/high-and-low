@@ -1055,6 +1055,14 @@ button{touch-action:manipulation}
 .card .zone{margin-top:-14px;display:inline-block}
 .cast.duel .card .zone{margin-top:-22px}
 
+/* ---- close X on the result sheet, pines up front ---- */
+.sheet.has-x{position:relative}
+.ov-x{position:absolute;top:10px;right:10px;z-index:6;width:44px;height:44px;border-radius:50%;background:var(--white);color:var(--ink);border:4px solid var(--ink);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;padding:0;cursor:pointer}
+.ov-x svg{width:20px;height:20px}
+.ov-x:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.tree.pine{width:64px;height:100px}
+.tree.pine svg{width:100%;height:100%;display:block;overflow:visible}
+
 html,body{height:auto!important;overflow:auto!important;position:static!important}
 body{margin:0;padding:16px 14px 60px!important;background:#7FD0E4!important;color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.35;-webkit-user-select:auto;user-select:auto}
 .ws{max-width:560px;margin:0 auto;display:grid;gap:12px}
@@ -1095,7 +1103,7 @@ body{margin:0;padding:16px 14px 60px!important;background:#7FD0E4!important;colo
 </div>
 </main><script>/* ---------- Sound (recorded sfx, lazy AudioContext) ---------- */
 const SFX={
-  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam','d_ding','d_splat','d_sweep','d_fuse','d_boing','d_tada'],
+  KEYS:['key','del','pick','land','send','yes','nope','yourturn','tick','spin','wheelland','lock','join','leave','hint','error','bonk','sad','anvil','anvil2','zap','whoosh','chomp','melt','pop','pop2','heart','babble1','babble2','babble3','win','vo_ready','vo_go','vo_youwin','vo_gameover','vo_final','vo_hurry','vo_timeover','vo_wrong','vo_correct','d_piano','d_slip','d_buzz','d_slam','d_ding','d_splat','d_sweep','d_fuse','d_boing','d_tada','k_clang','k_ring','k_slam','k_rattle','k_fall','k_falllong','k_rise','k_riseq','k_wobble','k_womp','k_boing','k_boing2','k_yelp','k_ouch','k_eat1','k_eat2','k_eat3','k_burp','k_boom','k_crack','k_explode','k_launch','k_crackle','k_popbang','k_zap','k_splash','k_gloop','k_gloop2','k_bubble','k_plop','k_squeak','k_woodbreak','k_glass','k_crunch','k_bug','k_bug2','k_paper','k_woosh'],
   muted:false,ctx:null,master:null,buf:{},
   play(key,opts){
     try{
@@ -1391,16 +1399,16 @@ ${K3(k,'left:6px','x3-kcl',`<div class="x3-mc">${MINICALC}</div>`)}
 bonk:p=>`${actor(p,99,'a-bonk')}<div class="pot">${POT}</div><div class="stars">★ ★ ★</div>`
 };
 const DEATH_SFX={
- anvil:[['tick',.36,.8],['anvil',1.36],['anvil2',1.38],['d_boing',1.5,.8],['d_sweep',1.95,.7],['d_tada',2.6,1.3]],
- zap:[['anvil2',.55,.5],['key',1.3,1.4],['zap',1.5],['zap',1.6],['zap',1.74],['d_buzz',1.55,1.3],['pop',2.1,.6]],
- rocket:[['d_fuse',.55],['d_fuse',.7,1.1],['d_fuse',.85,1.2],['d_fuse',1,1.3],['d_fuse',1.12,1.4],['whoosh',1.5,.8],['d_sweep',1.6],['pop',2.3],['pop2',2.32],['tick',3.04,.8],['tick',3.3,1.2],['d_ding',2.7,1.4]],
- chomp:[['d_ding',1,1.2],['d_ding',1.12,1.2],['d_ding',1.24,1.2],['chomp',1.42],['chomp',1.72],['chomp',1.96],['d_boing',2.82,.5],['tick',3.45,.8]],
- melt:[['melt',1.1],['d_splat',2.05],['pop',3,1.8],['pop',3.5,1.5]],
- pop:[['tick',.5,.7],['tick',.8,.75],['tick',1.1,.8],['tick',1.4,.85],['tick',1.7,.9],['d_boing',1.82,1.3],['pop',2.05],['pop2',2.06],['d_splat',3,1.4]],
- piano:[['hint',.15],['hint',.4,1.26],['hint',.65,1.5],['d_piano',1.42],['bonk',1.44,.8],['d_boing',1.62,1.4]],
- banana:[['tick',.2,1],['d_slip',1.18],['whoosh',1.3,1.7],['bonk',2.1,.9],['d_sweep',2.5,1.5],['d_ding',2.95]],
- bees:[['d_buzz',.45],['d_buzz',1.3,1.15],['bonk',1.95,1.6],['d_boing',2.1,.7],['d_buzz',2.6,1.3]],
- calc:[['key',.6,1.2],['key',.8,1.2],['key',1,1.2],['error',1.15,1.4],['d_slam',2.05],['bonk',2.07,.7],['tick',2.7],['tick',2.8],['tick',2.9],['tick',3,1.2],['tick',3.1,1.2]]
+ anvil:[['k_squeak',.36,.9],['k_squeak',.62,1.1],['k_fall',.74,1],['k_yelp',.98,1.1],['k_clang',1.36,.72],['k_slam',1.36,.9],['k_ring',1.38,.6,.7],['k_rattle',1.52,1,.7],['k_boing2',1.56,.8,.6],['k_squeak',1.95,.7],['k_squeak',2.2,.75],['k_plop',2.6,1.2],['k_riseq',2.62,1.3,.6]],
+ zap:[['k_boom',.55,.7,.5],['key',1.3,1.4],['k_crack',1.5,1.1],['k_zap',1.5,1],['k_yelp',1.53,1.5],['k_zap',1.66,1.25],['zap',1.74],['k_gloop',2.1,1.6,.6],['k_plop',2.7,1.5,.6]],
+ rocket:[['d_fuse',.55],['d_fuse',.7,1.1],['d_fuse',.85,1.2],['d_fuse',1,1.3],['d_fuse',1.12,1.4],['k_yelp',1.28,1.2],['k_launch',1.5,1],['k_rise',1.5,.8],['k_explode',2.3,1],['k_crackle',2.38,1,.8],['d_ding',3.04,1.6,.7],['k_boing',3.3,1.3,.7],['k_plop',3.62,1]],
+ chomp:[['k_boom',.3,.6,.4],['k_ring',1,1.5,.7],['k_ring',1.12,1.5,.7],['k_ring',1.24,1.5,.7],['k_yelp',1.3,1.2],['k_eat1',1.42],['k_eat2',1.72],['k_eat3',1.96],['k_burp',2.82,.9],['k_plop',3.45,1.1]],
+ melt:[['k_wobble',1,.9],['k_gloop2',1.6,.8],['k_gloop',2.05,.7],['k_splash',2.1,.8,.6],['k_bubble',3,1.2],['k_bubble',3.5,1.5]],
+ pop:[['k_squeak',.5,.8],['k_squeak',.8,.9],['k_squeak',1.1,1],['k_squeak',1.4,1.1],['k_squeak',1.7,1.2],['k_boing2',1.82,1.4,.7],['k_popbang',2.05,1],['pop',2.05],['k_woosh',2.5,.8],['k_plop',3,.8]],
+ piano:[['hint',.15],['hint',.4,1.26],['hint',.65,1.5],['k_fall',.78,.9],['k_yelp',1.1,1],['d_piano',1.42],['k_woodbreak',1.42,.8],['k_clang',1.44,.5,.6],['k_glass',1.5,1,.5],['k_boing',1.62,1.2,.6],['k_riseq',2.08,1.2,.6],['k_plop',2.16,1.4],['k_plop',2.26,1.6]],
+ banana:[['k_woosh',.9,1],['k_rise',1.18,1.3],['k_yelp',1.26,1.3],['k_slam',2.1,.8,.8],['bonk',2.1,.9],['k_falllong',2.45,1],['k_ring',2.95,1.8,.6],['k_plop',3.4,.7]],
+ bees:[['bonk',.45,1.5,.6],['d_buzz',.6],['k_bug',1.3,1],['d_buzz',1.3,1.15],['k_bug2',1.5,1.2],['k_yelp',1.7,1.3],['bonk',1.95,1.6],['k_ouch',1.97,1.2],['k_boing2',2.1,.7,.7],['d_buzz',2.6,1.3]],
+ calc:[['key',.6,1.2],['key',.8,1.2],['key',1,1.2],['error',1.15,1.4],['k_yelp',1.8,1.2],['d_slam',2.05],['k_crunch',2.05,.8],['k_clang',2.07,.9,.5],['k_paper',2.7],['k_paper',2.8],['k_paper',2.9],['k_paper',3,1.2],['k_paper',3.1,1.2]]
 };
 window.DEATH_SFX=DEATH_SFX;
 window.EXTRA_DEATH_SFX={piano:DEATH_SFX.piano,banana:DEATH_SFX.banana,bees:DEATH_SFX.bees,calc:DEATH_SFX.calc};
@@ -1427,7 +1435,7 @@ function stopAll(){wsT.forEach(clearTimeout);wsT=[];cancelAnimationFrame(raf)}
 function play(){
   stopAll();scene();const ms=SCENE_MS[st.kind]||4600;E('scrub').max=ms;
   anims().forEach(a=>a.playbackRate=st.speed);
-  if(st.sound){(DEATH_SFX[st.kind]||[]).forEach(x=>wsT.push(setTimeout(()=>SFX.play(x[0],x[2]?{rate:x[2]}:{}),x[1]*1000/st.speed)));wsT.push(setTimeout(()=>SFX.play('sad'),(ms-1500)/st.speed))}
+  if(st.sound){(DEATH_SFX[st.kind]||[]).forEach(x=>wsT.push(setTimeout(()=>SFX.play(x[0],{rate:x[2]||1,vol:x[3]==null?1:x[3]}),x[1]*1000/st.speed)));wsT.push(setTimeout(()=>SFX.play('k_womp',{vol:.8}),(ms-1900)/st.speed))}
   t0=performance.now();
   const tick=()=>{const t=Math.min(ms,(performance.now()-t0)*st.speed);E('scrub').value=t;E('tread').textContent=(t/1000).toFixed(2)+'s';if(t<ms)raf=requestAnimationFrame(tick);else if(st.loop)wsT.push(setTimeout(play,700))};
   raf=requestAnimationFrame(tick);

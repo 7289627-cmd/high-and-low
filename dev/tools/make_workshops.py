@@ -61,7 +61,7 @@ function stopAll(){wsT.forEach(clearTimeout);wsT=[];cancelAnimationFrame(raf)}
 function play(){
   stopAll();scene();const ms=SCENE_MS[st.kind]||4600;E('scrub').max=ms;
   anims().forEach(a=>a.playbackRate=st.speed);
-  if(st.sound){(DEATH_SFX[st.kind]||[]).forEach(x=>wsT.push(setTimeout(()=>SFX.play(x[0],x[2]?{rate:x[2]}:{}),x[1]*1000/st.speed)));wsT.push(setTimeout(()=>SFX.play('sad'),(ms-1500)/st.speed))}
+  if(st.sound){(DEATH_SFX[st.kind]||[]).forEach(x=>wsT.push(setTimeout(()=>SFX.play(x[0],{rate:x[2]||1,vol:x[3]==null?1:x[3]}),x[1]*1000/st.speed)));wsT.push(setTimeout(()=>SFX.play('k_womp',{vol:.8}),(ms-1900)/st.speed))}
   t0=performance.now();
   const tick=()=>{const t=Math.min(ms,(performance.now()-t0)*st.speed);E('scrub').value=t;E('tread').textContent=(t/1000).toFixed(2)+'s';if(t<ms)raf=requestAnimationFrame(tick);else if(st.loop)wsT.push(setTimeout(play,700))};
   raf=requestAnimationFrame(tick);

@@ -248,5 +248,195 @@
   "g": "Other",
   "k": "win",
   "d": "The winner overlay appears"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_clang",
+  "d": "Deep metal clang: anvil, piano and calculator impacts"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_ring",
+  "d": "Bell ring after a clang, dinner bell, ghost ding"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_slam",
+  "d": "Hard metal slam layered under impacts"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_rattle",
+  "d": "Metal rattling to a stop after the anvil lands"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_fall",
+  "d": "Slide whistle dropping as something falls"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_falllong",
+  "d": "Longer slide whistle drop, falling down the hole"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_rise",
+  "d": "Slide whistle rising: banana slip, rocket launch"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_riseq",
+  "d": "Quick slide whistle up: flag pops out"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_wobble",
+  "d": "Wobbly slide whistle as the bean melts"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_womp",
+  "d": "Sad wobbling drop at the end of every death"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_boing",
+  "d": "Short spring boing"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_boing2",
+  "d": "Long wobbling spring"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_yelp",
+  "d": "The bean yelps when it sees what is coming"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_ouch",
+  "d": "The bean getting stung"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_eat1",
+  "d": "Monster chomp 1"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_eat2",
+  "d": "Monster chomp 2"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_eat3",
+  "d": "Monster chomp 3"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_burp",
+  "d": "Monster burp"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_boom",
+  "d": "Low boom: thunder rumble, stage going dark"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_crack",
+  "d": "Thunder crack on the lightning strike"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_explode",
+  "d": "Firework explosion"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_launch",
+  "d": "Rocket launch"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_crackle",
+  "d": "Firework crackle after the burst"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_popbang",
+  "d": "Sharp bang when the bean pops"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_zap",
+  "d": "Electric zap"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_splash",
+  "d": "Wet splash as the puddle forms"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_gloop",
+  "d": "Gloop"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_gloop2",
+  "d": "Slow drip gloop"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_bubble",
+  "d": "Puddle bubble"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_plop",
+  "d": "Small plop: things landing, flag planting"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_squeak",
+  "d": "Squeak: rope tug, pump strokes"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_woodbreak",
+  "d": "Wood smashing under the piano"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_glass",
+  "d": "Tinkling debris after the piano"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_crunch",
+  "d": "Crunch under the calculator"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_bug",
+  "d": "Angry bee"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_bug2",
+  "d": "Second angry bee"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_paper",
+  "d": "Receipt printing"
+ },
+ {
+  "g": "Deaths",
+  "k": "k_woosh",
+  "d": "Swish: banana toss, skin fluttering down"
  }
 ]

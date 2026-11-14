@@ -246,16 +246,16 @@ ${K3(k,'left:6px','x3-kcl',`<div class="x3-mc">${MINICALC}</div>`)}
 bonk:p=>`${actor(p,99,'a-bonk')}<div class="pot">${POT}</div><div class="stars">★ ★ ★</div>`
 };
 const DEATH_SFX={
- anvil:[['tick',.36,.8],['anvil',1.36],['anvil2',1.38],['d_boing',1.5,.8],['d_sweep',1.95,.7],['d_tada',2.6,1.3]],
- zap:[['anvil2',.55,.5],['key',1.3,1.4],['zap',1.5],['zap',1.6],['zap',1.74],['d_buzz',1.55,1.3],['pop',2.1,.6]],
- rocket:[['d_fuse',.55],['d_fuse',.7,1.1],['d_fuse',.85,1.2],['d_fuse',1,1.3],['d_fuse',1.12,1.4],['whoosh',1.5,.8],['d_sweep',1.6],['pop',2.3],['pop2',2.32],['tick',3.04,.8],['tick',3.3,1.2],['d_ding',2.7,1.4]],
- chomp:[['d_ding',1,1.2],['d_ding',1.12,1.2],['d_ding',1.24,1.2],['chomp',1.42],['chomp',1.72],['chomp',1.96],['d_boing',2.82,.5],['tick',3.45,.8]],
- melt:[['melt',1.1],['d_splat',2.05],['pop',3,1.8],['pop',3.5,1.5]],
- pop:[['tick',.5,.7],['tick',.8,.75],['tick',1.1,.8],['tick',1.4,.85],['tick',1.7,.9],['d_boing',1.82,1.3],['pop',2.05],['pop2',2.06],['d_splat',3,1.4]],
- piano:[['hint',.15],['hint',.4,1.26],['hint',.65,1.5],['d_piano',1.42],['bonk',1.44,.8],['d_boing',1.62,1.4]],
- banana:[['tick',.2,1],['d_slip',1.18],['whoosh',1.3,1.7],['bonk',2.1,.9],['d_sweep',2.5,1.5],['d_ding',2.95]],
- bees:[['d_buzz',.45],['d_buzz',1.3,1.15],['bonk',1.95,1.6],['d_boing',2.1,.7],['d_buzz',2.6,1.3]],
- calc:[['key',.6,1.2],['key',.8,1.2],['key',1,1.2],['error',1.15,1.4],['d_slam',2.05],['bonk',2.07,.7],['tick',2.7],['tick',2.8],['tick',2.9],['tick',3,1.2],['tick',3.1,1.2]]
+ anvil:[['k_squeak',.36,.9],['k_squeak',.62,1.1],['k_fall',.74,1],['k_yelp',.98,1.1],['k_clang',1.36,.72],['k_slam',1.36,.9],['k_ring',1.38,.6,.7],['k_rattle',1.52,1,.7],['k_boing2',1.56,.8,.6],['k_squeak',1.95,.7],['k_squeak',2.2,.75],['k_plop',2.6,1.2],['k_riseq',2.62,1.3,.6]],
+ zap:[['k_boom',.55,.7,.5],['key',1.3,1.4],['k_crack',1.5,1.1],['k_zap',1.5,1],['k_yelp',1.53,1.5],['k_zap',1.66,1.25],['zap',1.74],['k_gloop',2.1,1.6,.6],['k_plop',2.7,1.5,.6]],
+ rocket:[['d_fuse',.55],['d_fuse',.7,1.1],['d_fuse',.85,1.2],['d_fuse',1,1.3],['d_fuse',1.12,1.4],['k_yelp',1.28,1.2],['k_launch',1.5,1],['k_rise',1.5,.8],['k_explode',2.3,1],['k_crackle',2.38,1,.8],['d_ding',3.04,1.6,.7],['k_boing',3.3,1.3,.7],['k_plop',3.62,1]],
+ chomp:[['k_boom',.3,.6,.4],['k_ring',1,1.5,.7],['k_ring',1.12,1.5,.7],['k_ring',1.24,1.5,.7],['k_yelp',1.3,1.2],['k_eat1',1.42],['k_eat2',1.72],['k_eat3',1.96],['k_burp',2.82,.9],['k_plop',3.45,1.1]],
+ melt:[['k_wobble',1,.9],['k_gloop2',1.6,.8],['k_gloop',2.05,.7],['k_splash',2.1,.8,.6],['k_bubble',3,1.2],['k_bubble',3.5,1.5]],
+ pop:[['k_squeak',.5,.8],['k_squeak',.8,.9],['k_squeak',1.1,1],['k_squeak',1.4,1.1],['k_squeak',1.7,1.2],['k_boing2',1.82,1.4,.7],['k_popbang',2.05,1],['pop',2.05],['k_woosh',2.5,.8],['k_plop',3,.8]],
+ piano:[['hint',.15],['hint',.4,1.26],['hint',.65,1.5],['k_fall',.78,.9],['k_yelp',1.1,1],['d_piano',1.42],['k_woodbreak',1.42,.8],['k_clang',1.44,.5,.6],['k_glass',1.5,1,.5],['k_boing',1.62,1.2,.6],['k_riseq',2.08,1.2,.6],['k_plop',2.16,1.4],['k_plop',2.26,1.6]],
+ banana:[['k_woosh',.9,1],['k_rise',1.18,1.3],['k_yelp',1.26,1.3],['k_slam',2.1,.8,.8],['bonk',2.1,.9],['k_falllong',2.45,1],['k_ring',2.95,1.8,.6],['k_plop',3.4,.7]],
+ bees:[['bonk',.45,1.5,.6],['d_buzz',.6],['k_bug',1.3,1],['d_buzz',1.3,1.15],['k_bug2',1.5,1.2],['k_yelp',1.7,1.3],['bonk',1.95,1.6],['k_ouch',1.97,1.2],['k_boing2',2.1,.7,.7],['d_buzz',2.6,1.3]],
+ calc:[['key',.6,1.2],['key',.8,1.2],['key',1,1.2],['error',1.15,1.4],['k_yelp',1.8,1.2],['d_slam',2.05],['k_crunch',2.05,.8],['k_clang',2.07,.9,.5],['k_paper',2.7],['k_paper',2.8],['k_paper',2.9],['k_paper',3,1.2],['k_paper',3.1,1.2]]
 };
 window.DEATH_SFX=DEATH_SFX;
 window.EXTRA_DEATH_SFX={piano:DEATH_SFX.piano,banana:DEATH_SFX.banana,bees:DEATH_SFX.bees,calc:DEATH_SFX.calc};

@@ -24,8 +24,8 @@ node sfx_check.js
 node bots_check.js
 cd ..
 python3 build.py >/dev/null
-cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 400 node leave.js 2>&1 | tail -1); (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null
-(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 1500 node chaos.js 11,29,47 2>/dev/null | tail -1)
+cd /home/claude/hl && python3 build.py web >/dev/null && (cd test && timeout 900 node leave.js 2>&1 | tail -1); (cd test && timeout 150 node xss_check.js 2>&1 | grep -E '^(PASS|FAIL) security'); python3 build.py >/dev/null
+(cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 2400 node chaos.js 11,29,47 2>/dev/null | tail -1)
 (cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 300 node quick.js 2>&1 | grep -E "^(PASS|FAIL) quick play" || echo "FAIL quick play: no output")
 (cd /home/claude/hl && python3 build.py web >/dev/null && cd test && timeout 700 node duel.js 2>&1 | grep -E "^(PASS|FAIL) duel" || echo "FAIL duel: no output")
 (cd /home/claude/hl/test && node names.js)

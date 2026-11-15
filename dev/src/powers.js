@@ -44,7 +44,7 @@ function pwCan(p,id,tg){
   const d=pwDef(id);if(!d||!p||!p.a)return 'Not available';
   if(G.pwTurn===G.turnNo)return 'Used this turn';
   const alive=G.players.filter(x=>x.a);
-  if(id==='double'&&!(G.sub&&G.sub[0]==='*'))return 'Before asking';
+  if(id==='double'&&!(G.sub&&isAsk(G.sub[0])))return 'Before asking';
   if(id==='shield'&&p.sh)return 'Already up';
   if(id==='freeze'&&alive.length<3)return '3 or more players';
   if(id==='peek'){const t=byPid(tg);if(!t||!t.a||t.pid===p.pid)return 'Pick another player'}
@@ -96,7 +96,7 @@ function pwWindow(p,secret,isUser,by){
 function pwApply(cur,id,tg){
   G.pwTurn=G.turnNo;
   if(id==='double'){
-    G.sub.splice(1,0,'*');G.subN=(G.subN||0)+1;
+    G.sub.splice(1,0,G.sub[0]);G.subN=(G.subN||0)+1;
     G.ev={id:++G.en,t:'double',a:cur.pid};
   } else if(id==='shield'){
     cur.sh=1;G.ev={id:++G.en,t:'shield',a:cur.pid};

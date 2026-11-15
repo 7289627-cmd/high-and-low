@@ -22,7 +22,7 @@ async function game(seed){
   const leaver=[B,C,D][Math.floor(rnd()*3)],sleeper=[B,C,D].filter(w=>w!==leaver)[Math.floor(rnd()*2)],idler=[B,C,D].find(w=>w!==leaver&&w!==sleeper);
   const leaveAt=40+Math.floor(rnd()*120),sleepAt=30+Math.floor(rnd()*100),sleepLen=60+Math.floor(rnd()*60);
   let left=false,over=false,lastBeat=Date.now(),maxGap=0,t=0;
-  for(;t<2200&&!over;t++){
+  for(;t<5000&&!over;t++){
     const now=Date.now();maxGap=Math.max(maxGap,now-lastBeat);lastBeat=now;
     if(t===sleepAt)muted.add(sleeper.tag);
     if(t===sleepAt+sleepLen){muted.delete(sleeper.tag);try{sleeper.document.dispatchEvent(new sleeper.Event('visibilitychange'))}catch(e){}}

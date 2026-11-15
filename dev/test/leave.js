@@ -61,7 +61,7 @@ const names=()=>A.eval('G.players.map(p=>p.name).join(",")');
   if(C.$('[data-pickdir]')||C.$('.g[data-n]'))fail('leaver phone can still act');
   console.error('midgame leave ok',A.eval('JSON.stringify([G.stage,G.turn,G.sub,G.q,G.players.map(p=>p.a)])'));
   let over=false;
-  for(let t=0;t<1500&&!over;t++){act(A);act(B);await wait(120);if(t%100===99)console.error(t,A.eval('JSON.stringify([G.stage,G.seq,G.turn,G.sub,G.q,G.players.map(p=>p.a)])'));over=A.eval('G.phase')==='over'}
+  for(let t=0;t<4000&&!over;t++){act(A);act(B);await wait(120);if(t%100===99)console.error(t,A.eval('JSON.stringify([G.stage,G.seq,G.turn,G.sub,G.q,G.players.map(p=>p.a)])'));over=A.eval('G.phase')==='over'}
   if(!over)fail('game stuck after a player left: '+A.eval('JSON.stringify([G.stage,G.turn,G.sub,G.q])'));
   // 3) Host leaves: joiner goes home with a short message
   A.$('#ovClose')&&A.$('#ovClose').click();

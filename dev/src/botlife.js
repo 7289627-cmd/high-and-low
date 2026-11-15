@@ -127,9 +127,9 @@ function botThinkMs(me){
   let s=1.4-Math.log(1-Math.random())*1.4,min=1.4;
   s*=botTempo[me.pid];
   let n=0;
-  if(sub&&sub!=='*'){const t=byPid(sub);if(t)n=left(vw(me.pid,t))}
-  else if(sub==='*'){const f=focusOf(me.pid);if(f){n=vw(me.pid,f);n=n.hi-n.lo+1}}
-  if(sub&&sub!=='*'){
+  if(sub&&!isAsk(sub)){const t=byPid(sub);if(t)n=left(vw(me.pid,t))}
+  else if(isAsk(sub)){const f=focusOf(me.pid);if(f){n=vw(me.pid,f);n=n.hi-n.lo+1}}
+  if(sub&&!isAsk(sub)){
     if(n<=1){s=0.9+Math.random()*0.9;min=0.9}
     else if(n<=3){s*=0.6;min=1.1}
   } else {

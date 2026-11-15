@@ -434,7 +434,7 @@ function hostTick(){
           later(()=>{
             if(!G||G.gid+':'+G.seq!==key||G.phase!=='play'||G.stage!=='await'||G.q)return;
             const c=G.players[G.turn];if(!c||!G.sub||!G.sub.length)return;
-            if(G.sub[0]==='*'){
+            if(isAsk(G.sub[0])){
               const f=focusOf(c.pid);if(!f)return;const v=vw(c.pid,f);
               G.q=buildAskAll(c,'h',Math.floor((v.lo+v.hi-1)/2));
             } else {
@@ -466,7 +466,7 @@ function hostTick(){
 function validAct(cur,a){
   if(!G.sub||!G.sub.length)return false;
   if(a.t==='askall'){
-    if(G.sub[0]!=='*')return false;
+    if(!isAsk(G.sub[0]))return false;
     const f=focusOf(cur.pid);
     if(!f||a.tg!==f.pid||!Number.isInteger(a.x))return false;
     const t=vw(cur.pid,f);
@@ -487,21 +487,27 @@ function oppsOf(pid){
   return o;
 }
 function nzOpp(pid){return oppsOf(pid).filter(o=>!zone(vw(pid,o)))}
+/* Turn steps: '*' asks everyone, '*'+pid asks just that player, a bare pid is a guess at that player. */
+function isAsk(s){return typeof s==='string'&&s[0]==='*'}
+function askTg(pid){
+  const c=G&&G.players[G.turn],s=c&&c.pid===pid&&G.sub&&G.sub[0],one=isAsk(s)&&s.length>1?s.slice(1):'';
+  return nzOpp(pid).filter(o=>!one||o.pid===one);
+}
 function focusOf(pid){
   let best=null,bn=0;
-  for(const o of nzOpp(pid)){const v=vw(pid,o),sz=v.hi-v.lo+1;if(sz>bn){bn=sz;best=o}}
+  for(const o of askTg(pid)){const v=vw(pid,o),sz=v.hi-v.lo+1;if(sz>bn){bn=sz;best=o}}
   return best;
 }
 function buildAskAll(c,dir,x){
   const f=focusOf(c.pid),fv=vw(c.pid,f),xs={};
-  for(const o of nzOpp(c.pid))xs[o.pid]=o.pid===f.pid?x:spreadX(x,fv,vw(c.pid,o),dir);
+  for(const o of askTg(c.pid))xs[o.pid]=o.pid===f.pid?x:spreadX(x,fv,vw(c.pid,o),dir);
   return{seq:G.seq,a:c.pid,tg:'',t:'askall',dir,xs};
 }
 /* drop dead targets, drop '*' steps with nobody left to ask (then everyone in the zone gets a guess step) */
 function fixSub(){
   const cur=G.players[G.turn];if(!cur||!Array.isArray(G.sub))return;
   const before=G.sub.length;
-  G.sub=G.sub.filter(s=>s==='*'||(s!==cur.pid&&byPid(s)&&byPid(s).a));
+  G.sub=G.sub.filter(s=>{if(s==='*')return true;const o=byPid(isAsk(s)?s.slice(1):s);return !!o&&o.a&&o.pid!==cur.pid&&(!isAsk(s)||!zone(vw(cur.pid,o)))});
   if(G.sub.includes('*')&&!nzOpp(cur.pid).length){
     G.sub=G.sub.filter(s=>s!=='*');
     for(const p of oppsOf(cur.pid))if(!G.sub.includes(p.pid))G.sub.push(p.pid);
@@ -544,7 +550,7 @@ function resolveAll(rep){
     const st=G.st[pid]||(G.st[pid]=[0,0,0,null]),lf=left(vw(a.pid,o));st[3]=st[3]==null?lf:Math.min(st[3],lf);
   }
   G.ev={id,t:'askall',a:a.pid,dir:q.dir,rs,bl};
-  const si=(G.sub||[]).indexOf('*');if(si>=0)G.sub.splice(si,1);
+  const si=(G.sub||[]).findIndex(isAsk);if(si>=0)G.sub.splice(si,1);
   G.q=null;G.stage='show';publishG();
   const s=G.seq;later(()=>advance(s),1500);
 }
@@ -581,7 +587,9 @@ function nextAlive(i){const n=G.players.length;for(let k=0;k<n;k++){i=(i+1)%n;if
 function beginTurn(){
   if(!G.players[G.turn].a)G.turn=nextAlive(G.turn);
   const cur=G.players[G.turn],sub=[];
-  if(nzOpp(cur.pid).length)sub.push('*');
+  const nz=nzOpp(cur.pid),st=G.st&&G.st[cur.pid];
+  if(nz.length===1||(nz.length&&!(st&&st[0])))sub.push('*');
+  else for(const o of nz)sub.push('*'+o.pid);
   for(const o of oppsOf(cur.pid))if(zone(vw(cur.pid,o)))sub.push(o.pid);
   G.sub=sub;G.subN=sub.length;G.seq++;G.turnNo=(G.turnNo||0)+1;G.stage='await';G.q=null;
 }
@@ -602,9 +610,9 @@ function takeOver(p){
 }
 function botChoose(me){
   const base={seq:G.seq,a:me.pid};
-  if(G.sub[0]==='*'){
+  if(isAsk(G.sub[0])){
     const dir=isFill(me)?botDirFor(me.pid):Math.random()<.5?'h':'l',xs={};
-    for(const o of nzOpp(me.pid)){
+    for(const o of askTg(me.pid)){
       const t=vw(me.pid,o);
       const sk=me.ez?0.15:(G.pub&&me.hb&&Number.isInteger(me.el))?eloSkill(me.el):Math.max(0.1,Math.min(1,(G.bs==null?0.5:G.bs)+botLeaderBias(me.pid,o)));
       xs[o.pid]=isFill(me)?botAskX(t,sk,dir,G.max):botSplit(t,sk,dir,Math.random(),Math.random());
@@ -1125,10 +1133,10 @@ function canAct(){
 }
 function curTarget(){
   if(!G||G.phase!=='play'||G.stage==='wheel'||!G.sub||!G.sub.length)return null;
-  if(G.sub[0]==='*'){const c=G.players[G.turn];return c?focusOf(c.pid):null}
+  if(isAsk(G.sub[0])){const c=G.players[G.turn];return c?focusOf(c.pid):null}
   return byPid(G.sub[0]);
 }
-function guessViewOn(){const t=curTarget();return canAct()&&G.sub[0]!=='*'&&!!t&&t.a}
+function guessViewOn(){const t=curTarget();return canAct()&&!isAsk(G.sub[0])&&!!t&&t.a}
 function guessViewHTML(){
   const t=curTarget(),tv=mv(t),xs=myXs(tv),btns=[];
   for(let n=tv.lo;n<=tv.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
@@ -1137,7 +1145,7 @@ function guessViewHTML(){
 <p class="ped-q">Which one is it?</p>
 <div class="guess-grid big n${btns.length} ${fmt(tv.hi).length>=7?'c2':fmt(tv.hi).length>=5?'c3':''}">${btns.join('')}</div></main>`;
 }
-function askViewOn(){const t=curTarget();return canAct()&&G.sub[0]==='*'&&!!t&&t.a}
+function askViewOn(){const t=curTarget();return canAct()&&isAsk(G.sub[0])&&!!t&&t.a}
 const BIG_UP=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8l40 46H66v38H34V54H10z" fill="#fff" stroke="#1E2240" stroke-width="6" stroke-linejoin="round"/></svg>`;
 const BIG_DN=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 92l40-46H66V8H34v38H10z" fill="#fff" stroke="#1E2240" stroke-width="6" stroke-linejoin="round"/></svg>`;
 const BKSP=`<svg viewBox="0 0 32 24" aria-hidden="true" width="30" height="22"><path d="M10 2h19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H10L1 12z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 8l8 8M23 8l-8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
@@ -1239,7 +1247,7 @@ function sliderBind(){
   sd.onkeydown=e=>{const t=curTarget(),cur=askX();if(!t||cur===null)return;const sl=askSlots(mv(t)),x=a11SldKey(e,cur,sl.lo,sl.hi);if(x===null)return;e.preventDefault();if(x!==cur){setAskX(x);sliderPaint();sfx('tick',{vol:0.5})}};
 }
 function askRowHTML(f,fv){
-  const o=nzOpp(PID).filter(x=>x.pid!==f.pid);
+  const o=askTg(PID).filter(x=>x.pid!==f.pid);
   return `<span class="ar f"><span class="ar-b">${charSVG(pv(f),'scared','bob')}</span><span class="ar-r">${fmt(fv.lo)} – ${fmt(fv.hi)}</span></span>`+o.map(x=>`<span class="ar"><span class="ar-b">${charSVG(pv(x),'scared','bob')}</span></span>`).join('');
 }
 function askViewHTML(){

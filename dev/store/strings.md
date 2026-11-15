@@ -71,7 +71,7 @@ Style rules applied: sentence case on buttons and headings; no trailing full sto
 | Watching | spectator | main.js:1087 | keep |
 | Out, Flattened, Fried, Launched, Eaten, Melted, Popped, Pianoed, Slipped, Calculated | dead card | base.js:5 | keep (humour) |
 | N left, N LEFT, ODD, EVEN, VS | cards | main.js:1371,1387,1092 | keep |
-| Danger 2 of 3 (aria) | own card | main.js:1387 | keep |
+| NAME has you down to N (aria), N left | own card bar | main.js huntHTML | keep |
 | <name>, between 1 and 10,000 (aria, now uses fmt) | cards | main.js:1390 | fixed, was unformatted |
 | Your turn / <name>'s turn; Waiting for <name>… | tray | main.js:1397,1400 | keep |
 | You're out | tray | main.js:1402 | keep, full stop removed |

@@ -1,0 +1,27 @@
+/* Who am I asking (group games) and the hunted bar on my own card. */
+.who{display:flex;align-items:center;gap:12px;background:var(--c,#fff);border:4px solid var(--ink);border-radius:20px;box-shadow:0 5px 0 var(--ink);padding:6px 16px 6px 10px;min-width:0}
+.who.pop{animation:popIn .35s both}
+.who-b{flex:none;width:clamp(52px,17vw,72px);background:var(--paper);border:3px solid var(--ink);border-radius:50%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.who-b svg{display:block;width:74%;height:auto}
+.who-t{display:flex;flex-direction:column;min-width:0;line-height:1.05}
+.who-t b{font-family:var(--display);font-weight:400;font-size:clamp(26px,8.5vw,36px);color:#fff;-webkit-text-stroke:6px var(--ink);paint-order:stroke fill;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 4px}
+.who-t em{font-style:normal;font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums;background:var(--paper);border:3px solid var(--ink);border-radius:99px;padding:1px 12px;align-self:flex-start;white-space:nowrap}
+@media (max-height:640px){.who{padding:3px 12px 3px 8px}.who-b{width:46px}.who-t b{font-size:24px}.who-t em{font-size:15px}}
+@media (prefers-reduced-motion:reduce){.who.pop{animation:none}}
+.hunt{display:flex;align-items:center;gap:6px;width:100%;margin:3px 0}
+.hunt-b{flex:none;width:26px}
+.hunt-b svg{display:block;width:100%;height:auto}
+.hunt-track{position:relative;flex:1;min-width:0;height:24px;border:3px solid var(--ink);border-radius:9px;background:var(--paper-2);overflow:hidden;box-shadow:0 3px 0 var(--ink);display:flex;align-items:center;justify-content:center}
+.hunt-track i{position:absolute;left:0;top:0;bottom:0;background:var(--green);border-right:3px solid var(--ink);transition:width .6s cubic-bezier(.6,0,.3,1),background .3s}
+.hunt.mid .hunt-track i{background:var(--yellow)}
+.hunt.low .hunt-track i,.hunt.hot .hunt-track i{background:var(--red)}
+.hunt.hot .hunt-track i{animation:hppulse .7s ease-in-out infinite alternate}
+.hunt-track em{position:relative;font-style:normal;font-family:var(--body);font-weight:800;font-size:12px;color:var(--ink);white-space:nowrap;background:rgba(255,255,255,.78);border-radius:99px;padding:0 7px;line-height:16px}
+.cast.duel .card.mine .hunt-track{height:28px}
+.cast.duel .card.mine .hunt-track em{font-size:14px;line-height:19px}
+@media (prefers-reduced-motion:reduce){.hunt.hot .hunt-track i{animation:none}.hunt-track i{transition:none}}
+.hunt-track em u{text-decoration:none}
+@media (max-width:359px){.hunt{gap:3px}.hunt-b{width:20px}.hunt-track em u{display:none}}
+.askv .who~.say{min-height:92px}
+@media (max-height:680px){.askv .who~.say .spk-bean{width:56px}.askv .who~.say{grid-template-columns:56px minmax(0,1fr);min-height:0}.askv .who~.say .speech.big{padding:6px 12px;font-size:22px}}
+@media (max-height:680px){.askv .who~.say .speech.big{gap:2px 8px}.askv .who~.say .speech.big .numslot{font-size:1.05em}}

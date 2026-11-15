@@ -1250,11 +1250,17 @@ function askRowHTML(f,fv){
   const o=askTg(PID).filter(x=>x.pid!==f.pid);
   return `<span class="ar f"><span class="ar-b">${charSVG(pv(f),'scared','bob')}</span><span class="ar-r">${fmt(fv.lo)} – ${fmt(fv.hi)}</span></span>`+o.map(x=>`<span class="ar"><span class="ar-b">${charSVG(pv(x),'scared','bob')}</span></span>`).join('');
 }
+/* Group games, one opponent at a time: a big banner of who this question goes to. */
+function whoHTML(t,tv){
+  const k=G.gid+':'+G.seq,fresh=ui.whoK!==k;ui.whoK=k;
+  return `<div class="who ${fresh?'pop':''}" style="--c:${esc(pv(t).color||'#fff')}"><span class="who-b">${charSVG(pv(t),'scared','bob')}</span><span class="who-t"><b>${esc(t.name)}</b><em>${fmt(tv.lo)} – ${fmt(tv.hi)}</em></span></div>`;
+}
 function askViewHTML(){
   const t=curTarget(),me=byPid(PID),tv=mv(t);
   const k=(G.subN||1)-G.sub.length+1;
+  const one=G.players.length>2&&askTg(PID).length===1;
   const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':''}
-${timerPill()}${ui.step==='num'?'':pwBtnHTML()}<div class="ask-row">${askRowHTML(t,tv)}</div></div>`;
+${timerPill()}${ui.step==='num'?'':pwBtnHTML()}${one?'':`<div class="ask-row">${askRowHTML(t,tv)}</div>`}</div>${one?whoHTML(t,tv):''}`;
   if(ui.step!=='num'){
     const bk=G.gid+':'+G.seq;
     if(!sfxSeen.burst.has(bk)){sfxSeen.burst.add(bk);[0,0.14,0.28,0.42].forEach(d=>sfx('babble'+rnd(1,3),{delay:d,rate:babRate()+(Math.random()-.5)*0.16}))}
@@ -1405,6 +1411,15 @@ function hpHTML(pid,v,z){
   }else mid=`<i class="keep"><em>${fmt(n)} left</em></i>`;
   return `<span class="rb ${tone} ${live?'live':''}"><span class="rb-ends"><b class="${live&&cl>0?'pop':''}" style="${d}">${fmt(v.lo)}</b><b class="${live&&cr>0?'pop':''}" style="${d}">${fmt(v.hi)}</b></span><span class="rb-track">${seg('l',cl)}${mid}${seg('r',cr)}</span>${live?`<b class="dmg" style="${d}">−${fmt(cut)}</b>`:''}</span>`;
 }
+/* My own card: a health bar showing how few numbers the closest opponent still has me down to, with that opponent's face. */
+function huntHTML(p){
+  let h=null,m=Infinity;
+  for(const o of G.players)if(o.a&&o.pid!==p.pid){const l=left(vw(o.pid,p));if(l<m){m=l;h=o}}
+  if(!h)return '';
+  const frac=Math.log(Math.max(m,1))/Math.log(Math.max(G.max,2)),tone=m<=10?'hot':frac>0.66?'ok':frac>0.38?'mid':'low';
+  const fresh=m>=G.max;
+  return `<span class="hunt ${tone}" role="img" aria-label="${fresh?'Nobody is close yet':esc(h.name)+' has you down to '+fmt(m)}">${fresh?'':`<span class="hunt-b">${charSVG(pv(h),tone==='hot'?'happy':'idle')}</span>`}<span class="hunt-track"><i style="width:${Math.max(8,Math.round(frac*100))}%"></i><em>${fmt(m)}<u> left</u></em></span></span>`;
+}
 function cardHTML(p,i){
   if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span>${pwBits(p)}<span class="rip">${typeof DEATH_ICON!=='undefined'&&DEATH_ICON[p.d]?`<span class="dicon">${DEATH_ICON[p.d]}</span>`:''}${SHORT[p.d]||'Out'}</span></span></div>`;
   const cur=G.players[G.turn];
@@ -1418,7 +1433,7 @@ function cardHTML(p,i){
   const turnTag='';
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
 <span class="info"><span class="nm"><b>${esc(p.name)}</b>${G.pub&&Number.isInteger(p.el)?`<span class="elo">${p.el}</span>`:''}${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
-${mine?`<span class="dg-dots" role="img" aria-label="Danger ${dg} of 3">${[1,2,3].map(n=>`<i class="${n<=dg?'on':''}"></i>`).join('')}</span>`:`${hpHTML(p.pid,v,z)}${z?`<span class="zone">${leftX(v)} LEFT</span>`:''}`}
+${mine?huntHTML(p):`${hpHTML(p.pid,v,z)}${z?`<span class="zone">${leftX(v)} LEFT</span>`:''}`}
 ${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'Hide':'Show'}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''} ${dg>=3?'dg3':''}">${inner}</div>`;
   return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${fmt(v.lo)} and ${fmt(v.hi)}">${inner}</button>`;

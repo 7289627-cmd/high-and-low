@@ -18,7 +18,7 @@ Source tags in [brackets] are worker reports in `reports/`. Updated Nov 15, 2026
 - [ ] Governing law (replaces `GOVERNING_LAW` in `site/terms.html`). [b05]
 - [ ] Effective date (replaces `EFFECTIVE_DATE` in privacy and terms). [b05]
 - [ ] Your legal name or business name for the privacy page (it says only "independent developer"). [b05]
-- [ ] Bundle id / package name (reverse domain you own, no `com.example`) and final app name. [a04, a05]
+- [x] App id `com.highandlow.game`, store name "High & Low: Number Duel" (chosen Nov 15). Set in `app/capacitor.config.ts`.
 - [ ] AdMob app ids (2) and ad unit ids (2 interstitial; rewarded not used yet). Go in `app/native/hlnative.js` `REAL_IDS` and the configure script. [a04]
 - [ ] RevenueCat public SDK keys (`appl_...`, `goog_...`) in `app/native/hlnative.js` `IAP.apiKey`. [a04]
 
@@ -56,7 +56,7 @@ Source tags in [brackets] are worker reports in `reports/`. Updated Nov 15, 2026
 
 ## 4. SQL to run in Supabase (your game's project only, never "liqhoz")
 - [ ] 1. `supabase/events.sql` only if the `events` table does not exist yet. [a05]
-- [ ] 2. `supabase/events_v2.sql`: allows the new events (`rated`, `share`, `report`, `qleave`, `noads_tap`) and adds the funnel and retention views. Safe to rerun. Run before shipping. [b07, c04, a14]
+- [x] (run Nov 15, result "Success") 2. `supabase/events_v2.sql`: allows the new events (`rated`, `share`, `report`, `qleave`, `noads_tap`) and adds the funnel and retention views. Safe to rerun. Run before shipping. [b07, c04, a14]
 - [ ] Build a scheduled delete for old `events` rows. [b05]
 
 ## 5. Things to listen to or look at (nobody has done this on a phone)

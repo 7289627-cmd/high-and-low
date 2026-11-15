@@ -4,10 +4,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const SKY = '#7FD0E4';
 
 const config: CapacitorConfig = {
-  // TODO(owner): replace with your own reverse-domain bundle id BEFORE running `cap add`.
-  // It must match App Store Connect / Play Console and cannot be changed later without
-  // publishing a new app. "com.example.*" will be rejected by both stores.
-  appId: 'com.example.highandlow',
+  // Chosen by the owner on Nov 15, 2026. It must match App Store Connect and Play Console and
+  // cannot be changed later without publishing a new app.
+  // appName is the short label under the icon. The store listing name is "High & Low: Number Duel".
+  appId: 'com.highandlow.game',
   appName: 'High & Low',
   webDir: 'www',
   backgroundColor: SKY,

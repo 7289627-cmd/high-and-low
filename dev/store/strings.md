@@ -76,7 +76,7 @@ Style rules applied: sentence case on buttons and headings; no trailing full sto
 | Your turn / <name>'s turn; Waiting for <name>… | tray | main.js:1397,1400 | keep |
 | You're out | tray | main.js:1402 | keep, full stop removed |
 | Sending… / Using a power… | tray | main.js:1406 | keep |
-| Is it… / HIGHER / LOWER / Is it HIGHER than 42? / HALF / Ask (was Ask!) / Back | ask | main.js:1228-1243 | keep, "!" cut |
+| Is it… / HIGHER / LOWER / Is it HIGHER than 42? / Ask (was Ask!) / Back | ask | main.js:1228-1243 | keep, "!" cut |
 | Higher, switch to lower (aria, was HIGHER) | ask | main.js:1239 | fixed |
 | Pick 1 to 10,000 (was "Pick a whole number from ... to ...") | ask/secret error | main.js:925,1475 | short |
 | Which one is it? | guess | main.js:1111 | propose cut |

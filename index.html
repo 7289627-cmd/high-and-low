@@ -1409,6 +1409,11 @@ input,textarea,.invite-url{-webkit-user-select:text;user-select:text;-webkit-tou
 .askv .who~.say{min-height:92px}
 @media (max-height:680px){.askv .who~.say .spk-bean{width:56px}.askv .who~.say{grid-template-columns:56px minmax(0,1fr);min-height:0}.askv .who~.say .speech.big{padding:6px 12px;font-size:22px}}
 @media (max-height:680px){.askv .who~.say .speech.big{gap:2px 8px}.askv .who~.say .speech.big .numslot{font-size:1.05em}}
+.nudge.two{grid-template-columns:1fr 1fr}
+.btn.padtog{padding:6px 9px;display:inline-grid;place-items:center;line-height:0}
+.bignum.blank{opacity:.35}
+.askv .pad .key{height:clamp(40px,7.2vh,56px)}
+@media (max-height:680px){.askv.padon .say{min-height:0}.askv.padon .speech.big .numslot{flex-basis:auto;font-size:1em}.askv.padon .pad .key{height:38px;font-size:22px}.askv.padon .pad{gap:6px}}
 </style>
 </head><body>
 <div id="app"></div>
@@ -3078,7 +3083,7 @@ let isPub=false, roomNS=null, roomState='checking', R=null, connected=false, joi
 let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
 let lastEv=null, evPrimed=null, winShown=null;
-let ui={target:null,dir:'h',step:'dir',num:'',sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
+let ui={target:null,dir:'h',step:'dir',num:'',typed:'',pad:LS.get('hl-askpad')===1,sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, botAt=0, qSched=0, tickTimer=null, wheelSched=null;
 
@@ -3312,7 +3317,7 @@ function update(){
     } else hostTick();
     syncSecret();answerIfAsked();try{pwAnswer()}catch(e){}playNewEvent();a11Watch();stateSounds();if(window.showdownTick)try{showdownTick()}catch(e){}
     if(G&&G.phase==='play'&&G.stage==='await'){const k=G.gid+':'+G.seq;if(ui.timerSeq!==k){ui.timerSeq=k;ui.timerStart=Date.now()}}
-    if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num='';ui.err=''}
+    if(G&&G.seq!==ui.seq){ui.seq=G.seq;ui.target=null;ui.step='dir';ui.num=ui.typed='';ui.err=''}
     if(G&&G.phase==='play'&&G.stage==='wheel'&&ui.wheel!==G.gid){ui.wheel=G.gid;showWheel()}
     if(G&&G.phase==='over'&&G.win===PID&&!replaced())try{countWin()}catch(e){}
     if(G&&G.phase==='play'&&G.pub){eloPlayGid=G.gid;eloPend()}
@@ -3989,10 +3994,10 @@ function lockSecret(n){
 function sendAct(act){setP({act:{gid:G.gid,seq:G.seq,...act}})}
 function doAsk(){
   const t=curTarget();if(!t||!askViewOn())return;
-  const sl=askSlots(mv(t)),x=Number(sl.prefix+ui.num);
+  const sl=askSlots(mv(t)),x=ui.pad?(ui.typed?Number(ui.typed):NaN):Number(sl.prefix+ui.num);
   const lo=sl.lo, hi=sl.hi;
   if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick ${fmt(lo)} to ${fmt(hi)}`;sfx('error');render(true);return}
-  ui.err='';sfx('send');sendAct({tg:t.pid,t:'askall',dir:ui.dir,x});seen('num');ui.step='dir';ui.num='';
+  ui.err='';sfx('send');sendAct({tg:t.pid,t:'askall',dir:ui.dir,x});seen('num');ui.step='dir';ui.num=ui.typed='';
 }
 
 /* ---------- Render ---------- */
@@ -4314,11 +4319,13 @@ function whoHTML(t,tv){
   const k=G.gid+':'+G.seq,fresh=ui.whoK!==k;ui.whoK=k;
   return `<div class="who ${fresh?'pop':''}" style="--c:${esc(pv(t).color||'#fff')}"><span class="who-b">${charSVG(pv(t),'scared','bob')}</span><span class="who-t"><b>${esc(t.name)}</b><em>${fmt(tv.lo)} – ${fmt(tv.hi)}</em></span></div>`;
 }
+const ICO_PAD=`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor">${[4,12,20].map(y=>[4,12,20].map(x=>`<rect x="${x-2.6}" y="${y-2.6}" width="5.2" height="5.2" rx="1.4"/>`).join('')).join('')}</g></svg>`;
+const ICO_SLD=`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 12h20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><rect x="9" y="5" width="6" height="14" rx="2.5" fill="#fff" stroke="currentColor" stroke-width="2.5"/></svg>`;
 function askViewHTML(){
   const t=curTarget(),me=byPid(PID),tv=mv(t);
   const k=(G.subN||1)-G.sub.length+1;
   const one=G.players.length>2&&askTg(PID).length===1;
-  const top=`<div class="ask-top">${ui.step==='num'?'<button class="btn sm" id="askBack">Back</button>':''}
+  const top=`<div class="ask-top">${ui.step==='num'?`<button class="btn sm" id="askBack">Back</button><button class="btn sm padtog" id="padTog" aria-label="${ui.pad?'Use the slider':'Use the number pad'}">${ui.pad?ICO_SLD:ICO_PAD}</button>`:''}
 ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}${one?'':`<div class="ask-row">${askRowHTML(t,tv)}</div>`}</div>${one?whoHTML(t,tv):''}`;
   if(ui.step!=='num'){
     const bk=G.gid+':'+G.seq;
@@ -4332,13 +4339,14 @@ ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}${one?'':`<div class="ask-row">${
   const land=ui.land;ui.land=false;
   const word=ui.dir==='l'?'LOWER':'HIGHER';
   if(!ui.num)setAskX(askMid(tv));
-  const x=askX();
-  return `<section class="askv">${top}
+  const x=askX(),ty=ui.pad?(ui.typed||''):null;
+  return `<section class="askv ${ui.pad?'padon':''}">${top}
 <div class="say"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span>
-<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="${ui.dir==='l'?'Lower':'Higher'}, switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot"><span class="bignum" id="bigNum">${fmt(x)}</span><span class="qm">?</span></span></div></div>
-${sliderHTML(tv)}
+<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="${ui.dir==='l'?'Lower':'Higher'}, switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot"><span class="bignum ${ty===''?'blank':''}" id="bigNum">${ty===null?fmt(x):ty===''?'_':fmt(Number(ty))}</span><span class="qm">?</span></span></div></div>
+${ui.pad?'':sliderHTML(tv)}
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
-<div class="nudge"><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key mid" data-k="mid">HALF</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
+${ui.pad?padHTML('',false):''}
+<div class="nudge two" ${ui.pad?'hidden':''}><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
 <button class="btn primary big full" id="askGo">Ask</button>
 </section>`;
 }
@@ -4385,6 +4393,12 @@ function showWheel(){
 }
 function padPress(k){
   const field=G.phase==='secrets'?'sec':'num';
+  if(field==='num'&&ui.pad&&(/^\d$/.test(k)||k==='del')){
+    const max=String(askSlots(mv(curTarget())).hi).length;let v=ui.typed||'';
+    if(k==='del'){sfx('del');v=v.slice(0,-1)}
+    else{sfx('key');if(v.length<max&&!(v===''&&k==='0'))v+=k}
+    ui.typed=v;ui.err='';render(true);return;
+  }
   const sl=field==='num'?askSlots(mv(curTarget())):null;
   const maxLen=sl?sl.open:String(G.max).length;
   let v=ui[field];
@@ -4569,9 +4583,12 @@ function bind(){
   on('toLobby',toLobby);
   on('lockBtn',lockFromPad);
   on('showBtn',e=>{e.stopPropagation();ui.show=!ui.show;render(true)});
-  $$('[data-pickdir]').forEach(b=>b.onclick=()=>{sfx('pick');sfx('land',{delay:0.18});seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
-  on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.num='';ui.land=true;ui.err='';buzz(15);render(true)});
-  on('askBack',()=>{ui.step='dir';ui.num='';ui.err='';render(true)});
+  $$('[data-pickdir]').forEach(b=>b.onclick=()=>{sfx('pick');sfx('land',{delay:0.18});seen('dir');ui.dir=b.dataset.pickdir;ui.step='num';ui.num=ui.typed='';ui.land=true;ui.err='';buzz(15);render(true)});
+  on('flipDir',()=>{sfx('pick');sfx('land',{delay:0.18});ui.dir=ui.dir==='l'?'h':'l';ui.num=ui.typed='';ui.land=true;ui.err='';buzz(15);render(true)});
+  on('padTog',()=>{sfx('pick');const was=ui.pad;ui.pad=!was;LS.set('hl-askpad',ui.pad?1:0);
+    if(was&&ui.typed){const t=curTarget();if(t)setAskX(Number(ui.typed))}
+    ui.typed='';ui.err='';render(true)});
+  on('askBack',()=>{ui.step='dir';ui.num=ui.typed='';ui.err='';render(true)});
   $$('.key').forEach(b=>b.onclick=()=>{if(b.dataset.k==='rand'){sfx('pick');ui.sec=String(rnd(1,G.max));ui.secTyped=false;ui.err='';render(true)}else padPress(b.dataset.k);buzz(8)});
   {const lc=$('#lobCode');if(lc){lc.oninput=()=>{lc.value=lc.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);ui.codeIn=lc.value;ui.lobErr=''};
     const go=()=>{const c=ui.codeIn;if(!/^[A-Z]{4}$/.test(c)){ui.lobErr='Room codes are 4 letters';render(true);return}if(c===code){ui.lobErr='That is this room';render(true);return}ui.lobErr='';track('join');leaveGame().then(()=>startOnline(false,c))};

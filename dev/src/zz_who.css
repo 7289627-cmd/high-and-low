@@ -25,3 +25,8 @@
 .askv .who~.say{min-height:92px}
 @media (max-height:680px){.askv .who~.say .spk-bean{width:56px}.askv .who~.say{grid-template-columns:56px minmax(0,1fr);min-height:0}.askv .who~.say .speech.big{padding:6px 12px;font-size:22px}}
 @media (max-height:680px){.askv .who~.say .speech.big{gap:2px 8px}.askv .who~.say .speech.big .numslot{font-size:1.05em}}
+.nudge.two{grid-template-columns:1fr 1fr}
+.btn.padtog{padding:6px 9px;display:inline-grid;place-items:center;line-height:0}
+.bignum.blank{opacity:.35}
+.askv .pad .key{height:clamp(40px,7.2vh,56px)}
+@media (max-height:680px){.askv.padon .say{min-height:0}.askv.padon .speech.big .numslot{flex-basis:auto;font-size:1em}.askv.padon .pad .key{height:38px;font-size:22px}.askv.padon .pad{gap:6px}}

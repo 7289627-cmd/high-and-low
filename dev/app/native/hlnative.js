@@ -15,6 +15,10 @@
 
   /* ---------- CONFIG: the owner edits this block ---------- */
   var CONFIG = {
+    // false = a build with no ads and no Remove Ads at all (used for the first closed-test build).
+    // sync-web.sh sets this to false when run with HL_NO_ADS=1. The game hides its ad UI by itself
+    // because the ad and purchase functions are then missing from window.HLNative.
+    ADS_ENABLED: true,
     // true = Google's official demo ad units + isTesting. Set to false only for the store build,
     // after the real ids below are filled in. While false, any id still containing "REPLACE" is refused.
     TEST_MODE: true,
@@ -328,6 +332,7 @@
     }
   };
   HLNative.restorePurchases = HLNative.restore;   // old name, kept for compatibility
+  if (!CONFIG.ADS_ENABLED) ['showInterstitial', 'showRewarded', 'buyNoAds', 'ownsNoAds', 'restore', 'restorePurchases'].forEach(function (k) { delete HLNative[k]; });
   HLNative.mirror = { flush: flush, done: mir.done, state: mir };   // for tests and debugging
   window.HLNative = HLNative;
 
@@ -395,6 +400,7 @@
       if (SB) { var a = SB.setStyle({ style: 'LIGHT' }); if (a && a.catch) a.catch(function () {}); }
     } catch (e) {}
     // consent first, then load the first interstitial
+    if (!CONFIG.ADS_ENABLED) return;
     initAds().then(function (ok) { if (ok) { preload('interstitial'); } });
     initIap();
   }

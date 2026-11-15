@@ -29,7 +29,10 @@ find "$WWW" \( -name '*.py' -o -name '*.map' -o -name '*.md' -o -name '_*' -o -n
 python3 - "$WWW/index.html" <<'PY'
 import sys, pathlib
 p = pathlib.Path(sys.argv[1]); s = p.read_text()
+import os
 tag = '<script src="hlnative.js"></script>\n'
+if os.environ.get('HL_NO_ADS') == '1':
+    tag = '<script>window.HL_NATIVE_CONFIG={ADS_ENABLED:false}</script>\n' + tag
 marker = '<script src="vendor/supabase-'
 if tag in s: sys.exit(0)
 if s.count(marker) != 1: sys.exit('sync-web: could not find the script marker in index.html (build.py changed?)')

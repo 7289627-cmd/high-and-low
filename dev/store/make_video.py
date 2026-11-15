@@ -19,7 +19,7 @@ OUT = HERE / 'video'
 CHROME = '/usr/bin/google-chrome'
 VW, VH = 390, 845            # CSS viewport, same aspect as 886x1920
 REC_W, REC_H = 886, 1920     # recording size
-ME, OPP, MY_ELO, SECRET = 'Maya', 'Theo', 1184, 7421
+ME, OPP, MY_ELO, SECRET = 'Maya', 'Theo', 1138, 7421
 DEATH = 'piano'
 T0 = [0.0]
 
@@ -51,13 +51,14 @@ def font_css():
     return css
 
 
-HIDE_CSS = '.bar .status{display:none!important}'   # dev-only Practice pill; nothing else is touched
+HIDE_CSS = '.bar .status{display:none!important}.prow2 .x{display:none!important}'   # dev-only Practice pill; nothing else is touched
 # a visible touch dot so viewers see where the finger is (video only, drawn above the game, no game code touched)
 TOUCH_JS = """(()=>{const d=document.createElement('div');d.id='fingerDot';
-d.style.cssText='position:fixed;z-index:99999;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,255,255,.55);border:3px solid #1E2240;pointer-events:none;left:-99px;top:-99px;transition:transform .12s;transform:scale(.7)';
+d.style.cssText='position:fixed;z-index:99999;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,255,255,.55);border:3px solid #1E2240;pointer-events:none;left:-99px;top:-99px;opacity:0;transition:transform .12s,opacity .25s;transform:scale(.7)';
 document.body.appendChild(d);
-addEventListener('pointermove',e=>{d.style.left=e.clientX+'px';d.style.top=e.clientY+'px'},true);
-addEventListener('pointerdown',e=>{d.style.left=e.clientX+'px';d.style.top=e.clientY+'px';d.style.transform='scale(1)'},true);
+let hide=0;const show=e=>{d.style.left=e.clientX+'px';d.style.top=e.clientY+'px';d.style.opacity=1;clearTimeout(hide);hide=setTimeout(()=>{d.style.opacity=0},450)};
+addEventListener('pointermove',show,true);
+addEventListener('pointerdown',e=>{show(e);d.style.transform='scale(1)'},true);
 addEventListener('pointerup',()=>{d.style.transform='scale(.7)'},true)})()"""
 
 
@@ -68,6 +69,13 @@ def page_html():
 
 
 APP_URL = 'https://hl.test/'
+# logs every SFX.play / MUSIC.set / MUSIC.duck call with an epoch timestamp (installed right after the page loads, before any sound is requested)
+LOG_JS = """(()=>{window.__alog=[];const L=(t,a)=>window.__alog.push([Date.now(),t].concat(a));
+const p=SFX.play;SFX.play=function(k,o){L('sfx',[k,o||{}]);return p.apply(this,arguments)};
+const ms=MUSIC.set;MUSIC.set=function(n){L('music',[n]);return ms.apply(this,arguments)};
+const md=MUSIC.duck;MUSIC.duck=function(m){L('duck',[m]);return md.apply(this,arguments)}})()"""
+ALOG = []
+FIRST = [0.0]
 
 
 def wait_for(pg, js, timeout=60000, step=50):
@@ -91,10 +99,10 @@ def stamp(label):
 
 # Target on-screen seconds for the segment that ENDS at each stamp. The recording is real time, so on a loaded machine
 # input and waits take longer than on a phone; slower segments are played back faster in post (never slower, never cut).
-TARGETS = {'home shown': 1.8, 'mode tiles': 1.0, 'play tapped': 1.0, 'secrets screen': 1.2, 'secret picked': 2.6,
-           'wheel': 2.0, 'higher/lower': 0.5, 'slider dragged': 3.6, 'range cut': 2.5, 'opponent turn': 1.8,
-           'pedestal': 2.2, 'death scene done': None, 'result sheet': 3.0}
-MAX_SPEEDUP = 6.0
+TARGETS = {'home shown': 1.8, 'wardrobe': 3.2, 'mode tiles': 1.1, 'play tapped': 0.8, 'secrets screen': 1.4, 'secret picked': 2.4,
+           'wheel': 1.6, 'higher/lower': 1.0, 'slider dragged': 3.4, 'range cut': 2.6, 'opponent turn': 1.2,
+           'pedestal': 1.8, 'death scene done': None, 'result sheet': 3.6}
+MAX_SPEEDUP = 5.0   # only waiting (matchmaking, wheel, input overhead of the recorder) is sped up; build_audio maps every sound through the same time map
 
 
 def box(pg, sel):
@@ -134,6 +142,7 @@ def write_raw(RAW, frames):
     # screencast timestamps and time.time() share the epoch clock: shift marks so mark time == video time
     off = t_first - T0[0]
     global MARKS
+    FIRST[0] = t_first
     MARKS = [(t - off, l) for t, l in MARKS]   # marks are seconds since T0; video t=0 is the first frame
     lines = []
     for i, (ts, jpg) in enumerate(frames):
@@ -162,7 +171,7 @@ def record(death, death_ms):
         ctx.route('**/*', lambda r: r.fulfill(body=page, content_type='text/html') if r.request.url == APP_URL else r.abort())
         ctx.add_init_script(
             "try{localStorage.setItem('hl-name',JSON.stringify(%r));localStorage.setItem('hl-elo',%d);localStorage.setItem('hl-elo-n','14');"
-            "localStorage.setItem('hl-pm',JSON.stringify('m'));localStorage.setItem('hl-look',JSON.stringify({c:0,k:3}))}catch(e){}" % (ME, MY_ELO))
+            "localStorage.setItem('hl-pm',JSON.stringify('m'));localStorage.setItem('hl-wins','5');localStorage.setItem('hl-look',JSON.stringify({c:0,k:6}))}catch(e){}" % (ME, MY_ELO))
         pg = ctx.new_page()
         errs = []
         pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -198,6 +207,7 @@ def record(death, death_ms):
         T0[0] = time.time()
         pg.goto(APP_URL)
         pg.evaluate(TOUCH_JS)
+        pg.evaluate(LOG_JS)
         pg.wait_for_timeout(1200)                       # the first page paint; trimmed off below via START marker
         start = time.time() - T0[0]
         stamp('START')
@@ -205,6 +215,11 @@ def record(death, death_ms):
         pg.wait_for_timeout(2000)
         # 2. mode tiles, then Play
         stamp('home shown')
+        tap(pg, '#meBtn', 900)                          # wardrobe: pick a hat and a colour
+        tap(pg, '[data-hk="7"]', 700)
+        tap(pg, '[data-hc="3"]', 800)
+        tap(pg, '#ovX', 500)
+        stamp('wardrobe')
         pg.evaluate("window.HL_TEST_FILL_MS=600")
         tap(pg, '[data-mode="m"]', 500)
         stamp('mode tiles')
@@ -260,10 +275,11 @@ def record(death, death_ms):
         pg.evaluate("closeOv()")
         # 9. result sheet with rating gain
         pg.evaluate("""(()=>{const g=G.gid;G.phase='over';G.win=PID;G.stage='show';G.q=null;
-          eloLast={gid:g,d:27,from:%d,to:%d,up:false};showWinner()})()""" % (MY_ELO, MY_ELO + 27))
-        pg.wait_for_timeout(3500)
+          eloLast={gid:g,d:27,from:%d,to:%d,up:true};showWinner()})()""" % (MY_ELO, MY_ELO + 27))
+        pg.wait_for_timeout(4200)
         stamp('result sheet')
         pg.wait_for_timeout(200)
+        ALOG.extend(pg.evaluate('window.__alog'))
         if errs:
             print('  page errors:', errs[:3])
         ctx.close()
@@ -280,6 +296,87 @@ def segments(death_s):
     return segs
 
 
+def vmap(segs):
+    """Real recording time -> output video time, through the per-segment speed-ups (None outside the kept range)."""
+    def f(t):
+        acc = 0.0
+        for a, b, k in segs:
+            if a <= t < b:
+                return acc + (t - a) / k
+            acc += (b - a) / k
+        return None
+    return f
+
+
+def build_audio(segs, total, out):
+    """Real game audio, built offline: every logged SFX.play at its moment (SFX.GAIN * opts.vol, opts.rate, opts.delay), the home tune until
+    Play is pressed, then the quiet in-game bed; mixed with ffmpeg and written as a wav."""
+    import json, re
+    ff = shutil.which('ffmpeg')
+    gains = {}
+    src = (ROOT / 'src/sound.js').read_text()
+    gblock = src[src.index('GAIN:{'):src.index('MAXVOICES')]
+    for k, v in re.findall(r'([a-z_0-9]+):([0-9.]+)', gblock):
+        gains[k] = float(v)
+    f = vmap(segs)
+    off = FIRST[0] - T0[0]            # video t=0 is the first captured frame, marks are seconds since T0
+    ev = []
+    for row in ALOG:
+        ts = row[0] / 1000.0 - T0[0] - off
+        if row[1] == 'sfx':
+            key, o = row[2], row[3]
+            # recording-clock time -> video time: marks were shifted by -off already, so convert ts the same way (ts is video-recording time)
+            ev.append(('sfx', ts + (o.get('delay') or 0), key, o))
+        else:
+            ev.append((row[1], ts, row[2:], None))
+    ins, flt, labels = [], [], []
+    n = 0
+    sfxdir = ROOT / 'site/sfx'
+    def add(path, t_out, vol, rate=1.0, trim=None):
+        nonlocal n
+        ins.extend(['-i', str(path)])
+        chain = '[%d:a]aformat=sample_rates=44100:channel_layouts=stereo' % n
+        if rate != 1.0:
+            chain += ',asetrate=%d,aresample=44100' % int(44100 * rate)
+        if trim:
+            chain += ',atrim=0:%.3f' % trim
+        chain += ',volume=%.4f,adelay=%d|%d[a%d]' % (vol, int(t_out * 1000), int(t_out * 1000), n)
+        flt.append(chain)
+        labels.append('[a%d]' % n)
+        n += 1
+    n_sfx = 0
+    for kind, ts, key, o in ev:
+        if kind != 'sfx':
+            continue
+        to = f(ts)
+        if to is None or not (sfxdir / (key + '.mp3')).exists():
+            continue
+        vol = (o.get('vol') if o.get('vol') is not None else 1.0) * gains.get(key, 1.0) * 0.8   # 0.8 = SFX.master
+        add(sfxdir / (key + '.mp3'), to, vol, o.get('rate') or 1.0)
+        n_sfx += 1
+    # music: the game's own levels (home 0.30, play 0.13), the home tune is cut when the play bed starts
+    plays = [ts for kind, ts, key, o in ev if kind == 'music' and key[0] == 'play']
+    t_play = f(plays[0]) if plays else None
+    home_end = t_play if t_play is not None else total
+    ins.extend(['-i', str(ROOT / 'site/music/home.mp3'), '-i', str(ROOT / 'site/music/play.mp3')])
+    hi, pi = n, n + 1
+    n += 2
+    flt.append('[%d:a]aformat=sample_rates=44100:channel_layouts=stereo,atrim=0:%.3f,volume=0.30,afade=t=in:d=0.4,afade=t=out:st=%.3f:d=0.03[mh]' % (hi, home_end, max(0, home_end - 0.03)))
+    labels.append('[mh]')
+    if t_play is not None:
+        duck = [(f(ts), key[0]) for kind, ts, key, o in ev if kind == 'duck' and f(ts) is not None]
+        vexp = '0.13'
+        for t0, ms in duck:
+            vexp = 'if(between(t,%.3f,%.3f),0.065,0.13)' % (t0, t0 + ms / 1000.0 + 0.4)
+        flt.append("[%d:a]aformat=sample_rates=44100:channel_layouts=stereo,volume='%s':eval=frame,afade=t=in:d=1.2,adelay=%d|%d[mp]" % (pi, vexp, int(t_play * 1000), int(t_play * 1000)))
+        labels.append('[mp]')
+    fc = ';'.join(flt) + ';' + ''.join(labels) + 'amix=inputs=%d:normalize=0:duration=longest,volume=1.6,alimiter=limit=0.9,atrim=0:%.3f,afade=t=out:st=%.3f:d=0.6[aout]' % (len(labels), total, max(0, total - 0.6))
+    (OUT / 'audio_filter.txt').write_text(fc)
+    subprocess.run([ff, '-y', '-v', 'error'] + ins + ['-filter_complex_script', str(OUT / 'audio_filter.txt'), '-map', '[aout]', '-ar', '44100', str(out)], check=True)
+    print('  audio: %d sfx events mixed, music play bed from %s' % (n_sfx, 'none' if t_play is None else '%.1fs' % t_play))
+    (OUT / 'audio_events.json').write_text(json.dumps([[round(t, 2), k, key] for k, t, key, o in ev if k == 'sfx'], indent=0))
+
+
 def encode(raw, death_s):
     ff = shutil.which('ffmpeg')
     if not ff:
@@ -289,24 +386,25 @@ def encode(raw, death_s):
     parts += ''.join('[s%d]' % i for i in range(len(segs))) + 'concat=n=%d:v=1:a=0[cat];' % len(segs)
     total = sum((b - a) / k for a, b, k in segs)
     print('  planned duration %.1fs' % total)
-    sil = ['-f', 'lavfi', '-t', '%.2f' % (total + 1), '-i', 'anullsrc=r=44100:cl=stereo']
+    wav = OUT / 'audio.wav'
+    build_audio(segs, total, wav)
     enc = ['-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-r', '30', '-crf', '17', '-preset', 'slow',
-           '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart']
+           '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-shortest', '-movflags', '+faststart']
     a = OUT / 'preview_886x1920.mp4'
     fc = parts + '[cat]scale=886:1920:flags=lanczos,fps=30,setsar=1,format=yuv420p[v]'
-    subprocess.run([ff, '-y', '-v', 'error', '-i', str(raw)] + sil + ['-filter_complex', fc, '-map', '[v]', '-map', '1:a'] + enc + [str(a)], check=True)
+    subprocess.run([ff, '-y', '-v', 'error', '-i', str(raw), '-i', str(wav), '-filter_complex', fc, '-map', '[v]', '-map', '1:a'] + enc + [str(a)], check=True)
     # 1080x1920: the same video centred over a blurred copy of itself (9:16 is wider than the 886x1920 aspect)
     fc = (parts + '[cat]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=40:4[bg];'
           '[b]scale=-2:1920:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:0,fps=30,setsar=1,format=yuv420p[v]')
     c = OUT / 'preview_1080x1920.mp4'
-    subprocess.run([ff, '-y', '-v', 'error', '-i', str(raw)] + sil + ['-filter_complex', fc, '-map', '[v]', '-map', '1:a'] + enc + [str(c)], check=True)
+    subprocess.run([ff, '-y', '-v', 'error', '-i', str(raw), '-i', str(wav), '-filter_complex', fc, '-map', '[v]', '-map', '1:a'] + enc + [str(c)], check=True)
     return a, c
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--death', default=DEATH)
-    ap.add_argument('--death-ms', type=int, default=3600)
+    ap.add_argument('--death-ms', type=int, default=3300)
     ap.add_argument('--keep-raw', action='store_true')
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)

@@ -12,7 +12,12 @@ WWW="$APP/www"
 # 2. fresh copy of site/ without lab, dev pages and dev files
 rm -rf "$WWW"
 mkdir -p "$WWW"
-cp -R "$ROOT/site/." "$WWW/"
+# The site lives in $ROOT/site (working copy) or, in the GitHub repo where this folder is dev/app, in the repo root.
+if [ -d "$ROOT/site" ]; then SITE="$ROOT/site"; else SITE="$(cd "$ROOT/.." && pwd)"; fi
+for f in index.html fonts icons icon-180.png manifest.webmanifest music sfx vendor og.png privacy.html terms.html support.html; do
+  [ -e "$SITE/$f" ] && cp -R "$SITE/$f" "$WWW/"
+done
+test -f "$WWW/index.html" || { echo "sync-web: no index.html found in $SITE"; exit 1; }
 rm -rf "$WWW/lab" "$WWW/sounds.html" "$WWW/deaths.html"
 find "$WWW" \( -name '*.py' -o -name '*.map' -o -name '*.md' -o -name '_*' -o -name '.*' \) -not -path "$WWW" -exec rm -rf {} +
 

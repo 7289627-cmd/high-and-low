@@ -1,0 +1,143 @@
+/* Playable ad layout. Everything visual (palette, outlines, buttons, slider, range bar, bubbles, death stage,
+   rating block, logo) comes from the game's own CSS that build.py puts in front of this file.
+   Only the ad's arrangement is defined here. */
+html{zoom:1!important}  /* the game's tablet zoom (zz_c09) must not stack on the ad's own scaling */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+body{background:#8EDDF0}
+#sky{position:fixed;inset:0;z-index:0}
+#sky .hs-catch,#sky .hs-walk,#sky .hs-chase,#sky .hs-kiter,#sky .kitesvg,#sky .bfly{display:none}
+#ad{position:fixed;left:0;top:0;z-index:2;transform-origin:0 0;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0 18px;touch-action:none;overflow:hidden}
+#ad>*{width:min(100% - 24px,460px);flex:none}
+#ad>.pa-opp{flex:1 1 auto}
+#ad>.pa-pips{width:auto}
+.pa-paused *{animation-play-state:paused!important}
+
+/* three guess pips */
+.pa-pips{display:flex;justify-content:center;gap:16px;height:30px;align-items:center;animation:paDrop .45s cubic-bezier(.3,1.5,.5,1) both}
+.pa-pips i{display:block;width:26px;height:26px;border-radius:50%;border:4px solid var(--ink);background:var(--white);box-shadow:0 3px 0 var(--ink);transition:background .15s}
+.pa-pips i.on{background:var(--yellow);animation:popIn .35s both}
+
+/* opponent on the pedestal */
+.pa-opp{position:relative;flex:1 1 auto;min-height:240px;display:block}
+.pa-ped{position:absolute;left:33%;bottom:0;width:176px;height:96px;margin-left:-88px;animation:paDrop .6s cubic-bezier(.3,1.4,.5,1) .15s both}
+.pa-pedsvg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pa-obean{position:absolute;left:50%;bottom:78px;width:104px;margin-left:-52px;z-index:1}
+.pa-ob{width:100%}
+.pa-obean .bean{width:100%}
+.pa-card{position:absolute;left:50%;top:44px;width:76px;height:46px;margin-left:-38px;perspective:400px;z-index:2}
+.pa-cardin{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+.pa-card.rev .pa-cardin{transform:rotateY(180deg)}
+.pa-f{position:absolute;inset:0;display:grid;place-items:center;background:var(--white);border:3px solid var(--ink);border-radius:11px;box-shadow:0 3px 0 var(--ink);font-family:var(--display);font-weight:400;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.pa-f.q{font-size:36px;color:var(--red);line-height:1;animation:paWob 1.6s ease-in-out infinite alternate}
+.pa-f.n{font-size:30px;color:var(--ink);background:var(--yellow);transform:rotateY(180deg)}
+.pa-card.wob{animation:paCardWob 1s ease-in-out .05s both}
+@keyframes paCardWob{0%{transform:none}12%{transform:rotate(-12deg) scale(1.12)}28%{transform:rotate(11deg) scale(1.12)}44%{transform:rotate(-8deg) scale(1.06)}60%{transform:rotate(6deg)}78%{transform:rotate(-3deg)}100%{transform:none}}
+@keyframes paWob{from{transform:rotate(-5deg)}to{transform:rotate(5deg)}}
+@keyframes paDrop{from{transform:translateY(-26px);opacity:0}to{transform:none;opacity:1}}
+
+/* opponent's answer bubble */
+.pa-ans{position:absolute;left:calc(33% + 66px);bottom:112px;opacity:0;transform:scale(.3);transform-origin:0 70%;pointer-events:none;z-index:3}
+.pa-ans.on{animation:popIn .32s both;opacity:1;transform:none}
+.pa-ans-in{display:grid;justify-items:center;gap:2px;background:var(--white);border:3px solid var(--ink);border-radius:18px;padding:8px 12px 10px;box-shadow:0 4px 0 var(--ink);position:relative}
+.pa-ans-in::before{content:"";position:absolute;left:-12px;top:60%;margin-top:-8px;border:8px solid transparent;border-right:12px solid var(--ink);border-left:0}
+.pa-ans-in::after{content:"";position:absolute;left:-7px;top:60%;margin-top:-6px;border:6px solid transparent;border-right:9px solid var(--white);border-left:0}
+.pa-ans-in .dirword{font-size:26px;cursor:default;-webkit-text-stroke:3px var(--ink)}
+.pa-ans-in.say{display:block;width:158px;text-align:center;font-family:var(--display);font-size:27px;line-height:1.04;color:var(--ink);padding:9px 12px 11px;white-space:normal}
+.pa-arr,.pa-tick{display:block;width:44px;height:44px;font-style:normal}
+.pa-arr svg,.pa-tick svg{display:block;width:100%;height:100%}
+.pa-ans-in.hi .pa-arr svg path{fill:var(--green)}
+.pa-ans-in.lo .pa-arr svg path{fill:var(--red)}
+.pa-ans-in.ok{padding:8px 16px;background:var(--green)}
+.pa-ans-in.ok::after{border-right-color:var(--green)}
+.pa-ans-in.ok .pa-tick{width:54px;height:54px}
+
+/* you: bean + big number bubble */
+.pa-meRow{display:flex;align-items:center;gap:14px;padding-left:4px}
+.pa-mebean{width:84px;flex:none}
+.pa-mebean .bean{width:100%}
+.pa-say{flex:1 1 auto;min-width:0;justify-content:center;flex-wrap:nowrap;gap:4px;padding:6px 12px}
+.pa-say .bignum{font-size:58px;display:block;min-width:2.1ch;text-align:right}
+.pa-say .qm{font-family:var(--display);font-size:48px;line-height:1;color:var(--ink)}
+
+/* slider */
+.pa-ctl{padding:0 4px}
+#paSld{position:relative;outline:0}
+#paSld .sld-track{overflow:visible}
+#paFill{min-width:19px}
+.sld-thumb{margin-left:-19px;width:38px}
+.sld-ends{font-size:18px}
+
+/* hand hints */
+.pa-hand{position:absolute;width:62px;height:76px;pointer-events:none;opacity:0;z-index:5;transition:opacity .2s}
+.pa-hand{left:50%;top:26px;margin-left:-10px}
+.pa-hand.on{opacity:1}
+.pa-handin{display:block;width:100%;height:100%;transform-origin:30% 5%;animation:paPulse .75s ease-in-out infinite alternate}
+.pa-handin svg{display:block;width:100%;height:100%;filter:drop-shadow(0 3px 0 rgba(30,34,64,.35))}
+@keyframes paPulse{from{transform:scale(.88) rotate(-6deg)}to{transform:scale(1.06) rotate(4deg)}}
+.pa-hand.lbl .pa-go{position:relative}
+.pa-go .btn{min-height:64px;font-size:32px;display:flex;align-items:center;justify-content:center}
+.pa-go .btn.pulse{animation:paBtn .55s ease-in-out infinite alternate}
+@keyframes paBtn{from{transform:scale(1)}to{transform:scale(1.045)}}
+
+/* death overlay: the game's own overlay and sheet, with the stage only */
+#ad>#ov{position:absolute;inset:0;width:auto;z-index:50}
+#ad.ended>*:not(.pa-end){visibility:hidden}
+.pa-sheet{padding:14px;gap:0}
+.pa-sheet .stage{height:min(300px,46vh)}
+
+/* end card */
+.pa-end{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(30,34,64,.0);width:100%!important;animation:paFade .35s both}
+.pa-end>*{width:min(100% - 24px,420px);flex:none}
+@keyframes paFade{from{opacity:0}to{opacity:1}}
+.pa-end .logo.big{font-size:64px;-webkit-text-stroke:6px var(--ink);animation:popIn .45s both}
+.pa-win{padding:14px;gap:8px;animation:popIn .45s .1s both}
+.pa-win .stage{height:210px}
+.pa-win h2{font-size:34px}
+.pa-end .btn.pa-cta{font-size:34px;min-height:72px;padding:12px 22px;animation:paBtn .6s ease-in-out infinite alternate;box-shadow:0 6px 0 var(--ink)}
+.pa-replay{position:absolute;left:14px;top:14px;width:44px;height:44px;padding:0;display:grid;place-items:center;background:var(--white);border:3px solid var(--ink);border-radius:50%;box-shadow:0 3px 0 var(--ink);cursor:pointer;width:44px!important;z-index:2}
+.pa-replay svg{width:24px;height:24px}
+.pa-replay:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+/* a locked Ask button looks pressed in, not faded over the ground */
+.pa-go .btn:disabled{opacity:1;transform:translateY(3px);box-shadow:0 1px 0 var(--ink);filter:saturate(.75) brightness(.95)}
+.pa-end{cursor:pointer}
+
+/* nervous red bean: shake and sweat grow with each answer */
+.lv1 .pa-ob{animation:paJ1 .9s ease-in-out infinite alternate}
+.lv2 .pa-ob{animation:paJ2 .16s linear infinite alternate}
+.lv3 .pa-ob{animation:paJ3 .09s linear infinite alternate}
+@keyframes paJ1{from{transform:translateX(-1px) rotate(-1deg)}to{transform:translateX(1px) rotate(1deg)}}
+@keyframes paJ2{from{transform:translateX(-2.5px) rotate(-2deg)}to{transform:translateX(2.5px) rotate(2deg)}}
+@keyframes paJ3{from{transform:translateX(-4px) rotate(-3.5deg)}to{transform:translateX(4px) rotate(3.5deg)}}
+.pa-sw{position:absolute;display:none;width:15px;height:21px;opacity:0;pointer-events:none;z-index:3}
+.pa-sw svg{display:block;width:100%;height:100%}
+.pa-sw.s1{right:-6px;top:2px}.pa-sw.s2{left:-7px;top:8px}.pa-sw.s3{right:-10px;top:26px}
+.lv1 .s1,.lv2 .s1,.lv2 .s2,.lv3 .pa-sw{display:block;animation:paSw 1s ease-in infinite}
+.lv2 .s2{animation-delay:.35s}.lv3 .s2{animation-delay:.2s}.lv3 .s3{animation-delay:.55s}
+@keyframes paSw{0%{opacity:0;transform:translateY(-4px) scale(.6)}20%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0;transform:translateY(30px)}}
+.pa-mebean.hop{animation:paHop .6s cubic-bezier(.3,1.3,.5,1)}
+@keyframes paHop{0%{transform:none}25%{transform:translateY(-26px) scale(.95,1.08)}55%{transform:translateY(0) scale(1.1,.9)}75%{transform:translateY(-8px)}100%{transform:none}}
+
+/* the range bar: ruled-out numbers are chopped away, the rest rescales to fill the bar */
+.pa-clip{position:absolute;inset:0;overflow:hidden;border-radius:13px;pointer-events:none}
+.pa-cut{position:absolute;top:0;bottom:0;opacity:0;background:repeating-linear-gradient(135deg,var(--red) 0 8px,#C9382A 8px 16px);border:0 solid var(--ink);transition:opacity .12s}
+.pa-cut.l{left:-4px;width:0;border-right-width:4px}
+.pa-cut.r{right:-4px;left:100%;border-left-width:4px}
+.pa-cut.on{opacity:1}
+.pa-cut.chop{animation:paChop .26s ease-in-out both}
+.pa-cut.gone{opacity:0;transition:opacity .15s linear .38s}
+@keyframes paChop{0%{filter:brightness(1.5)}25%{transform:translateY(-3px)}50%{transform:translateY(3px);filter:brightness(1.2)}75%{transform:translateY(-2px)}100%{transform:none}}
+.sld.tw .sld-thumb,.sld.tw #paFill{transition:left .5s cubic-bezier(.7,0,.2,1),width .5s cubic-bezier(.7,0,.2,1)}
+.sld.tw .pa-cut{transition:left .5s cubic-bezier(.7,0,.2,1),width .5s cubic-bezier(.7,0,.2,1),opacity .15s linear}
+.sld.jump .sld-thumb,.sld.jump #paFill{transition:left .12s ease-out,width .12s ease-out}
+.sld.jolt .sld-track{animation:paJolt .28s ease-out}
+@keyframes paJolt{0%{transform:translateY(0)}30%{transform:translateY(5px) scaleX(1.015)}100%{transform:none}}
+.sld-ends{font-size:30px;opacity:1;margin-top:18px;line-height:1;color:var(--white);-webkit-text-stroke:6px var(--ink);paint-order:stroke fill}
+.sld-ends span{display:block;transform-origin:50% 100%}
+.sld-ends span.pop{animation:paEnd .55s cubic-bezier(.3,1.6,.5,1)}
+@keyframes paEnd{0%{transform:scale(1.7);color:var(--red)}100%{transform:none}}
+.pa-say .bignum{font-size:68px}
+.pa-ctl{padding:0 4px}
+#paSld{padding-top:20px}
+
+.pa-end .pa-line{margin:0;text-align:center;font-family:var(--display);font-size:29px;line-height:1.1;color:var(--white);-webkit-text-stroke:6px var(--ink);paint-order:stroke fill;animation:popIn .45s .25s both}
+@media (prefers-reduced-motion:reduce){.pa-ob,.pa-sw,.pa-card.wob,.pa-mebean.hop{animation:none!important}}

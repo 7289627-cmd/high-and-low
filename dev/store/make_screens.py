@@ -4,7 +4,8 @@
 Run from anywhere:   python3 store/make_screens.py [--only iphone69,android] [--no-marketing]
 Needs: `python3 build.py` first (writes artifact.html), python playwright, /usr/bin/google-chrome.
 Output: store/shots/<device>/<n>_<name>.png, store/shots/feature/feature_graphic_1024x500.png,
-        store/shots/framed/<n>_<name>.png (marketing variants of the 6.9" phone scenes).
+        store/shots/framed/<n>_<name>.png (captioned variants of the 6.9" phone scenes).
+Seven scenes in selling order: oops (piano), duel (slider + narrowed range), last_guess (pedestal), rank_up (win sheet), wardrobe, home (three modes), friends lobby.
 
 How it works (no game source is changed):
  - loads artifact.html (the offline test build) with the real fonts from store/fonts injected as data URIs
@@ -30,24 +31,19 @@ DEVICES = {
 }
 ME, OPP = 'Maya', 'Theo'
 SECRET = 7421
-MY_ELO = 1184
+MY_ELO = 1138
 
-NAMES = ['home', 'higher_lower', 'ask_slider', 'range_cut', 'which_one', 'oops', 'you_win']
+NAMES = ['oops', 'duel', 'last_guess', 'rank_up', 'wardrobe', 'home', 'friends']
 
 CAPTIONS = {
-    'home': 'Hide a number. Guess theirs.',
-    'higher_lower': 'Higher or lower?',
-    'ask_slider': 'Slide to ask a question',
-    'range_cut': 'Watch the range shrink',
-    'which_one': 'Narrow it down, then guess',
-    'oops': 'Wrong guesses get silly',
-    'you_win': 'Win duels, climb the ranks',
+    'oops': 'Wrong guesses hurt',
+    'duel': 'Higher or lower?',
+    'last_guess': 'One guess left',
+    'rank_up': 'Climb the ranks',
+    'wardrobe': 'Dress your bean',
+    'home': 'Three ways to play',
+    'friends': 'Bring your friends',
 }
-BG = {  # simple flat backgrounds, palette from the game
-    'home': '#7FD0E4', 'higher_lower': '#FFD23F', 'ask_slider': '#4A7BF7',
-    'range_cut': '#F0503C', 'which_one': '#7FD0E4', 'oops': '#FFD23F', 'you_win': '#4A7BF7',
-}
-LIGHT_TEXT = {'ask_slider', 'range_cut', 'you_win'}
 
 
 def b64(p):
@@ -62,7 +58,7 @@ def font_css():
 
 
 # Hides the dev-only "Practice"/"Live" status pill in the in-game header. Nothing else is touched.
-HIDE_CSS = '.bar .status{display:none!important}'
+HIDE_CSS = '.bar .status{display:none!important}.prow2 .x{display:none!important}'
 
 
 def page_html():
@@ -82,7 +78,7 @@ def new_page(b, w, h, dsf, seed_ls=True):
     if seed_ls:
         ctx.add_init_script(
             "try{localStorage.setItem('hl-name',JSON.stringify(%r));localStorage.setItem('hl-elo',%d);localStorage.setItem('hl-elo-n','14');"
-            "localStorage.setItem('hl-pm',JSON.stringify('m'));localStorage.setItem('hl-look',JSON.stringify({c:0,k:3}))}catch(e){}" % (ME, MY_ELO))
+            "localStorage.setItem('hl-pm',JSON.stringify('m'));localStorage.setItem('hl-wins','5');localStorage.setItem('hl-look',JSON.stringify({c:0,k:6}))}catch(e){}" % (ME, MY_ELO))
     pg = ctx.new_page()
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
@@ -108,7 +104,7 @@ def shot(pg, dev, n, name):
 
 def force_my_turn(pg):
     pg.evaluate("""(()=>{const me=G.players.findIndex(p=>p.pid===PID);G.turn=me;G.stage='await';G.q=null;G.seq++;
-      G.sub=G.players.filter(p=>p.pid!==PID&&p.a).map(p=>p.pid);G.subN=G.sub.length;publishG()})()""")
+      G.sub=['*'];G.subN=G.players.filter(p=>p.pid!==PID&&p.a).length;publishG()})()""")
 
 
 def run_device(b, dev, w, h, dsf):
@@ -117,14 +113,20 @@ def run_device(b, dev, w, h, dsf):
     PAGE[0] = page_html().encode()
     pg.goto(APP_URL)
     pg.wait_for_timeout(2600)                      # let the landscape, clouds and kite settle
-    shot(pg, dev, 1, NAMES[0])
+    shot(pg, dev, 6, NAMES[5])                     # home: three modes + living landscape
+
+    # wardrobe sheet (the player's bean beside the name)
+    pg.click('#meBtn')
+    pg.wait_for_timeout(900)
+    shot(pg, dev, 5, NAMES[4])
+    pg.click('#ovX')
+    pg.wait_for_timeout(400)
 
     pg.evaluate("window.HL_TEST_FILL_MS=250")
     pg.click('[data-mode="m"]')
     pg.click('#playBtn')
     pg.wait_for_selector('#lockBtn', timeout=30000)
     pg.click('#lockBtn')
-    # opponent: a nice name instead of a generated one
     wait_for(pg, "G&&G.players.length>=2&&G.phase!=='lobby'")
     pg.evaluate("(()=>{const o=G.players.find(p=>p.pid!==PID);o.name=%r;o.el=%d;o.k=5;publishG()})()" % (OPP, MY_ELO + 31))
     wait_for(pg, "G.phase==='play'&&G.stage==='await'", 40000)
@@ -132,50 +134,71 @@ def run_device(b, dev, w, h, dsf):
     if not wait_for(pg, "!!document.querySelector('[data-pickdir]')", 60000):
         raise SystemExit('no HIGHER/LOWER screen reached')
     pg.evaluate("closeOv()")
-    pg.wait_for_timeout(900)
-    shot(pg, dev, 2, NAMES[1])
-
-    pg.click('[data-pickdir="h"]')
-    pg.wait_for_timeout(800)
-    # slide to roughly a third of the way so the YES / NO bar is clearly split
-    box = pg.eval_on_selector('#sldTrack', 'e=>{const r=e.getBoundingClientRect();return [r.left,r.top,r.width,r.height]}')
-    y = box[1] + box[3] / 2
-    pg.mouse.move(box[0] + box[2] * .5, y)
-    pg.mouse.down()
-    for f in (.45, .4, .36, .34):
-        pg.mouse.move(box[0] + box[2] * f, y)
-        pg.wait_for_timeout(40)
-    pg.mouse.up()
     pg.wait_for_timeout(500)
-    shot(pg, dev, 3, NAMES[2])
 
-    # make the answer a clear YES (secret above the asked number) so the bar always shows the same cut
+    def ask(fracs, pick='h'):
+        pg.click('[data-pickdir="%s"]' % pick)
+        pg.wait_for_timeout(700)
+        box = pg.eval_on_selector('#sldTrack', 'e=>{const r=e.getBoundingClientRect();return [r.left,r.top,r.width,r.height]}')
+        y = box[1] + box[3] / 2
+        pg.mouse.move(box[0] + box[2] * fracs[0], y)
+        pg.mouse.down()
+        for f in fracs[1:]:
+            pg.mouse.move(box[0] + box[2] * f, y)
+            pg.wait_for_timeout(40)
+
+    # first question: a clear YES that cuts the range
+    ask([.5, .4, .34])
+    pg.mouse.up()
     pg.evaluate("(()=>{const o=G.players.find(p=>p.pid!==PID);botSecrets[o.pid]=%d})()" % SECRET)
     pg.click('#askGo')
     wait_for(pg, "!!document.querySelector('.rb.live')", 5000, 30)
-    pg.wait_for_timeout(int(CUT_MS))
-    shot(pg, dev, 4, NAMES[3])
+    pg.wait_for_timeout(2600)
+    # second question: slider shown over the already narrowed range
+    force_my_turn(pg)
+    if not wait_for(pg, "!!document.querySelector('[data-pickdir]')", 8000):
+        pg.screenshot(path='/tmp/claude-0/dbg.png')
+        print(pg.evaluate("JSON.stringify({t:G.turn,st:G.stage,q:G.q,sub:G.sub,step:ui.step,tg:ui.target})"))
+    pg.wait_for_timeout(600)
+    ask([.5, .58, .64, .6])
+    pg.mouse.up()
+    pg.wait_for_timeout(600)
+    shot(pg, dev, 2, NAMES[1])
 
     # pedestal guess view: opponent's number known to a 10 wide range, a few crossed out
-    pg.wait_for_timeout(2500)
     pg.evaluate("""(()=>{const o=G.players.find(p=>p.pid!==PID),s=botSecrets[o.pid],lo=Math.max(1,Math.min(s-4,9991));
       G.kn[PID][o.pid]={lo:lo,hi:lo+9,x:[lo+1,lo+3,lo+4,lo+8]};G.turn=G.players.findIndex(p=>p.pid===PID);
       G.sub=[o.pid];G.stage='await';G.q=null;G.seq++;publishG()})()""")
     wait_for(pg, "!!document.querySelector('.guessv')", 8000)
-    pg.wait_for_timeout(900)
-    shot(pg, dev, 5, NAMES[4])
+    pg.wait_for_timeout(1000)
+    shot(pg, dev, 3, NAMES[2])
 
-    # death scene, played for real by the game's own scene code, captured at its funniest frame
+    # death scene, played for real by the game's own scene code, captured at the impact
     pg.evaluate("""(()=>{const o=G.players.find(p=>p.pid!==PID);
       showScene(%r,byPid(PID),o.name+' guessed '+fmt(%d)+'!','You '+CAPTION[%r],60000,o,%d)})()""" % (DEATH, SECRET, DEATH, SECRET))
     pg.wait_for_timeout(int(DEATH_MS))
-    shot(pg, dev, 6, NAMES[5])
+    shot(pg, dev, 1, NAMES[0])
     pg.evaluate("closeOv()")
 
-    # win sheet with rating gain
+    # win sheet: rating count-up and the rank-up moment (Guesser -> Sharp)
     pg.evaluate("""(()=>{const g=G.gid;G.phase='over';G.win=PID;G.stage='show';G.q=null;
-      eloLast={gid:g,d:27,from:%d,to:%d,up:false};showWinner()})()""" % (MY_ELO, MY_ELO + 27))
-    pg.wait_for_timeout(1900)
+      eloLast={gid:g,d:27,from:%d,to:%d,up:true};showWinner()})()""" % (MY_ELO, MY_ELO + 27))
+    if WIN_DEBUG:
+        for t in range(8):
+            pg.wait_for_timeout(500)
+            pg.screenshot(path='/tmp/claude-0/win%d.png' % t)
+    pg.wait_for_timeout(WIN_MS)
+    shot(pg, dev, 4, NAMES[3])
+    pg.click('#ovX')
+    pg.wait_for_timeout(300)
+
+    # play with friends lobby with four beans
+    pg.evaluate("""(async()=>{await leaveGame();startSolo(false);G.players=G.players.slice(0,0);
+      const me={pid:PID,name:%r,c:0,k:6,a:1,d:'',dg:0};
+      const mk=(n,c,k)=>({pid:'p-'+n,name:n,c:c,k:k,bot:1,hb:1,a:1,d:'',dg:0});
+      G.players=[me,mk('Theo',1,5),mk('Ana',3,1),mk('Leo',4,7)];
+      mode='online';code='KMRT';publishG&&0;render(true)})()""" % ME)
+    pg.wait_for_timeout(1500)
     shot(pg, dev, 7, NAMES[6])
     if errs:
         print('  page errors:', errs[:3])
@@ -183,25 +206,26 @@ def run_device(b, dev, w, h, dsf):
 
 
 FEATURE_CSS = (
-    '.panel,.info-btn,.mute-btn,.wins-pill,.elo-pill,.skygap{display:none!important}'
+    '.panel,.info-btn,.mute-btn,.wins-pill,.elo-pill,.skygap,.hscene .fnum,.hscene .bird,.hs-walk,.hs-run,.hs-chase,.hs-catch,.hs-nap,.hs-kiter,.hs-b,.hs-ballx,.bfly,.hscene .cloud,.hscene .tree,.hscene .flower,.kite,#kiteSvg{display:none!important}'
     'main.home{max-width:none!important;width:1024px!important;margin:0!important;padding:0!important;min-height:500px!important;height:500px!important;overflow:hidden!important}'
-    '.hero{position:fixed!important;left:0!important;right:auto!important;width:1024px!important;top:60px;padding:0!important;z-index:5;display:block!important}'
-    '.logo.big{font-size:128px!important;-webkit-text-stroke:11px #1E2240!important;width:100%!important;max-width:none!important;white-space:nowrap;text-align:center}'
-    '.hsun{transform:translateX(-120px)!important}'
-    '.hs-walk,.hs-run,.hs-chase,.hs-catch,.hs-nap{display:none!important}'
-    '#fgBeans{position:absolute;left:0;right:0;bottom:24px;height:110px;display:flex;justify-content:center;gap:26px;z-index:6}'
-    '#fgBeans span{width:84px;display:block}#fgBeans svg{width:100%;height:auto}')
+    '.hscene{width:1024px!important}'
+    '.hero{position:fixed!important;left:48px!important;right:auto!important;width:470px!important;top:150px;padding:0!important;z-index:5;display:block!important}'
+    '.logo.big{font-size:92px!important;-webkit-text-stroke:10px #1E2240!important;width:100%!important;max-width:none!important;white-space:nowrap;text-align:left;text-wrap:nowrap!important}'
+    '.hsun{left:-30px!important;top:-40px!important;transform:none!important}'
+    '#fgBeans{position:absolute;right:60px;bottom:62px;width:430px;height:240px;z-index:6}'
+    '#fgBeans span{position:absolute;width:190px;display:block}#fgBeans svg{width:100%;height:auto;display:block}'
+    '#fgBeans .l{left:0;bottom:0}#fgBeans .r{right:0;bottom:10px;transform:scaleX(-1)}')
 
 
 def feature_graphic(b):
-    """Google Play feature graphic 1024x500: logo + beans + the real home landscape, no small text."""
+    """Google Play feature graphic 1024x500: logo left, two beans mid-duel right, the real home hills, no other text."""
     print('feature graphic')
     ctx, pg, errs = new_page(b, 1024, 500, 1)
     PAGE[0] = page_html().replace('</style></head>', FEATURE_CSS + '</style></head>', 1).encode()
     pg.goto(APP_URL)
     pg.wait_for_timeout(1200)
     pg.evaluate("""(()=>{const m=document.querySelector('main.home');const d=document.createElement('div');d.id='fgBeans';
-      d.innerHTML=COLORS.map((c,i)=>'<span class="bob" style="'+ph(2.4,i*.3)+'">'+charSVG({color:c,acc:i,id:i},'happy')+'</span>').join('');m.appendChild(d)})()""")
+      d.innerHTML='<span class="l bob" style="'+ph(2.4,0)+'">'+charSVG({color:COLORS[0],acc:6,id:0},'happy')+'</span><span class="r bob" style="'+ph(2.4,.9)+'">'+charSVG({color:COLORS[1],acc:5,id:1},'scared')+'</span>';m.appendChild(d)})()""")
     pg.wait_for_timeout(1500)
     d = OUT / 'feature'
     d.mkdir(parents=True, exist_ok=True)
@@ -210,8 +234,13 @@ def feature_graphic(b):
     ctx.close()
 
 
+HILLS = ('<svg viewBox="0 0 1320 420" width="1320" height="420" style="position:absolute;left:0;bottom:0">'
+         '<path d="M0 420V150C180 40 380 30 600 140S1000 230 1320 90V420Z" fill="#7AD3A6" stroke="#1E2240" stroke-width="14"/>'
+         '<path d="M0 420V250C220 150 420 160 640 250S1060 300 1320 200V420Z" fill="#3FB67A" stroke="#1E2240" stroke-width="14"/></svg>')
+
+
 def framed(b):
-    """Marketing variants: the real 6.9" screenshot inside a flat colour with a one-line Bagel Fat One caption."""
+    """Marketing variants: the real 6.9" screenshot (rounded, ink outline) on the game's sky with hills, plus a short Bagel Fat One caption."""
     print('framed')
     d = OUT / 'framed'
     d.mkdir(parents=True, exist_ok=True)
@@ -219,18 +248,19 @@ def framed(b):
     pg = ctx.new_page()
     for i, name in enumerate(NAMES, 1):
         src = OUT / 'iphone69' / f'{i}_{name}.png'
-        light = name in LIGHT_TEXT
         html = ('<!doctype html><style>' + font_css() +
-                'html,body{margin:0;width:1320px;height:2868px;background:%s;overflow:hidden}'
-                '.c{font-family:"Bagel Fat One";font-size:104px;line-height:1;text-align:center;position:absolute;left:0;right:0;top:130px;'
-                'color:#fff;-webkit-text-stroke:18px #1E2240;paint-order:stroke fill;white-space:nowrap}'
-                'img{position:absolute;left:50%%;top:330px;width:1090px;margin-left:-545px;border:12px solid #1E2240;border-radius:84px;box-sizing:content-box;'
-                'box-shadow:0 18px 0 #1E2240}</style><div class=c><span id=t style="display:inline-block">%s</span></div><img src="data:image/png;base64,%s">'
-                % (BG[name], CAPTIONS[name], b64(src)))
+                'html,body{margin:0;width:1320px;height:2868px;background:#7FD0E4;overflow:hidden;position:relative}'
+                '.c{font-family:"Bagel Fat One";font-size:116px;line-height:1;text-align:center;position:absolute;left:0;right:0;top:140px;'
+                'color:#fff;-webkit-text-stroke:20px #1E2240;paint-order:stroke fill;white-space:nowrap}'
+                '.s{position:absolute;left:170px;top:380px;width:980px;height:2132px;border:14px solid #1E2240;border-radius:96px;overflow:hidden;box-sizing:content-box;background:#1E2240}'
+                '.s img{display:block;width:980px;height:2132px}</style>'
+                '<div class=c><span id=t style="display:inline-block">%s</span></div>%s<div class=s><img src="data:image/png;base64,%s"></div>'
+                % (CAPTIONS[name], HILLS, b64(src)))
         pg.set_content(html)
         pg.wait_for_timeout(300)
-        # one line only: shrink the caption until it fits inside the side margins
-        pg.evaluate("(()=>{const c=document.querySelector('.c'),t=document.getElementById('t');let f=104;while(t.offsetWidth>1160&&f>40){f-=2;c.style.fontSize=f+'px'}})()")
+        w = pg.evaluate("document.getElementById('t').offsetWidth")
+        if w > 1160:
+            print('  CAPTION TOO WIDE', name, w)
         pg.screenshot(path=str(d / f'{i}_{name}.png'))
         print('  saved', (d / f'{i}_{name}.png').relative_to(ROOT))
     ctx.close()
@@ -248,6 +278,8 @@ def strip_alpha():
 CUT_MS = 150
 DEATH = 'piano'      # piano at ~1.6s was the funniest frame (anvil at ~1.5s is the alternative: --death anvil --death-ms 1500)
 DEATH_MS = 1600
+WIN_MS = 2300
+WIN_DEBUG = False
 
 
 def main():

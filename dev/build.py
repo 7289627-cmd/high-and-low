@@ -1,7 +1,8 @@
-"""Build the single-file game: src/* -> /home/claude/hl/artifact.html. Run: python3 /home/claude/hl/build.py"""
+"""Build the single-file game from src/*. `python3 build.py` writes artifact.html (offline test build). `python3 build.py web` writes the product index.html into site/ (or, in the GitHub repo layout where this folder is dev/, into the repo root). Runs from any location."""
 import pathlib,sys,json,re
 FONTRE=re.compile(r'/\*FONTS\*/.*?/\*/FONTS\*/\n?',re.S)
-H=pathlib.Path('/home/claude/hl')
+H=pathlib.Path(__file__).resolve().parent
+OUTDIR=H/'site' if (H/'site').is_dir() or not (H.parent/'index.html').exists() else H.parent
 SITE='https://7289627-cmd.github.io/high-and-low/'  # public address; change when the game moves to its own domain
 HEAD='''<title>High and Low</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -48,12 +49,12 @@ if len(sys.argv)>1 and sys.argv[1]=='web':
     '<script src="vendor/qrcode-1.4.4.js"></script>\n'
     '<script>window.HL_CONFIG={url:'+json.dumps(cfg.get('url',''))+',key:'+json.dumps(cfg.get('key',''))+'};window.HL_NEED_NET=1;window.HL_SITE='+json.dumps(SITE)+'</script>\n'
     '<script>\n'+wjs+'</script>\n</body></html>\n')
-    (H/'site').mkdir(exist_ok=True)
-    (H/'site/index.html').write_text(out)
+    OUTDIR.mkdir(exist_ok=True)
+    (OUTDIR/'index.html').write_text(out)
     (H/'test/_built_web.js').write_text(wjs)
     print('WEB BUILD OK', len(out),'bytes')
     sys.exit(0)
 out=HEAD+'<style>'+art_css+'</style>\n\n<div id="app"></div>\n<div id="ov" hidden></div>\n\n<script>\n'+js+'</script>\n'
-pathlib.Path('/home/claude/hl/artifact.html').write_text(out)
+(H/'artifact.html').write_text(out)
 (H/'test/_built.js').write_text(js)
 print('BUILD OK', len(out),'bytes')

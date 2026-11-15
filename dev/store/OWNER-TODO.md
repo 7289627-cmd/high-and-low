@@ -1,6 +1,9 @@
 # Owner checklist: only you can do or decide these
 
-Source tags in [brackets] are worker reports in `/home/claude/ws/out/`. Prices: always "check current price" on the official page.
+Source tags in [brackets] are worker reports in `reports/`. Updated Nov 15, 2026. Prices: always "check current price" on the official page.
+
+## 0. Before anything else
+- [ ] iOS builds need a Mac with Xcode, or a cloud Mac build service. An agent on Linux can prepare and build Android only. Decide which you will use.
 
 ## 1. Accounts to create
 - [ ] Apple Developer Program. Cost: check current price. Allow days for approval. Organization needs a D-U-N-S number (unverified). [a05]
@@ -30,11 +33,11 @@ Source tags in [brackets] are worker reports in `/home/claude/ws/out/`. Prices: 
 - [ ] iPad support yes or no? Recommendation: yes (CSS scaling exists) but only after a real iPad check; otherwise set iPhone only in Xcode. Detail: c09 report, `app/README.md` iPad line. [c09, a06]
 - [ ] Lock portrait? Recommendation: yes (already set by `configure-native.mjs`); landscape phone layout is not usable. [a01, a04]
 - [ ] Keep the dark splash (#1E2240)? Recommendation: drop it unless you want dark mode, the game is light only. [b06]
-- [ ] Pick the app icon: option A (one bean, party hat) is built in; B and C are in `store/icon-options/`. [a03]
+- [x] App icon: concept F chosen Nov 14. Final set is in `store/icons/` and `store/launch/`. The website still shows the old icon until you say yes to pushing it. [g03, g04]
 - [ ] Analytics retention: 14 months (privacy page) or 90 days (store kit). No delete job exists, you must build one or change the number. [b05, a05]
 - [ ] Streak feature on or off (flag `streak`). Recommendation: off for launch; pros and cons in a18 report. [a18]
 - [ ] Share feature on or off (flag `share`); caption has no store link yet. Recommendation: off until store links exist. [a19]
-- [ ] Music: no files exist in `site/music/`. Ship two loops (`home.mp3`, `play.mp3`, real recordings) or remove the loader. [a20, b01, a08]
+- [x] Music: menu is Snow Theme (slowed), in game is Children's March, both CC0 by Cleyton Kauffman. Chosen by you Nov 14.
 - [ ] Death scene `bonk` has no sound entry (silent). Add a sound or leave. [a07]
 - [ ] Rating dodge: killing the app mid-duel costs nothing, and a stayer gets no win credit when the opponent leaves. Needs a product rule. [a13]
 - [ ] Hidden bot rating: weak players may face a bot rated up to 600 higher. Accept? [a13]
@@ -45,6 +48,11 @@ Source tags in [brackets] are worker reports in `/home/claude/ws/out/`. Prices: 
 - [ ] Name filter word lists: review the hard calls (e.g. "Dick Van Dyke" is blocked in Play). Lists are in `src/names.js`. [a09]
 - [ ] Legal review: liability cap, ratings reset, under-13 line vs EEA age 16, international transfers. Recommendation: have a lawyer look. [b05]
 - [ ] Publish or hide the dev pages `site/deaths.html`, `site/sounds.html` (app build already excludes them). [a14, a04]
+
+- [ ] Full-screen ad rule. Proposed: none in the first 3 games, then after every 2nd game, at least 3 minutes apart, never after a rank-up. Detail: project doc `ads-plan.md`.
+- [ ] Rewarded ads (watch to earn). Recommended: double the coins from a win, and try a locked hat for one game. Not built yet.
+- [ ] Playable ad: confirm the simple higher/lower round is fine, then give the two store URLs (they go at the top of `store/playable/build.py`). Recheck each network's rules in its own preview tool before spending. Meta and TikTok also need a short video.
+- [ ] Leaderboard: dropped Nov 15. Ratings stay on the phone only.
 
 ## 4. SQL to run in Supabase (your game's project only, never "liqhoz")
 - [ ] 1. `supabase/events.sql` only if the `events` table does not exist yet. [a05]

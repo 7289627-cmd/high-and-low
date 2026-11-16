@@ -1,6 +1,6 @@
 # Builds the Android app in the cloud. Start it from the Actions tab ("Run workflow").
 # Without signing secrets it makes a debug APK you can install on a phone for testing.
-# With the four ANDROID_* secrets set it also makes a signed .aab for Google Play.
+# With the four ANDROID_* secrets set (added Nov 15, 2026) it also makes a signed .aab for Google Play.
 name: Android build
 on:
   workflow_dispatch:

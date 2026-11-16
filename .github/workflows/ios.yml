@@ -50,6 +50,49 @@ jobs:
           if [ -d App.xcworkspace ]; then T="-workspace App.xcworkspace"; else T="-project App.xcodeproj"; fi
           set -o pipefail
           xcodebuild $T -scheme App -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO | tail -60
+      - name: Check the Apple key (prints no secret values)
+        if: env.HAVE_ASC == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          python3 - <<'PY'
+          import os, re, json, time, base64, hashlib, subprocess, tempfile, urllib.request, urllib.error
+          kid=os.environ.get('ASC_KEY_ID',''); iss=os.environ.get('ASC_ISSUER_ID',''); p8=os.environ.get('ASC_KEY_P8','')
+          h=lambda v: hashlib.sha256(v.encode()).hexdigest()[:8]
+          print('key id: length', len(kid), 'stripped length', len(kid.strip()), 'looks right', bool(re.fullmatch(r'[A-Z0-9]{10}', kid)), 'fingerprint', h(kid.strip()))
+          print('issuer id: length', len(iss), 'stripped length', len(iss.strip()), 'looks like a uuid', bool(re.fullmatch(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', iss)), 'fingerprint', h(iss.strip()))
+          lines=[l for l in p8.strip().splitlines()]
+          print('p8: characters', len(p8), 'lines', len(lines), 'has BEGIN', 'BEGIN PRIVATE KEY' in p8, 'has END', 'END PRIVATE KEY' in p8)
+          body=''.join(l.strip() for l in lines if 'PRIVATE KEY' not in l)
+          pem='-----BEGIN PRIVATE KEY-----\n'+'\n'.join(body[i:i+64] for i in range(0,len(body),64))+'\n-----END PRIVATE KEY-----\n'
+          f=tempfile.NamedTemporaryFile('w',suffix='.p8',delete=False); f.write(pem); f.close()
+          r=subprocess.run(['openssl','pkey','-in',f.name,'-noout','-text'],capture_output=True,text=True)
+          print('p8 parses as a key:', r.returncode==0, (r.stdout.splitlines() or [''])[0][:40], r.stderr[:120].replace('\n',' '))
+          b64=lambda b: base64.urlsafe_b64encode(b).rstrip(b'=').decode()
+          now=int(time.time())
+          head=b64(json.dumps({'alg':'ES256','kid':kid.strip(),'typ':'JWT'}).encode())
+          pay=b64(json.dumps({'iss':iss.strip(),'iat':now,'exp':now+600,'aud':'appstoreconnect-v1'}).encode())
+          msg=(head+'.'+pay).encode()
+          sig=subprocess.run(['openssl','dgst','-sha256','-sign',f.name],input=msg,capture_output=True).stdout
+          os.unlink(f.name)
+          def der2raw(d):
+              i=2 if d[1]<0x80 else 2+(d[1]&0x7f)
+              out=b''
+              for _ in range(2):
+                  assert d[i]==2; n=d[i+1]; v=d[i+2:i+2+n]; i+=2+n
+                  out+=v[-32:].rjust(32,b'\0')
+              return out
+          tok=head+'.'+pay+'.'+b64(der2raw(sig)) if sig else ''
+          req=urllib.request.Request('https://api.appstoreconnect.apple.com/v1/apps?limit=1',headers={'Authorization':'Bearer '+tok})
+          try:
+              with urllib.request.urlopen(req,timeout=30) as resp: print('App Store Connect API answered', resp.status, '(the key works)')
+          except urllib.error.HTTPError as e:
+              print('App Store Connect API answered', e.code, e.read()[:300].decode('utf8','replace'))
+          except Exception as e:
+              print('App Store Connect API call failed:', type(e).__name__, str(e)[:200])
+          PY
       - name: Archive, sign and upload to TestFlight
         if: env.HAVE_ASC == 'true'
         env:
@@ -58,7 +101,10 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           KEY="$RUNNER_TEMP/AuthKey.p8"
-          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          # Tidy the pasted values: strip stray spaces and rebuild the key file with clean line breaks.
+          ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '[:space:]')"
+          ASC_ISSUER_ID="$(printf '%s' "$ASC_ISSUER_ID" | tr -d '[:space:]')"
+          KEY="$KEY" python3 -c "import os;p=os.environ['ASC_KEY_P8'];b=''.join(l.strip() for l in p.strip().splitlines() if 'PRIVATE KEY' not in l);open(os.environ['KEY'],'w').write('-----BEGIN PRIVATE KEY-----\n'+'\n'.join(b[i:i+64] for i in range(0,len(b),64))+'\n-----END PRIVATE KEY-----\n')"
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           cd ios/App
           if [ -d App.xcworkspace ]; then T="-workspace App.xcworkspace"; else T="-project App.xcodeproj"; fi

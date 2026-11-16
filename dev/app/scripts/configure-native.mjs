@@ -56,6 +56,8 @@ if (!edit(plist, (s) => {
   const portrait = '<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>';
   s = s.replace(/(<key>UISupportedInterfaceOrientations(?:~ipad)?<\/key>\s*)<array>[\s\S]*?<\/array>/g, `$1${portrait}`);
   put('UIRequiresFullScreen', '<true/>');
+  // The app only uses standard HTTPS/WSS, which is exempt from export paperwork. Skips the TestFlight compliance question.
+  put('ITSAppUsesNonExemptEncryption', '<false/>');
   return s;
 })) console.log('ios/ not found, skipped (run `npx cap add ios` first)');
 console.log(changed ? `done, ${changed} file(s) changed` : 'nothing to change');

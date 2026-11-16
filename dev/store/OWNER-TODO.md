@@ -2,6 +2,16 @@
 
 Source tags in [brackets] are worker reports in `reports/`. Updated Nov 15, 2026. Prices: always "check current price" on the official page.
 
+## Status on Nov 16, 2026 (Google Play)
+- App created: "High & Low: Number Duel", `com.highandlow.game`, free game, category Casual.
+- All 10 App content declarations saved. Store listing saved (F icon, banner, 7 screenshots; icon and banner labeled AI-made).
+- Closed testing track "Alpha": 148 countries, no EU/EEA. Testers: email list "Liquid Horizon Beta" (4). Feedback: support@liquidhorizongame.com.
+- Release 3 (1.0.3), no-ads build, uploaded and **sent to Google for review on Nov 16**. Reviews usually finish within 7 days.
+- Builds come from the GitHub workflow "Android build". Each signed bundle is also pushed to the `android-builds` branch.
+- Still needed: 12 opted-in testers for 14 days, then apply for production. Trader status due Feb 1, 2027 (decide address first). Launch is non-EU for now.
+- Apple: blocked until the owner accepts the updated license agreement. Paid Apps Agreement not signed.
+- Support email in use: support@liquidhorizongame.com (a game-specific domain is a later option). Legal pages live, governing law Michigan.
+
 ## 0. Before anything else
 - [ ] iOS builds need a Mac with Xcode, or a cloud Mac build service. An agent on Linux can prepare and build Android only. Decide which you will use.
 

@@ -6,9 +6,10 @@ the key in ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 and:
   setup   : makes a one-off Apple Distribution certificate and an App Store provisioning profile for
             the app, puts both on the runner, and switches the App target to manual signing.
   cleanup : deletes that certificate and profile again, so nothing piles up in the Apple account.
+  status  : checks Apple's processing and internal TestFlight status for this run's build.
 It never touches certificates or profiles it did not create itself. It prints no secret values.
 """
-import base64, json, os, re, subprocess, sys, tempfile, time, urllib.error, urllib.request
+import base64, json, os, re, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 
 BUNDLE = os.environ.get('BUNDLE_ID', 'com.highandlow.game')
 TEAM = os.environ.get('TEAM_ID', '')
@@ -119,5 +120,67 @@ def cleanup():
     if sys.platform == 'darwin': subprocess.run(['security', 'delete-keychain', KEYCHAIN], capture_output=True)
     os.unlink(STATE); print('one-off certificate and profile removed')
 
+def status():
+    number = os.environ.get('GITHUB_RUN_NUMBER', '')
+    if not re.fullmatch(r'[1-9][0-9]*', number):
+        sys.exit('Missing or invalid GitHub run number')
+    query = urllib.parse.urlencode({
+        'filter[app]': '6835591902', 'filter[version]': number,
+        'filter[preReleaseVersion.version]': '1.0.' + number, 'filter[preReleaseVersion.platform]': 'IOS',
+        'include': 'buildBetaDetail', 'fields[builds]': 'version,processingState,expired,buildBetaDetail',
+        'fields[buildBetaDetails]': 'internalBuildState', 'limit': 2,
+    })
+    request = urllib.request.Request(API + '/v1/builds?' + query, headers={'Authorization': 'Bearer ' + token()})
+    deadline = time.monotonic() + 180
+    last = 'build not visible yet'
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                payload = json.load(response)
+            rows = payload['data']
+            if len(rows) > 1 or (rows and rows[0]['attributes']['version'] != number):
+                sys.exit('::error::Apple returned an ambiguous or mismatched build')
+            if rows:
+                attrs = rows[0]['attributes']
+                state = attrs['processingState']
+                if state in ('FAILED', 'INVALID'):
+                    sys.exit(f'::error::Build {number} Apple processing status: {state}')
+                if attrs['expired']:
+                    sys.exit(f'::error::Build {number} has expired')
+                if state == 'PROCESSING':
+                    last = 'processing'
+                elif state == 'VALID':
+                    detail = next((item for item in payload.get('included', []) if item['type'] == 'buildBetaDetails'), {})
+                    beta = detail.get('attributes', {}).get('internalBuildState')
+                    if beta in ('READY_FOR_BETA_TESTING', 'IN_BETA_TESTING'):
+                        print(f'::notice::Build {number} processed successfully. Internal TestFlight: {beta}')
+                        return
+                    if beta in ('PROCESSING_EXCEPTION', 'EXPIRED'):
+                        sys.exit(f'::error::Build {number} internal TestFlight status: {beta}')
+                    if beta == 'MISSING_EXPORT_COMPLIANCE':
+                        print(f'::warning::Build {number} processed. Internal TestFlight requires export compliance.')
+                        return
+                    if beta == 'IN_EXPORT_COMPLIANCE_REVIEW':
+                        print(f'::warning::Build {number} processed. Apple is reviewing export compliance.')
+                        return
+                    last = 'processed, internal TestFlight readiness unconfirmed'
+                else:
+                    sys.exit('::error::Apple returned an unrecognized processing state')
+            else:
+                last = 'build not visible yet'
+        except urllib.error.HTTPError as error:
+            if error.code == 429:
+                print(f'::warning::Apple rate-limited the status check. Build {number} readiness unconfirmed.')
+                return
+            if not 500 <= error.code < 600:
+                sys.exit(f'::error::Apple build status request failed (HTTP {error.code})')
+            last = 'Apple status service unavailable'
+        except (urllib.error.URLError, TimeoutError):
+            last = 'Apple status service unreachable'
+        except (ValueError, KeyError, TypeError, IndexError):
+            sys.exit('::error::Unexpected response to Apple build status request')
+        time.sleep(min(20, max(0, deadline - time.monotonic())))
+    print(f'::warning::Upload completed. Build {number}: {last}. Check TestFlight for a later status.')
+
 if __name__ == '__main__':
-    {'setup': setup, 'cleanup': cleanup}.get(sys.argv[1] if len(sys.argv) > 1 else '', lambda: fail('use: ios-signing.py setup|cleanup'))()
+    {'setup': setup, 'cleanup': cleanup, 'status': status}.get(sys.argv[1] if len(sys.argv) > 1 else '', lambda: fail('use: ios-signing.py setup|cleanup|status'))()

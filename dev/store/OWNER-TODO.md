@@ -9,7 +9,7 @@ Source tags in [brackets] are worker reports in `reports/`. Updated Nov 15, 2026
 - Release 3 (1.0.3), no-ads build, uploaded and **sent to Google for review on Nov 16**. Reviews usually finish within 7 days.
 - Builds come from the GitHub workflow "Android build". Each signed bundle is also pushed to the `android-builds` branch.
 - Still needed: 12 opted-in testers for 14 days, then apply for production. Trader status due Feb 1, 2027 (decide address first). Launch is non-EU for now.
-- Apple: blocked until the owner accepts the updated license agreement. Paid Apps Agreement not signed.
+- Apple (Nov 17): license agreement accepted. App id `com.highandlow.game` registered, app "High & Low: Number Duel" created in App Store Connect (Apple ID 6835591902). GitHub workflow "iOS build" signs on a cloud Mac and uploads to App Store Connect. Build 11 (1.0.11, no ads) uploaded Nov 17. Still to do: TestFlight testers, App Store listing, privacy answers, age rating, screenshots. Paid Apps Agreement not signed. Trader status not declared.
 - Support email in use: support@liquidhorizongame.com (a game-specific domain is a later option). Legal pages live, governing law Michigan.
 
 ## 0. Before anything else

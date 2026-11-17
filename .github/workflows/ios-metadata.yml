@@ -1,0 +1,40 @@
+name: Prepare Apple listing and TestFlight notes
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: High & Low iOS build number for the beta notes
+        required: true
+        type: string
+      prepare_private_group:
+        description: Prepare an empty private internal test group for this build
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: high-and-low-apple-metadata
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify draft field handling
+        run: python3 dev/app/scripts/ios-metadata-test.py
+      - name: Fill missing English listing fields and beta notes
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 dev/app/scripts/ios-metadata.py "$BUILD_NUMBER"
+      - name: Prepare private TestFlight group
+        if: ${{ !cancelled() && inputs.prepare_private_group }}
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 dev/app/scripts/ios-owner-beta.py "$BUILD_NUMBER"

@@ -1,6 +1,6 @@
 # Builds the iPhone app in the cloud on a Mac runner. Start it from the Actions tab ("Run workflow").
 # Without the App Store Connect secrets it only checks that the app compiles.
-# With ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 set (added Nov 16, 2026, key id fixed Nov 17) it signs the app and uploads it to TestFlight.
+# With ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 set (added Nov 16, 2026, key id fixed Nov 17, 2026) it signs the app and uploads it to TestFlight.
 name: iOS build
 on:
   workflow_dispatch:

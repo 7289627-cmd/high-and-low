@@ -87,9 +87,12 @@ jobs:
           tok=head+'.'+pay+'.'+b64(der2raw(sig)) if sig else ''
           req=urllib.request.Request('https://api.appstoreconnect.apple.com/v1/apps?limit=1',headers={'Authorization':'Bearer '+tok})
           try:
-              with urllib.request.urlopen(req,timeout=30) as resp: print('App Store Connect API answered', resp.status, '(the key works)')
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                  print('App Store Connect API answered', resp.status, '(the key works)')
+                  print('::notice::Apple key check: API answered', resp.status, 'key id length', len(kid.strip()))
           except urllib.error.HTTPError as e:
               print('App Store Connect API answered', e.code, e.read()[:300].decode('utf8','replace'))
+              print('::warning::Apple key check: API answered', e.code, 'key id length', len(kid.strip()), 'key id fingerprint', h(kid.strip()))
           except Exception as e:
               print('App Store Connect API call failed:', type(e).__name__, str(e)[:200])
           PY
@@ -113,7 +116,9 @@ jobs:
             -archivePath "$RUNNER_TEMP/App.xcarchive" archive \
             DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" MARKETING_VERSION="1.0.${{ github.run_number }}" \
-            "${AUTH[@]}" | tail -60
+            "${AUTH[@]}" 2>&1 | tee "$RUNNER_TEMP/archive.log" | tail -60 || {
+              grep -E "error:|rror Domain|requires|No profiles|No Account|denied|forbidden" "$RUNNER_TEMP/archive.log" | sort -u | head -8 | while IFS= read -r l; do echo "::error::archive: ${l:0:900}"; done
+              rm -f "$KEY"; exit 1; }
           cat > "$RUNNER_TEMP/export.plist" <<-PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -125,5 +130,8 @@ jobs:
           </dict></plist>
           PLIST
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" | tail -40
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" 2>&1 | tee "$RUNNER_TEMP/export.log" | tail -40 || {
+              grep -E "error:|rror Domain|requires|No profiles|denied|forbidden|ERROR" "$RUNNER_TEMP/export.log" | sort -u | head -8 | while IFS= read -r l; do echo "::error::export: ${l:0:900}"; done
+              rm -f "$KEY"; exit 1; }
+          echo "::notice::Signed build ${{ github.run_number }} uploaded to App Store Connect"
           rm -f "$KEY"

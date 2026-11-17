@@ -110,12 +110,13 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
-          KEY="$RUNNER_TEMP/AuthKey.p8"
-          # Tidy the pasted values: strip stray spaces and rebuild the key file with clean line breaks.
+          set -euo pipefail
+          umask 077
+          WORK="$(mktemp -d "$RUNNER_TEMP/ios-export.XXXXXX")"
+          trap 'rm -rf "$WORK"' EXIT
+          # Tidy pasted identifiers; write the private key only when altool needs it.
           ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '[:space:]')"
           ASC_ISSUER_ID="$(printf '%s' "$ASC_ISSUER_ID" | tr -d '[:space:]')"
-          KEY="$KEY" python3 -c "import os;p=os.environ['ASC_KEY_P8'];b=''.join(l.strip() for l in p.strip().splitlines() if 'PRIVATE KEY' not in l);open(os.environ['KEY'],'w').write('-----BEGIN PRIVATE KEY-----\\n'+'\\n'.join(b[i:i+64] for i in range(0,len(b),64))+'\\n-----END PRIVATE KEY-----\\n')"
-          AUTH=(-authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           cd ios/App
           if [ -d App.xcworkspace ]; then T="-workspace App.xcworkspace"; else T="-project App.xcodeproj"; fi
           set -o pipefail
@@ -125,7 +126,7 @@ jobs:
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" MARKETING_VERSION="1.0.${{ github.run_number }}" \
             2>&1 | tee "$RUNNER_TEMP/archive.log" | tail -60 || {
               grep -E "error:|rror Domain|requires|No profiles|No Account|denied|forbidden|No signing certificate" "$RUNNER_TEMP/archive.log" | sort -u | head -8 | while IFS= read -r l; do echo "::error::archive: ${l:0:900}"; done
-              rm -f "$KEY"; exit 1; }
+              exit 1; }
           # Verify the app Apple will receive is iPhone-only.
           plutil -extract UIDeviceFamily json -o - "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app/Info.plist" | jq -e '. == [1]'
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
@@ -133,7 +134,8 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>export</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
             <key>teamID</key><string>$TEAM_ID</string>
             <key>signingStyle</key><string>manual</string>
             <key>signingCertificate</key><string>Apple Distribution</string>
@@ -141,10 +143,35 @@ jobs:
           </dict></plist>
           PLIST
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" 2>&1 | tee "$RUNNER_TEMP/export.log" | tail -40 || {
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$WORK/export" 2>&1 | tee "$RUNNER_TEMP/export.log" | tail -40 || {
               grep -E "error:|rror Domain|requires|No profiles|denied|forbidden|ERROR" "$RUNNER_TEMP/export.log" | sort -u | head -8 | while IFS= read -r l; do echo "::error::export: ${l:0:900}"; done
-              rm -f "$KEY"; exit 1; }
-          rm -f "$KEY"
+              exit 1; }
+          # Validate the exported payload, not just the archive, before any upload.
+          IPA="$(find "$WORK/export" -maxdepth 1 -name '*.ipa' -type f -print)"
+          test "$(printf '%s\n' "$IPA" | grep -c .)" -eq 1
+          IPA="$IPA" EXPECTED_BUILD="${{ github.run_number }}" python3 - <<'PY'
+          import os, plistlib, zipfile
+          with zipfile.ZipFile(os.environ['IPA']) as ipa:
+              names = [n for n in ipa.namelist() if n.startswith('Payload/') and n.endswith('.app/Info.plist') and n.count('/') == 2]
+              if len(names) != 1: raise SystemExit('Expected exactly one top-level app in IPA')
+              info = plistlib.loads(ipa.read(names[0]))
+          expected = {'CFBundleIdentifier': 'com.highandlow.game', 'CFBundleShortVersionString': '1.0.' + os.environ['EXPECTED_BUILD'], 'CFBundleVersion': os.environ['EXPECTED_BUILD'], 'UIDeviceFamily': [1]}
+          for key, value in expected.items():
+              if info.get(key) != value: raise SystemExit(f'Unexpected {key}: {info.get(key)!r}; expected {value!r}')
+          print('Verified IPA bundle ID, version, build number, and iPhone-only device family')
+          PY
+          ditto -x -k "$IPA" "$WORK/unpacked"
+          APP="$WORK/unpacked/Payload/App.app"
+          test -d "$APP"
+          codesign --verify --deep --strict "$APP"
+          codesign -dv --verbose=4 "$APP" 2> "$WORK/signature.txt"
+          grep -Fq "TeamIdentifier=$TEAM_ID" "$WORK/signature.txt"
+          grep -Fq 'Authority=Apple Distribution:' "$WORK/signature.txt"
+          mkdir "$WORK/private_keys"
+          KEY="$WORK/private_keys/AuthKey_$ASC_KEY_ID.p8"
+          KEY="$KEY" python3 -c "import os;p=os.environ['ASC_KEY_P8'];b=''.join(l.strip() for l in p.strip().splitlines() if 'PRIVATE KEY' not in l);open(os.environ['KEY'],'w').write('-----BEGIN PRIVATE KEY-----\\n'+'\\n'.join(b[i:i+64] for i in range(0,len(b),64))+'\\n-----END PRIVATE KEY-----\\n')"
+          API_PRIVATE_KEYS_DIR="$WORK/private_keys" xcrun altool --upload-app -f "$IPA" -t ios \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
           echo "::notice::Signed build ${{ github.run_number }} uploaded to App Store Connect"
       - name: Remove the one-off signing certificate and profile
         if: always() && env.HAVE_ASC == 'true'

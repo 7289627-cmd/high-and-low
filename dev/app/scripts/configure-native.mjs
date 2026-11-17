@@ -44,6 +44,12 @@ if (edit(man, (s) => {
 } else console.log('android/ not found, skipped (run `npx cap add android` first)');
 
 // ---- iOS ----
+const project = path.join(APP, 'ios/App/App.xcodeproj/project.pbxproj');
+edit(project, (s) => {
+  // Capacitor's App target defaults to iPhone and iPad in both Debug and Release.
+  if (!s.includes('TARGETED_DEVICE_FAMILY = ')) throw new Error('Missing device-family setting in the generated App project');
+  return s.replace(/TARGETED_DEVICE_FAMILY = [^;\r\n]+;/g, 'TARGETED_DEVICE_FAMILY = 1;');
+});
 const plist = path.join(APP, 'ios/App/App/Info.plist');
 if (!edit(plist, (s) => {
   const put = (key, xml) => { if (!s.includes(`<key>${key}</key>`)) s = s.replace(/<\/dict>\s*<\/plist>\s*$/, `\t<key>${key}</key>\n\t${xml}\n</dict>\n</plist>\n`); };

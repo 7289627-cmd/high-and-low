@@ -126,6 +126,8 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/archive.log" | tail -60 || {
               grep -E "error:|rror Domain|requires|No profiles|No Account|denied|forbidden|No signing certificate" "$RUNNER_TEMP/archive.log" | sort -u | head -8 | while IFS= read -r l; do echo "::error::archive: ${l:0:900}"; done
               rm -f "$KEY"; exit 1; }
+          # Verify the app Apple will receive is iPhone-only.
+          plutil -extract UIDeviceFamily json -o - "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app/Info.plist" | jq -e '. == [1]'
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -151,3 +153,11 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: python3 scripts/ios-signing.py cleanup
+      - name: Check Apple processing and internal TestFlight status
+        if: success() && env.HAVE_ASC == 'true'
+        timeout-minutes: 4
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 scripts/ios-signing.py status

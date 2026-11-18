@@ -5,6 +5,8 @@ set -euo pipefail
 APP="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$APP/.." && pwd)"
 WWW="$APP/www"
+HL_NATIVE_BUILD_CONFIG="$(python3 "$APP/scripts/ads-build-config.py")"
+export HL_NATIVE_BUILD_CONFIG
 
 # 1. build the product (site/index.html)
 ( cd "$ROOT" && python3 build.py web )
@@ -29,10 +31,9 @@ find "$WWW" \( -name '*.py' -o -name '*.map' -o -name '*.md' -o -name '_*' -o -n
 python3 - "$WWW/index.html" <<'PY'
 import sys, pathlib
 p = pathlib.Path(sys.argv[1]); s = p.read_text()
-import os
-tag = '<script src="hlnative.js"></script>\n'
-if os.environ.get('HL_NO_ADS') == '1':
-    tag = '<script>window.HL_NATIVE_CONFIG={ADS_ENABLED:false}</script>\n' + tag
+import os, json
+cfg = json.loads(os.environ['HL_NATIVE_BUILD_CONFIG'])
+tag = '<script>window.HL_NATIVE_CONFIG=' + json.dumps(cfg, separators=(',', ':')) + '</script>\n<script src="hlnative.js"></script>\n'
 marker = '<script src="vendor/supabase-'
 if tag in s: sys.exit(0)
 if s.count(marker) != 1: sys.exit('sync-web: could not find the script marker in index.html (build.py changed?)')

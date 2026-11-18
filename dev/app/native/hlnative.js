@@ -2,11 +2,8 @@
    Defines window.HLNative, the contract read by src/ads.js:
      showInterstitial()  Promise<boolean>  true if an ad was shown and closed
      showRewarded()      Promise<boolean>  true only if the player earned the reward
-     buyNoAds()          Promise<boolean>  true once "Remove ads" is owned
-     ownsNoAds()         Promise<boolean>
-     restore()           Promise<boolean>  true if "Remove ads" is owned after asking the store to restore (UNVERIFIED on a device)
      keepAwake(on)       boolean  true if the native keep-screen-on plugin was called (iOS/Android WebViews have no Screen Wake Lock API)
-   Extras: haptic(kind), restorePurchases(), exit(). Also in this file: the localStorage mirror (Preferences) and the invite-link
+   Extras: haptic(kind), exit(). Also in this file: the localStorage mirror (Preferences) and the invite-link
    listener (appUrlOpen -> #room=CODE). Every call resolves false instead of throwing when a
    plugin is missing, not configured, or fails. Plugins are reached through window.Capacitor.Plugins,
    which native/entry.js fills by importing the plugin packages (sync-web.sh bundles both with esbuild). */
@@ -15,9 +12,7 @@
 
   /* ---------- CONFIG: the owner edits this block ---------- */
   var CONFIG = {
-    // false = a build with no ads and no Remove Ads at all (used for the first closed-test build).
-    // sync-web.sh sets this to false when run with HL_NO_ADS=1. The game hides its ad UI by itself
-    // because the ad and purchase functions are then missing from window.HLNative.
+    // sync-web.sh defaults app builds to false, unless demo or live ads are explicitly selected.
     ADS_ENABLED: true,
     // true = Google's official demo ad units + isTesting. Set to false only for the store build,
     // after the real ids below are filled in. While false, any id still containing "REPLACE" is refused.
@@ -38,11 +33,6 @@
     REAL_IDS: {
       android: { interstitial: 'REPLACE_ANDROID_INTERSTITIAL_UNIT_ID', rewarded: 'REPLACE_ANDROID_REWARDED_UNIT_ID' },
       ios:     { interstitial: 'REPLACE_IOS_INTERSTITIAL_UNIT_ID',     rewarded: 'REPLACE_IOS_REWARDED_UNIT_ID' }
-    },
-    // TODO(owner): RevenueCat public SDK keys (Project settings > API keys) and the store product id.
-    IAP: {
-      productId: 'remove_ads',
-      apiKey: { ios: 'REPLACE_REVENUECAT_IOS_PUBLIC_KEY', android: 'REPLACE_REVENUECAT_ANDROID_PUBLIC_KEY' }
     },
     LOAD_TIMEOUT_MS: 10000,   // give up waiting for an ad to load
     SHOW_TIMEOUT_MS: 120000   // safety net if a close event never arrives
@@ -160,50 +150,67 @@
 
   /* ---------- AdMob: consent (UMP) then initialize ---------- */
   var adReady = null;
-  function initAds() {
-    if (adReady) return adReady;
-    adReady = (async function () {
-      var A = plug('AdMob');
-      if (!A) return false;
-      try {
-        var info = await A.requestConsentInfo({});
-        if (info && info.isConsentFormAvailable && info.status === 'REQUIRED') info = await A.showConsentForm();
-        if (!info || !info.canRequestAds) return false;
-        await A.initialize({});
-        return true;
-      } catch (e) { adReady = null; return false; }   // allow a retry on the next call
-    })();
-    return adReady;
+  var consentVersion = 0;
+  var privacy = CONFIG.ADS_ENABLED && plug('AdMob') ? require('./privacy-options.js').createPrivacyOptions({
+    document: document,
+    getAdMob: function () { return plug('AdMob'); },
+    onOptionsClosed: function () {
+      consentVersion++;
+      ads.interstitial = ads.rewarded = null;
+    }
+  }) : null;
+
+  async function initAds() {
+    var A = plug('AdMob');
+    if (!A || !privacy || !(await privacy.gatherConsent())) return false;
+    if (!adReady) {
+      adReady = Promise.resolve().then(function () { return A.initialize({ maxAdContentRating: 'Teen' }); }).then(
+        function () { return true; },
+        function () { adReady = null; return false; }
+      );
+    }
+    return (await adReady) && privacy.canRequestAds();
   }
 
   function adOptions(kind) {
     var id = adId(kind);
     if (!id) return null;
     var o = { adId: id, npa: !!CONFIG.NON_PERSONALISED };
-    if (CONFIG.TEST_MODE) o.isTesting = true;
+    // On iOS the plugin's isTesting flag substitutes an Android demo unit.
+    // The selected iOS TEST_IDS value is already Google's test unit.
+    if (CONFIG.TEST_MODE && platform() !== 'ios') o.isTesting = true;
     return o;
   }
 
   var ads = { interstitial: null, rewarded: null };   // preloaded: Promise<boolean> (true = loaded)
+  var preparing = { interstitial: null, rewarded: null };
   function preload(kind) {
     var A = plug('AdMob'), o = adOptions(kind);
     if (!A || !o) return Promise.resolve(false);
     var fn = kind === 'interstitial' ? A.prepareInterstitial : A.prepareRewardVideoAd;
     if (!fn) return Promise.resolve(false);
-    ads[kind] = withTimeout((async function () {
-      if (!(await initAds())) return false;
+    // Only one native load per type can write to the plugin's cache at a time.
+    if (preparing[kind]) return ads[kind] || Promise.resolve(false);
+    var version = consentVersion;
+    preparing[kind] = (async function () {
+      if (!(await initAds()) || version !== consentVersion) return false;
       await fn.call(A, o);
-      return true;
-    })(), CONFIG.LOAD_TIMEOUT_MS, false);
+      return version === consentVersion && privacy.canRequestAds();
+    })().catch(function () { return false; });
+    preparing[kind].then(function () { preparing[kind] = null; });
+    ads[kind] = withTimeout(preparing[kind], CONFIG.LOAD_TIMEOUT_MS, false);
     return ads[kind];
   }
 
   // Shows a prepared ad. closeEvents resolve the wait. Returns { shown, rewarded }.
   async function showAd(kind) {
     var A = plug('AdMob');
-    if (!A) return { shown: false, rewarded: false };
-    var loaded = await (ads[kind] || preload(kind));
-    ads[kind] = null;
+    if (!A || !privacy || !privacy.canRequestAds()) return { shown: false, rewarded: false };
+    var version = consentVersion;
+    var prepared = ads[kind] || preload(kind);
+    var loaded = await prepared;
+    if (ads[kind] === prepared) ads[kind] = null;
+    if (version !== consentVersion || !privacy.canRequestAds()) return { shown: false, rewarded: false };
     if (!loaded) { preload(kind); return { shown: false, rewarded: false }; }
     var ev = kind === 'interstitial'
       ? { dismiss: 'interstitialAdDismissed', fail: 'interstitialAdFailedToShow' }
@@ -218,6 +225,7 @@
       });
       // Let listener registration settle before the ad can possibly close.
       await Promise.resolve(); await Promise.resolve();
+      if (version !== consentVersion || !privacy.canRequestAds()) return { shown: false, rewarded: false };
       var call;
       try {
         call = kind === 'interstitial' ? A.showInterstitial() : A.showRewardVideoAd();
@@ -238,25 +246,6 @@
       holdAudio(false);
       preload(kind);   // next one
     }
-  }
-
-  /* ---------- In-app purchase: RevenueCat, one non-consumable ---------- */
-  var iapReady = null;
-  function initIap() {
-    if (iapReady) return iapReady;
-    iapReady = (async function () {
-      var P = plug('Purchases');
-      var key = CONFIG.IAP.apiKey[platform()];
-      if (!P || isPlaceholder(key)) return false;
-      try { await P.configure({ apiKey: key }); return true; } catch (e) { iapReady = null; return false; }
-    })();
-    return iapReady;
-  }
-  function ownsIn(customerInfo) {
-    try {
-      var ids = (customerInfo && customerInfo.allPurchasedProductIdentifiers) || [];
-      return ids.indexOf(CONFIG.IAP.productId) !== -1;
-    } catch (e) { return false; }
   }
 
   /* ---------- haptics ---------- */
@@ -285,34 +274,6 @@
     showRewarded: async function () {
       try { var r = await showAd('rewarded'); return r.shown && r.rewarded; } catch (e) { return false; }
     },
-    buyNoAds: async function () {
-      try {
-        var P = plug('Purchases');
-        if (!P || !(await initIap())) return false;
-        var res = await P.getProducts({ productIdentifiers: [CONFIG.IAP.productId], type: 'NON_SUBSCRIPTION' });
-        var product = res && res.products && res.products[0];
-        if (!product) return false;
-        var out = await P.purchaseStoreProduct({ product: product });
-        return ownsIn(out && out.customerInfo);
-      } catch (e) { return false; }   // includes "user cancelled"
-    },
-    ownsNoAds: async function () {
-      try {
-        var P = plug('Purchases');
-        if (!P || !(await initIap())) return false;
-        var res = await P.getCustomerInfo();
-        return ownsIn(res && res.customerInfo);
-      } catch (e) { return false; }
-    },
-    // Called by the "Restore purchases" button in the "i" sheet (src/main.js via HLAds.restore).
-    restore: async function () {
-      try {
-        var P = plug('Purchases');
-        if (!P || !(await initIap())) return false;
-        var res = await P.restorePurchases();
-        return ownsIn(res && res.customerInfo);
-      } catch (e) { return false; }
-    },
     haptic: haptic,
     // Screen stays on while a game is running. Neither WKWebView nor Android WebView has navigator.wakeLock.
     // Returns true when the plugin was called. src/main.js keepAwake() also tries the web API, so a false here costs nothing.
@@ -331,8 +292,7 @@
       return false;
     }
   };
-  HLNative.restorePurchases = HLNative.restore;   // old name, kept for compatibility
-  if (!CONFIG.ADS_ENABLED) ['showInterstitial', 'showRewarded', 'buyNoAds', 'ownsNoAds', 'restore', 'restorePurchases'].forEach(function (k) { delete HLNative[k]; });
+  if (!CONFIG.ADS_ENABLED) ['showInterstitial', 'showRewarded'].forEach(function (k) { delete HLNative[k]; });
   HLNative.mirror = { flush: flush, done: mir.done, state: mir };   // for tests and debugging
   window.HLNative = HLNative;
 
@@ -402,7 +362,6 @@
     // consent first, then load the first interstitial
     if (!CONFIG.ADS_ENABLED) return;
     initAds().then(function (ok) { if (ok) { preload('interstitial'); } });
-    initIap();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else setTimeout(start, 0);
 })();

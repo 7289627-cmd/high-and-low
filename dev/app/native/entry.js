@@ -3,7 +3,6 @@
 // A page without a bundler never gets those entries, so this step is required.
 import '@capacitor/core';
 import '@capacitor-community/admob';
-import '@revenuecat/purchases-capacitor';
 import '@capacitor/haptics';
 import '@capacitor/app';
 import '@capacitor/preferences';

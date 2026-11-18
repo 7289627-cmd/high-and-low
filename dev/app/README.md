@@ -104,7 +104,7 @@ Demo interstitials use Google's `/1033173712` unit on Android and `/4411468910` 
 - It does NOT add Google's full SKAdNetwork list. Copy the rest from https://developers.google.com/admob/ios/quick-start#update_your_infoplist into `SKAdNetworkItems` (UNVERIFIED that one id is enough for fill).
 
 ## How the game and the native side talk
-- `HLAds.between()` (src/ads.js) calls `HLNative.showInterstitial()` after the 2nd finished game, then every 2nd game, never when `hl-noads` is set. Tested in `test/hlnative.js`.
+- At the results screen of each completed match, including the first, the app shows a preloaded interstitial if one is available. If the ad is unavailable, players can continue immediately. The `hl-noads` preference still suppresses ads.
 - Consent: on startup `requestConsentInfo`, `showConsentForm` if required, then `initialize` only when `canRequestAds`. You must create the GDPR message in the AdMob console (Privacy & messaging) or the form never appears (UNVERIFIED how Google treats apps without a message).
 - Haptics: `src/main.js` `buzz(ms)` calls `navigator.vibrate`. `hlnative.js` replaces that with Capacitor Haptics (8 ms or less light, 25 or less medium, else heavy), so main.js is unchanged. iOS WebViews have no `navigator.vibrate`, so this is what makes haptics work on iPhone.
 - Game haptics: `src/haptics.js` `haptic(kind)` (tap, tick, thud, win, lose) calls `HLNative.haptic(kind)` (Capacitor Haptics: LIGHT, selection, HEAVY, SUCCESS, ERROR). No new step: `@capacitor/haptics` 8.0.2 and `@capacitor/app` 8.1.2 are already pinned in `package.json`, so `npm install` then `npm run sync` (`cap sync`) is enough. UNVERIFIED on a device.

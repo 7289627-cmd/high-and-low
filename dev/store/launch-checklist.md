@@ -31,7 +31,7 @@ Tags: [VERIFIED] read on the official page 2026-11-14. [UNVERIFIED] not confirme
 - [ ] 3.3 ATT decision (iOS). Finish line: either no ATT prompt and no IDFA read with App Privacy "no tracking", or an ATT prompt string plus "tracking yes". See `privacy-answers.md` 3c.
 - [ ] 3.4 Ad content settings. Finish line: AdMob blocked categories set for a 13+ audience, child-directed tag off [GUESS about setting names].
 - [ ] 3.5 "Remove ads" product on both stores. Finish line: product created in App Store Connect and attached to the version, and in Play Console, status active, tested with a sandbox or license tester account, and a Restore path decided (`review-notes.md` R5, Apple 3.1.1, [VERIFIED]).
-- [ ] 3.6 Wrapper provides `HLNative.showInterstitial`, `buyNoAds`, `ownsNoAds` as described at the top of `src/ads.js`. Finish line: on a real device the ad shows after the 2nd finished game and not before, never during play, and a purchase removes it for good, also after reinstall.
+- [ ] 3.6 Ads-only build. Finish two matches on a device. A ready interstitial should appear once as each result opens. Verify that closing it returns to that result, exiting a match early skips the ad, and the results controls work when an ad is unavailable.
 
 ## Phase 4: Builds
 

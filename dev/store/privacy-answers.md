@@ -37,7 +37,7 @@ B. Realtime rooms (Supabase Realtime broadcast and presence, `src/net-supabase.j
 
 C. Stored only on the device (never sent as a profile): nickname, look, wins, coins, rating, hat unlocks, sound setting, `hl-noads` flag. Local only data needs no disclosure (Apple: "data processed only on device ... doesn't need disclosure", [VERIFIED] Apple page above).
 
-D. Ads (app builds only): `src/ads.js` calls `window.HLNative.showInterstitial()`. The native wrapper will include the Google Mobile Ads (AdMob) SDK. The website never shows ads. First ad after the 2nd finished game, then every 2nd game, never during a game.
+D. Ads in the mobile apps use the Google Mobile Ads (AdMob) SDK. An interstitial can appear once at the results screen of each completed match, starting with the first. Ads are limited to the mobile apps.
 
 E. Purchase "Remove ads": handled by Apple or Google. The client keeps only a local flag. The developer receives no payment details.
 

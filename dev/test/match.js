@@ -84,6 +84,8 @@ function advertiser(codes,max){
     await wait(1200);
     ok(st(A).code===sa.code&&st(B).code===sa.code,'(2) rooms changed after the match (loop?)');
     ok(!A.errs.length&&!B.errs.length,'(2) page errors '+A.errs.concat(B.errs));
+    await Promise.all([A.eval('leaveGame()'),B.eval('leaveGame()')]);
+    await wait(LAT+25); // Let in-flight mock-network deliveries settle before closing jsdom.
     A.close();B.close();hub={};
   }
   LAT=5;
@@ -104,19 +106,18 @@ function advertiser(codes,max){
     ok(A.eval('hbTimer')===null,'(4) hbTimer left behind');
     A.close();hub={};
   }
-  // 5) a hung native ad cannot block, and a late result cannot navigate twice
+  // 5) a hung native ad cannot block the result or navigate after the next round
   {
     const A=phone('d');await wait(300);
-    A.HL_TEST_AD_MS=250;
-    A.HLNative={showInterstitial:()=>new Promise(r=>setTimeout(r,900))};
-    A.eval('HLAds.games=1');
-    ok(A.eval('HLAds.can()'),'(5) ads not enabled in the test');
-    let navs=0;const t=Date.now();
-    await A.eval('HLAds.between()').then(()=>{navs++});
-    const dt=Date.now()-t;
-    ok(dt<700,'(5) between() waited '+dt+'ms for a hung ad');
-    await wait(1000);
-    ok(navs===1,'(5) navigated '+navs+' times');
+    let resolveAd,oldResult;
+    A.HLNative={showInterstitial:current=>{oldResult=current;return new Promise(r=>{resolveAd=r})}};
+    A.eval("startSolo();hostStart();G.phase='play';G.stage='show';update();G.players.slice(1).forEach(p=>{p.a=0});advance(G.seq);update()");
+    await wait(1200);
+    ok(typeof resolveAd==='function','(5) no automatic ad opportunity after a finished game');
+    const again=A.$('#ovLobby');ok(again,'(5) a hung ad blocked results');again.click();
+    ok(A.eval('G.phase')==='lobby'&&!oldResult(),'(5) a hung ad blocked Play again or retained a stale placement');
+    resolveAd(false);await wait(40);
+    ok(A.eval('G.phase')==='lobby','(5) a late ad result changed the screen');
     A.close();
   }
   // 6) real default timings, two dead adverts: worst case before a game starts

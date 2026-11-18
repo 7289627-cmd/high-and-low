@@ -1,7 +1,20 @@
 # High & Low: iOS and Android app (Capacitor)
 
+## Current release configuration
+
+App builds default to no ads. The Android and iOS workflows offer two mutually exclusive modes:
+
+- `demo_ads` requests Google's official test interstitial. It uses `HIGH_LOW_ADMOB_<PLATFORM>_APP_ID` when configured, so UMP can fetch consent messages published for High & Low. With that variable absent, the build uses Google's sample app ID for generic ad QA. Demo builds reject interstitial ID overrides.
+- `ads` requires the platform's AdMob app ID and interstitial ID in `HIGH_LOW_ADMOB_<PLATFORM>_APP_ID` and `HIGH_LOW_ADMOB_<PLATFORM>_INTERSTITIAL_ID`. Live builds reject missing, malformed, mismatched, or demo IDs.
+
+Both ad modes ship without purchases or RevenueCat. Use demo builds for device QA.
+
+For local Android consent QA, set `HL_ADS_DEMO=1`, `HL_ADMOB_PLATFORM=android`, and optionally `HL_ADMOB_APP_ID` in the shell. Run `bash sync-web.sh`, then `node scripts/configure-native.mjs --android-app-id "${HL_ADMOB_APP_ID:-}"` and `npx cap sync android`. On iOS use `ios` and `--ios-app-id`. Keep `HL_ADMOB_INTERSTITIAL_ID` unset in demo mode. For a live build, set `HL_ADS_ONLY=1` instead of `HL_ADS_DEMO=1` and supply both IDs. Test the published consent messages and privacy choices on real devices before enabling live ads.
+
+The native projects are generated during each store build.
+
 The game is the web game in `../src`. This folder wraps it with Capacitor 8 so it can ship to the App Store and Google Play.
-`native/hlnative.js` gives the game ads, "Remove ads" and haptics through `window.HLNative` (contract in `../src/ads.js`).
+`native/hlnative.js` provides the ad bridge and haptics through `window.HLNative` (contract in `../src/ads.js`).
 The website never loads it.
 
 Anything marked **UNVERIFIED** could not be checked on the machine that prepared this folder (Linux, no Xcode, no Android SDK, no store accounts).
@@ -12,9 +25,9 @@ What was verified: `npm install` resolves, `cap add ios` and `cap add android` r
 | File | What it is |
 |---|---|
 | `package.json` | Exact versions of Capacitor 8.6.2 and the plugins. Needs Node 22 or newer. |
-| `capacitor.config.ts` | appId (TODO), name, `webDir: www`, splash and status bar colours. |
+| `capacitor.config.ts` | App ID `com.highandlow.game`, name, `webDir: www`, splash and status bar colours. |
 | `sync-web.sh` | Builds the web game, copies `site/` into `www/` (without `lab/`, `sounds.html`, `deaths.html`, dev files), bundles `native/` into `www/hlnative.js`, and adds one `<script>` tag to the COPY of `index.html`. |
-| `native/hlnative.js` | `window.HLNative`: AdMob, RevenueCat, haptics, audio pause, keep-awake, storage mirror, invite-link listener. Config block at the top. |
+| `native/hlnative.js` | AdMob, haptics, audio pause, keep-awake, storage mirror and invite-link listener. |
 | `native/entry.js` | esbuild entry. Imports the plugin packages so they register on `Capacitor.Plugins`. |
 | `scripts/app_csp.py` | Run by `sync-web.sh` on the COPY of `index.html`: adds `capacitor://localhost https://localhost` to the file-loading CSP directives. |
 | `deeplink/` | Optional templates and steps for invite links that open the app (universal links / app links). |
@@ -30,26 +43,20 @@ Nothing here ran on a device. Each item names the one thing to check.
 
 Device checklist for this pass (all UNVERIFIED):
 - [ ] Game screen: phone does not dim or lock for 3 minutes; leaving the game lets it dim.
-- [ ] Kill the app and relaunch: name, rating, coins, Remove Ads, mute are still there.
+- [ ] Relaunch and check the saved name, rating, coins and sound setting.
 - [ ] Simulate eviction (iOS: Offload App then reopen; Android: not simulable, `adb shell pm clear` clears Preferences too): values return and the page reloads once at most.
 - [ ] A first install starts normally (no reload loop; the web inspector shows `hl-mirror-reload` absent).
 - [ ] Invite link tapped on a phone with the app (only if you did `deeplink/`): app opens and joins; with a running game nothing happens.
 - [ ] No CSP errors in the inspector console; sfx, music and fonts load.
 - [ ] On an Android phone with WebView below 90 (emulator image with an old WebView): note what happens.
 
-## Why RevenueCat for "Remove ads" (3 lines)
-`@revenuecat/purchases-capacitor` is a real Capacitor plugin (registered like the others, mockable in tests), handles receipt checks, restore and Google Play acknowledgement for one non-consumable with no server of ours, and is free below its revenue threshold (UNVERIFIED: check current pricing).
-`cordova-plugin-purchase` needs no third-party account but runs through the Cordova shim, has a larger API surface to get right (acknowledge, finish, restore) and no hosted receipt validation.
-Cost of the pick: an extra service, two public SDK keys, and a line in the privacy policy that RevenueCat receives an anonymous app user id and purchase status.
-
 ## One-time setup (macOS for iOS, any OS for Android)
 
 Prerequisites: Node 22+, Python 3, Xcode 16+ with command line tools (iOS), Android Studio with SDK 36 and JDK 21 (Android). UNVERIFIED: exact minimum versions, check Capacitor's environment page.
 
 ```bash
-cd app
-# 1. EDIT capacitor.config.ts: set appId (reverse domain you own, e.g. com.yourname.highandlow). Do this BEFORE step 3.
-npm install
+cd dev/app
+npm ci
 bash sync-web.sh                         # builds ../site, fills www/
 npx cap add ios                          # macOS only (creates ios/, uses Swift Package Manager, no CocoaPods)
 npx cap add android
@@ -62,20 +69,20 @@ npx cap sync
 
 Every later web change: `npm run sync` (runs `sync-web.sh` then `cap sync`).
 
-Commit `ios/` and `android/` to your own repo. They are not generated in this repo. `www/` and `node_modules/` are git-ignored.
+The store workflows regenerate `ios/` and `android/` from the wrapper configuration.
 
 ### iOS (Xcode)
 ```bash
 npx cap open ios
 ```
 In Xcode: select target App, Signing & Capabilities, choose your Team, tick "Automatically manage signing", set the Bundle Identifier to your appId.
-Add the capability **In-App Purchase**. Pick a real iPhone or simulator and Run. Archive with Product > Archive, then Distribute App > App Store Connect.
+Pick an iPhone or simulator and run the app. For cloud signing and TestFlight upload, use the iOS workflow.
 
 ### Android (Android Studio)
 ```bash
 npx cap open android
 ```
-Let Gradle sync, pick a device or emulator, Run. For release: Build > Generate Signed App Bundle (AAB), create an upload keystore and keep it safe, upload the `.aab` to Play Console.
+Let Gradle sync and run on a test device or emulator. Use the existing upload key configured in the Android workflow for a Play bundle.
 
 ## Where the real ids go
 
@@ -83,19 +90,17 @@ Let Gradle sync, pick a device or emulator, Run. For release: Build > Generate S
 |---|---|---|
 | AdMob **app** id, Android | `node scripts/configure-native.mjs --android-app-id ...` (writes `android/app/src/main/res/values/strings.xml` `admob_app_id`, referenced by the `meta-data` below) | `ca-app-pub-<16 digits>~<10 digits>` |
 | AdMob **app** id, iOS | same script, writes `GADApplicationIdentifier` in `ios/App/App/Info.plist` | same |
-| AdMob **ad unit** ids (interstitial, rewarded, per platform) | `native/hlnative.js`, `CONFIG.REAL_IDS` | `ca-app-pub-<16 digits>/<10 digits>` |
-| RevenueCat public SDK keys | `native/hlnative.js`, `CONFIG.IAP.apiKey` | `appl_...` and `goog_...` |
-| Product id | store consoles AND `CONFIG.IAP.productId` | `remove_ads` (placeholder, change both together) |
-| Test or real ads | `CONFIG.TEST_MODE` | `true` until the store build, then `false` |
+| AdMob interstitial unit per platform | `HIGH_LOW_ADMOB_<PLATFORM>_INTERSTITIAL_ID` workflow variable | `ca-app-pub-<16 digits>/<10 digits>` |
+| Ad mode | Workflow inputs | `demo_ads` for QA or `ads` for production |
 
 While `TEST_MODE` is `false`, any id still containing `REPLACE` is refused and the call resolves `false`, so a half-filled config cannot show wrong ads.
-Test ad unit ids in the file are Google's demo units. Sources: Google's test-ads pages (https://developers.google.com/admob/android/test-ads and https://developers.google.com/admob/ios/test-ads, could not be opened from the preparation machine, UNVERIFIED there). Android interstitial `.../1033173712`, Android rewarded `.../5224354917` and iOS rewarded `.../1712485313` also appear in the plugin's own source (`AdOptions.java`, `AdMobPlugin.swift`). iOS interstitial `.../4411468910` is from memory: UNVERIFIED. Sample app ids written by the script (`~3347511713` Android, `~1458002511` iOS) are also from memory: UNVERIFIED.
+Demo interstitials use Google's `/1033173712` unit on Android and `/4411468910` unit on iOS. The fallback sample app IDs end in `~3347511713` and `~1458002511` respectively. Use the real app ID to test the consent messages you assign to High & Low. [Android test ads](https://developers.google.com/admob/android/test-ads) · [iOS test ads](https://developers.google.com/admob/ios/test-ads) · [Google consent setup](https://developers.google.com/admob/ios/privacy)
 
 ## What `configure-native.mjs` writes (so you can check it)
 - `AndroidManifest.xml`: `android:screenOrientation="portrait"` on MainActivity, inside `<application>`:
   `<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="@string/admob_app_id" />` (the form the plugin README asks for), and `<uses-permission android:name="com.google.android.gms.permission.AD_ID" />`.
 - `Info.plist`: `GADApplicationIdentifier`, `SKAdNetworkItems` with Google's `cstr6suwn9.skadnetwork`, portrait only for iPhone and iPad, `UIRequiresFullScreen` true.
-- `NSUserTrackingUsageDescription` only if you pass `--personalised "your reason"`. The default build asks for non-personalised ads (`npa: true`), so there is no tracking prompt and the key is NOT needed. If you turn on personalised ads you must add that key, show the ATT prompt (UMP can do it, see plugin docs `consent.md`) and update the App Privacy answers.
+- The ads-only build requests non-personalized ads. Verify the actual partner settings and measurement practices when completing Apple's tracking disclosure. Tracking as Apple defines it requires permission before it begins.
 - It does NOT add Google's full SKAdNetwork list. Copy the rest from https://developers.google.com/admob/ios/quick-start#update_your_infoplist into `SKAdNetworkItems` (UNVERIFIED that one id is enough for fill).
 
 ## How the game and the native side talk
@@ -115,14 +120,13 @@ It also bundles `native/entry.js` and runs it against a fake native bridge to pr
 
 ## Pre-submission checklist
 Placeholders and accounts
-- [ ] `appId` changed in `capacitor.config.ts` before `cap add`; same bundle id / package name in App Store Connect and Play Console.
-- [ ] AdMob app created for each platform; real app ids passed to `configure-native.mjs`; real ad unit ids in `CONFIG.REAL_IDS`; `TEST_MODE` set to `false`.
+- [ ] Both generated apps use the existing store ID `com.highandlow.game`.
+- [ ] Check the platform-specific AdMob app and unit in the live build.
 - [ ] AdMob Privacy & messaging: GDPR message published (UMP).
-- [ ] App Store Connect and Play Console: in-app product `remove_ads` (non-consumable / one-time product) created and active; RevenueCat project with both apps, product attached, public SDK keys in `CONFIG.IAP.apiKey`.
-- [ ] Test a real purchase with a sandbox tester (iOS) and a licence tester (Android). UNVERIFIED end to end.
+- [ ] Verify the ads-only build hides purchase and restore controls.
 
 Behaviour on device (all UNVERIFIED, nothing here ran on a device)
-- [ ] Test ads show on both platforms; consent form appears with a test device in the EEA (`debugGeography`).
+- [ ] Demo ads show on both platforms. Verify any published consent message and the Privacy choices entry point on a device in a region the message targets.
 - [ ] An ad never appears during a game; first one after game 2.
 - [ ] Haptics on slider release and wheel landing; audio stops while an ad is open and when the app is backgrounded.
 - [ ] Safe areas, status bar colour and icons look right on notch phones and Android 15 edge-to-edge.
@@ -131,10 +135,10 @@ Behaviour on device (all UNVERIFIED, nothing here ran on a device)
 
 Store requirements
 - [ ] Icon 1024x1024 and splash artwork. `../site/icon-180.png` is too small. Generate sets with `npx @capacitor/assets generate` from `assets/icon-only.png` (1024) and `assets/splash.png` (2732): not added here (UNVERIFIED tool usage).
-- [ ] Apple: App Privacy ("nutrition label") answers cover AdMob (device id, ads data) and RevenueCat (purchases, anonymous id), plus the game's own anonymous stats in `src/track.js`. Google Play Data safety form and the advertising ID declaration (AD_ID).
-- [ ] Privacy policy URL (`../site/privacy.html` must mention ads, AdMob, RevenueCat) and support URL.
+- [ ] Complete Apple App Privacy and Play Data safety using the actual SDK settings, multiplayer data and pseudonymous events in `src/track.js`. Complete Play's advertising ID declaration.
+- [ ] Verify the published privacy policy and support page against the copies in the package.
 - [ ] Age rating questionnaires. Decide whether the game is directed at children: if yes AdMob needs `tagForUnderAgeOfConsent` / child-directed settings and different rules apply. Not set here.
-- [ ] Apple requires a way to restore purchases (guideline 3.1.1, UNVERIFIED wording). `HLNative.restore()` is called by the "Restore purchases" button in the "i" sheet (UNVERIFIED on a device).
+- [ ] Verify ad labeling, dismissal, targeting information and the inappropriate-ad reporting path on the signed build.
 - [ ] Export compliance: the app uses only HTTPS. Answer the encryption question in App Store Connect (or add `ITSAppUsesNonExemptEncryption` false if exempt). Legal declaration, left to the owner.
 - [ ] iPad: the script locks portrait full screen on iPad too. If you do not want an iPad build, set Targeted Device Family to iPhone only in Xcode.
 - [ ] Screenshots for 6.9 inch iPhone and Android phones; Google Play requires testing track steps for new personal developer accounts (UNVERIFIED current rule).

@@ -49,6 +49,37 @@ function consent(canRequestAds, privacyOptionsRequirementStatus = 'REQUIRED', st
 
 const settleInteractions = () => new Promise(resolve => setImmediate(resolve));
 
+test('a failed consent update retries once for concurrent callers, then caches the SDK decision', async () => {
+  const about = aboutPanel();
+  let calls = 0;
+  let finish;
+  const AdMob = {
+    async requestConsentInfo() {
+      if (++calls === 1) throw new Error('offline');
+      return new Promise(resolve => { finish = resolve; });
+    },
+  };
+  const privacy = createPrivacyOptions({ document: about.document, getAdMob: () => AdMob });
+  assert.equal(await privacy.gatherConsent(), false);
+  const a = privacy.gatherConsent();
+  const b = privacy.gatherConsent();
+  await settleInteractions();
+  assert.equal(calls, 2);
+  finish(consent(true));
+  assert.deepEqual(await Promise.all([a, b]), [true, true]);
+  assert.equal(await privacy.gatherConsent(), true);
+  assert.equal(calls, 2);
+});
+
+test('a successful disallow decision is retained without repeatedly presenting consent', async () => {
+  let calls = 0;
+  const AdMob = { async requestConsentInfo() { calls++; return consent(false); } };
+  const privacy = createPrivacyOptions({ document: aboutPanel().document, getAdMob: () => AdMob });
+  assert.equal(await privacy.gatherConsent(), false);
+  assert.equal(await privacy.gatherConsent(), false);
+  assert.equal(calls, 1);
+});
+
 test('the About panel adds one keyboard-accessible button when UMP requires it', async () => {
   const about = aboutPanel();
   const AdMob = { requestConsentInfo: async () => consent(false) };

@@ -16,9 +16,9 @@ function mocks(o={}){
     requestConsentInfo:rec('requestConsentInfo',()=>Promise.resolve(o.consent||{status:'NOT_REQUIRED',canRequestAds:true,isConsentFormAvailable:false})),
     showConsentForm:rec('showConsentForm',()=>Promise.resolve({status:'OBTAINED',canRequestAds:true})),
     initialize:rec('initialize',()=>Promise.resolve()),
-    prepareInterstitial:rec('prepareInterstitial',()=>Promise.resolve({adUnitId:'x'})),
+    prepareInterstitial:rec('prepareInterstitial',o.prepareInterstitial||(()=>Promise.resolve({adUnitId:'x'}))),
     prepareRewardVideoAd:rec('prepareRewardVideoAd',()=>Promise.resolve({adUnitId:'x'})),
-    showInterstitial:rec('showInterstitial',()=>{const p=Promise.resolve();setTimeout(()=>{log.push(['closed']);emit('interstitialAdDismissed')},o.adMs||25);return p}),
+    showInterstitial:rec('showInterstitial',o.showInterstitial||(()=>{const p=Promise.resolve();setTimeout(()=>{log.push(['closed']);emit('interstitialAdDismissed')},o.adMs||25);return p})),
     showRewardVideoAd:rec('showRewardVideoAd',()=>{setTimeout(()=>{if(o.reward){emit('onRewardedVideoAdReward',{amount:1,type:'x'})}log.push(['closed']);emit('onRewardedVideoAdDismissed')},25);return new Promise(()=>{})}),
     addListener:(e,f)=>{if(!L.has(e))L.set(e,[]);L.get(e).push(f);return Promise.resolve({remove:()=>{L.set(e,L.get(e).filter(x=>x!==f));log.push(['removed',e])}})}
   };
@@ -86,6 +86,23 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
    ok(m.log.filter(x=>x[0]==='removed').length>=2,'listeners not removed');
    ok(w.__a.includes('suspend')&&w.__a.includes('resume')&&w.__a.includes('sync'),'audio not paused/resumed around ad: '+w.__a);
    await wait(40);ok(count(m,'prepareInterstitial')>=2,'next interstitial not preloaded');}
+  // A finished round only takes an already-loaded ad; a late fill is for a later round.
+  {let fill;const firstLoad=new Promise(r=>{fill=r});const {w,m}=await boot({prepareInterstitial:()=>firstLoad});
+   const attempt=w.HLNative.showInterstitial(()=>true);fill({adUnitId:'x'});
+   ok(await attempt===false&&count(m,'showInterstitial')===0,'a late fill must skip the finished round');
+   await wait(10);
+   ok(await w.HLNative.showInterstitial(()=>true)===true&&count(m,'showInterstitial')===1,'the ready ad should be usable for the next round');w.close();}
+  // A transition or background event during listener setup invalidates the placement.
+  {const {w,m}=await boot();let current=true;
+   const stale=w.HLNative.showInterstitial(()=>current);current=false;
+   ok(await stale===false&&count(m,'showInterstitial')===0,'a stale result must not open a native ad');
+   await wait(10);const onState=m.L.get('app:appStateChange')[0];const background=w.HLNative.showInterstitial(()=>true);onState({isActive:false});
+   ok(await background===false&&count(m,'showInterstitial')===0,'a backgrounded result must not open a native ad');w.close();}
+  {const {w,m}=await boot({showInterstitial:()=>new Promise(()=>{}),cfg:{SHOW_TIMEOUT_MS:30}});
+   const hung=w.HLNative.showInterstitial(()=>true);
+   const result=await Promise.race([hung,wait(120).then(()=>null)]);
+   ok(count(m,'showInterstitial')===1&&result===false,'a hung show without a dismissal must time out');
+   ok(w.__a.filter(x=>x==='resume').length===1&&count(m,'removed')===2,'a hung show must release audio and its listeners once');w.close();}
   // 3) rewarded: only true when the reward event fired
   {const a=await boot({reward:true});ok((await a.w.HLNative.showRewarded())===true,'rewarded with reward should be true');
    const b=await boot({reward:false});ok((await b.w.HLNative.showRewarded())===false,'rewarded closed early should be false');}
@@ -116,14 +133,10 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
    const imp=m.log.filter(x=>x[0]==='impact').map(x=>x[1].style);ok(imp.join()==='LIGHT,MEDIUM,HEAVY','vibrate shim styles '+imp);
    w.HLNative.haptic('success');ok(count(m,'notification')===1,'notification haptic');
    const f=m.L.get('app:appStateChange')[0];w.__a.length=0;f({isActive:false});ok(w.__a.includes('suspend')&&w.__a.includes('pause-home'),'pause hook '+w.__a);
-   w.__a.length=0;f({isActive:true});ok(w.__a.includes('resume')&&w.__a.includes('sync'),'resume hook '+w.__a);}
-  // 9) HLAds.between from src/ads.js: ad on the 2nd, 4th, 6th finished game only, never when noAds
-  {const {w,m}=await boot({loadAds:true});const A=w.eval('HLAds');const shownAfter=[];
-   for(let i=1;i<=6;i++){const before=count(m,'showInterstitial');await A.between();shownAfter.push(count(m,'showInterstitial')>before)}
-   ok(shownAfter.join()==='false,true,false,true,false,true','between() pattern '+shownAfter);
-   ok(A.canBuy()===true||A.canBuy()===false,'canBuy callable');}
-  {const {w,m}=await boot({loadAds:true});const A=w.eval('HLAds');A.setNoAds(true);for(let i=0;i<6;i++)await A.between();ok(count(m,'showInterstitial')===0,'ads shown although noAds is set');}
-  {const {w,m}=await boot({loadAds:true,skipNative:true});const A=w.eval('HLAds');for(let i=0;i<6;i++)await A.between();ok(count(m,'showInterstitial')===0,'web build (no HLNative) must never show ads');}
+   w.__a.length=0;f({isActive:true});await wait(0);ok(w.__a.includes('resume')&&w.__a.includes('sync'),'resume hook '+w.__a);}
+  // 9) The ads-free entitlement and web builds still suppress interstitials.
+  {const {w,m}=await boot({loadAds:true});const A=w.eval('HLAds');A.setNoAds(true);await A.finished('first',()=>true);ok(count(m,'showInterstitial')===0,'ads shown although noAds is set');w.close();}
+  {const {w,m}=await boot({loadAds:true,skipNative:true});const A=w.eval('HLAds');await A.finished('first',()=>true);ok(count(m,'showInterstitial')===0,'web build (no HLNative) must never show ads');w.close();}
   // 12) f02 durable storage mirror (Capacitor Preferences <-> localStorage)
   {// 12a) evicted localStorage: durable keys come back, game defaults written during boot do not win, transient keys stay out, one reload
    const prefs={'hl-elo':'1500','hl-coins':'7','hl-noads':'"1"','hl-pid':'"old"','hl-host-ABCD':'{"G":1}','hl-sec-ABCD-g-p':'5','hl-session':'{}','other':'x'};

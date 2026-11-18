@@ -1,6 +1,6 @@
 /* High & Low: native bridge. Loaded ONLY in the app build (sync-web.sh bundles it and adds it to app/www/index.html).
    Defines window.HLNative, the contract read by src/ads.js:
-     showInterstitial()  Promise<boolean>  true if an ad was shown and closed
+     showInterstitial(current)  Promise<boolean>  with a guard, only presents a preloaded ad
      showRewarded()      Promise<boolean>  true only if the player earned the reward
      keepAwake(on)       boolean  true if the native keep-screen-on plugin was called (iOS/Android WebViews have no Screen Wake Lock API)
    Extras: haptic(kind), exit(). Also in this file: the localStorage mirror (Preferences) and the invite-link
@@ -135,13 +135,28 @@
   try { window.addEventListener('pagehide', function () { flush(); }); } catch (e) {}
 
   /* ---------- audio: pause while the app is in the background or an ad is on screen ---------- */
-  var audioHolds = 0;
+  var audioHolds = 0, appActive = true, pendingAudioSuspend = null;
   function audioPause() {
-    try { if (typeof SFX !== 'undefined' && SFX.ctx && SFX.ctx.state === 'running') SFX.ctx.suspend(); } catch (e) {}
+    try {
+      if (typeof SFX !== 'undefined' && SFX.ctx && SFX.ctx.state === 'running' && !pendingAudioSuspend) {
+        var result = SFX.ctx.suspend();
+        if (result && result.then) {
+          var pending = pendingAudioSuspend = Promise.resolve(result).catch(function () {});
+          pending.then(function () { if (pendingAudioSuspend === pending) pendingAudioSuspend = null; });
+        }
+      }
+    } catch (e) {}
     try { if (typeof MUSIC !== 'undefined' && MUSIC.el) for (var k in MUSIC.el) { try { MUSIC.el[k].pause(); } catch (e) {} } } catch (e) {}
   }
   function audioResume() {
-    try { if (typeof SFX !== 'undefined' && SFX.ctx && SFX.ctx.state !== 'running') SFX.ctx.resume(); } catch (e) {}
+    if (!appActive || audioHolds > 0) return;
+    if (pendingAudioSuspend) { pendingAudioSuspend.then(audioResume); return; }
+    try {
+      if (typeof SFX !== 'undefined' && SFX.ctx && SFX.ctx.state !== 'running') {
+        var result = SFX.ctx.resume();
+        if (result && result.catch) result.catch(function () {});
+      }
+    } catch (e) {}
     try { if (typeof MUSIC !== 'undefined' && MUSIC.sync) MUSIC.sync(); } catch (e) {}
   }
   function holdAudio(on) {
@@ -154,9 +169,10 @@
   var privacy = CONFIG.ADS_ENABLED && plug('AdMob') ? require('./privacy-options.js').createPrivacyOptions({
     document: document,
     getAdMob: function () { return plug('AdMob'); },
-    onOptionsClosed: function () {
+    onOptionsClosed: function (allowed) {
       consentVersion++;
       ads.interstitial = ads.rewarded = null;
+      if (allowed) preload('interstitial');
     }
   }) : null;
 
@@ -182,33 +198,49 @@
     return o;
   }
 
-  var ads = { interstitial: null, rewarded: null };   // preloaded: Promise<boolean> (true = loaded)
+  var ads = { interstitial: null, rewarded: null };
   var preparing = { interstitial: null, rewarded: null };
   function preload(kind) {
     var A = plug('AdMob'), o = adOptions(kind);
-    if (!A || !o) return Promise.resolve(false);
+    if (!A || !o) return null;
     var fn = kind === 'interstitial' ? A.prepareInterstitial : A.prepareRewardVideoAd;
-    if (!fn) return Promise.resolve(false);
+    if (!fn) return null;
     // Only one native load per type can write to the plugin's cache at a time.
-    if (preparing[kind]) return ads[kind] || Promise.resolve(false);
+    if (preparing[kind]) return ads[kind];
     var version = consentVersion;
     preparing[kind] = (async function () {
       if (!(await initAds()) || version !== consentVersion) return false;
       await fn.call(A, o);
       return version === consentVersion && privacy.canRequestAds();
     })().catch(function () { return false; });
-    preparing[kind].then(function () { preparing[kind] = null; });
-    ads[kind] = withTimeout(preparing[kind], CONFIG.LOAD_TIMEOUT_MS, false);
-    return ads[kind];
+    preparing[kind].then(function () {
+      preparing[kind] = null;
+      if (kind === 'interstitial' && version !== consentVersion && privacy.canRequestAds()) preload(kind);
+    });
+    var prepared = { ready: false };
+    prepared.loaded = withTimeout(preparing[kind], CONFIG.LOAD_TIMEOUT_MS, false).then(function (loaded) {
+      prepared.ready = loaded;
+      return loaded;
+    });
+    return (ads[kind] = prepared);
   }
 
   // Shows a prepared ad. closeEvents resolve the wait. Returns { shown, rewarded }.
-  async function showAd(kind) {
+  async function showAd(kind, current) {
     var A = plug('AdMob');
-    if (!A || !privacy || !privacy.canRequestAds()) return { shown: false, rewarded: false };
+    var readyOnly = typeof current === 'function';
+    function canPresent() {
+      return !readyOnly || (appActive && !document.hidden && navigator.onLine !== false && current());
+    }
+    if (!A || !privacy || !privacy.canRequestAds() || !canPresent()) return { shown: false, rewarded: false };
     var version = consentVersion;
     var prepared = ads[kind] || preload(kind);
-    var loaded = await prepared;
+    if (readyOnly && (!prepared || !prepared.ready)) {
+      // Leave an in-flight load for the next round and retry a failed load in advance of it.
+      if (prepared && !preparing[kind]) preload(kind);
+      return { shown: false, rewarded: false };
+    }
+    var loaded = prepared && (readyOnly || await prepared.loaded);
     if (ads[kind] === prepared) ads[kind] = null;
     if (version !== consentVersion || !privacy.canRequestAds()) return { shown: false, rewarded: false };
     if (!loaded) { preload(kind); return { shown: false, rewarded: false }; }
@@ -225,20 +257,20 @@
       });
       // Let listener registration settle before the ad can possibly close.
       await Promise.resolve(); await Promise.resolve();
-      if (version !== consentVersion || !privacy.canRequestAds()) return { shown: false, rewarded: false };
+      if (version !== consentVersion || !privacy.canRequestAds() || !canPresent()) return { shown: false, rewarded: false };
       var call;
       try {
         call = kind === 'interstitial' ? A.showInterstitial() : A.showRewardVideoAd();
       } catch (e) { shown = false; call = null; }
       if (!call) return { shown: false, rewarded: false };
-      // A rejected show call means the ad did not appear. A resolved one is NOT enough to stop waiting:
-      // wait for the close event (or the safety timeout).
-      var failed = Promise.resolve(call).then(function (r) { if (kind === 'rewarded' && r && typeof r.amount === 'number') rewarded = true; return false; },
-                                              function () { shown = false; return true; });
-      var early = await Promise.race([failed, closed.then(function () { return false; })]);
-      if (early) return { shown: false, rewarded: false };
-      await withTimeout(closed, CONFIG.SHOW_TIMEOUT_MS, undefined);
-      return { shown: shown, rewarded: rewarded };
+      // Only dismissal, failure or the safety timeout ends presentation, even if the show call never settles.
+      var failed = new Promise(function (resolve) {
+        Promise.resolve(call).then(function (r) {
+          if (kind === 'rewarded' && r && typeof r.amount === 'number') rewarded = true;
+        }, function () { resolve(false); });
+      });
+      var completed = await withTimeout(Promise.race([closed.then(function () { return shown; }), failed]), CONFIG.SHOW_TIMEOUT_MS, false);
+      return { shown: completed, rewarded: rewarded };
     } catch (e) {
       return { shown: false, rewarded: false };
     } finally {
@@ -268,8 +300,8 @@
 
   /* ---------- the contract ---------- */
   var HLNative = {
-    showInterstitial: async function () {
-      try { return (await showAd('interstitial')).shown; } catch (e) { return false; }
+    showInterstitial: async function (current) {
+      try { return (await showAd('interstitial', current)).shown; } catch (e) { return false; }
     },
     showRewarded: async function () {
       try { var r = await showAd('rewarded'); return r.shown && r.rewarded; } catch (e) { return false; }
@@ -333,7 +365,8 @@
     if (!App) return;
     try {
       var r = App.addListener('appStateChange', function (s) {
-        if (s && s.isActive === false) audioPause(); else if (audioHolds === 0) audioResume();
+        appActive = !s || s.isActive !== false;
+        if (!appActive) audioPause(); else if (audioHolds === 0) audioResume();
       });
       if (r && r.catch) r.catch(function () {});
     } catch (e) {}

@@ -19,7 +19,7 @@ Internet is required. Without a connection the app shows a "no connection" scree
 
 Chat: there is no chat. Players can only send one of six fixed emoji taunts.
 User names: players choose a 12 character nickname which other players in the same game can see. Public Play filters offensive names with a word list, and abusive names can be reported from [FILL IN: see risk R1].
-Ads (app builds): a full screen ad can appear after every second finished game, never during a game. In the Settings "i" sheet there is "Remove ads" (one time purchase). [Delete the sentence if ads or the purchase are not in this build]
+In the ads-only build, a full-screen ad can appear at the results screen after each completed match, including the first. Dismiss the ad to view the score or play again.
 Privacy policy and terms are linked from the "i" sheet and from the store page.
 Support contact: [FILL IN support email]
 ```
@@ -65,7 +65,7 @@ Ordered by my estimate of likelihood for this app [GUESS].
 
 ### R4. Apple 2.5.18 Advertising
 - Rule ([VERIFIED]): ads must be appropriate for the app's age rating (13+ here), interstitials "must clearly indicate that they are an ad", "must not manipulate or trick users", "must provide easily accessible and visible close/skip buttons", and apps with ads "must let users report inappropriate or age-inappropriate ads".
-- Mitigations: use only AdMob formats that provide close and report (standard behavior [GUESS]), set the AdMob maximum ad content rating to match 13+ [GUESS: setting names differ], never show an ad during a game (already enforced in `HLAds.between`), and make sure the ad closes back to the home screen without a freeze (the code awaits `showInterstitial()`, so a failed ad promise must resolve; it catches errors).
+- Check the AdMob content rating and the ad's close and report controls. On a device, verify that an interstitial appears only at a completed match, dismisses to that result, and lets the player continue when no ad is available.
 
 ### R5. Guideline 3.1.1 In-App Purchase: restore
 - Rule ([VERIFIED]): apps need "a restore mechanism for any restorable in-app purchases", and purchases must not use outside mechanisms to unlock features.

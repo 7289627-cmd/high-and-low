@@ -48,7 +48,7 @@ const MUSIC={
     const c=SFX.ctx;let list=MUSIC.src[name];if(!Array.isArray(list))list=[list];
     const tryOne=i=>{
       if(i>=list.length){t.failed=true;t.tries++;t.failAt=Date.now();t.loading=null;return}
-      fetch(list[i]).then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(ab=>new Promise((res,rej)=>{
+      fetch(list[i]).then(r=>SFX.readAsset(r,list[i])).then(ab=>new Promise((res,rej)=>{
         const p=c.decodeAudioData(ab,res,rej);if(p&&p.catch)p.catch(rej);
       })).then(b=>{
         t.buf=b;t.reg=MUSIC.region(b);t.loading=null;t.url=list[i];MUSIC.sync();
@@ -139,9 +139,12 @@ const MUSIC={
 };
 (function(){
   const go=()=>{
-    ['pointerdown','touchend','keydown'].forEach(t=>document.removeEventListener(t,go,true));
     // run after sound.js has created SFX.ctx for this same gesture
-    MUSIC.init();if(!MUSIC.ok)setTimeout(()=>MUSIC.init(),0);
+    const tryStart=()=>{
+      MUSIC.init();
+      if(MUSIC.ok)['pointerdown','touchend','keydown'].forEach(t=>document.removeEventListener(t,go,true));
+    };
+    tryStart();if(!MUSIC.ok)setTimeout(tryStart,0);
   };
   ['pointerdown','touchend','keydown'].forEach(t=>document.addEventListener(t,go,{capture:true,passive:true}));
   document.addEventListener('visibilitychange',()=>MUSIC.sync());

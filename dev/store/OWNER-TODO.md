@@ -59,7 +59,7 @@ Source tags in [brackets] are worker reports in `reports/`. Updated Nov 15, 2026
 - [ ] Legal review: liability cap, ratings reset, under-13 line vs EEA age 16, international transfers. Recommendation: have a lawyer look. [b05]
 - [ ] Publish or hide the dev pages `site/deaths.html`, `site/sounds.html` (app build already excludes them). [a14, a04]
 
-- [ ] Full-screen ad rule. Proposed: none in the first 3 games, then after every 2nd game, at least 3 minutes apart, never after a rank-up. Detail: project doc `ads-plan.md`.
+- [ ] On a device, finish two matches in a row. Check that a ready test ad appears once at each result, starting with the first match, and that dismissing it returns to the score.
 - [ ] Rewarded ads (watch to earn). Recommended: double the coins from a win, and try a locked hat for one game. Not built yet.
 - [ ] Playable ad: confirm the simple higher/lower round is fine, then give the two store URLs (they go at the top of `store/playable/build.py`). Recheck each network's rules in its own preview tool before spending. Meta and TikTok also need a short video.
 - [ ] Leaderboard: dropped Nov 15. Ratings stay on the phone only.

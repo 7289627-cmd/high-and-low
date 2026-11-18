@@ -1,0 +1,46 @@
+name: iOS interstitial check
+on:
+  push:
+    branches: [qa-ios-interstitial]
+    paths:
+      - 'dev/app/test/ios-admob-simulator.py'
+      - 'dev/app/native/**'
+jobs:
+  simulator:
+    runs-on: macos-26-intel
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: dev/app
+    env:
+      HL_ADS_DEMO: '1'
+      HL_ADMOB_PLATFORM: ios
+      HL_ADMOB_APP_ID: ${{ vars.HIGH_LOW_ADMOB_IOS_APP_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare build 16's demo-ad configuration
+        run: |
+          test -n "$HL_ADMOB_APP_ID"
+          npm ci
+          bash sync-web.sh
+          npx cap add ios
+          node scripts/configure-native.mjs --ios-app-id "$HL_ADMOB_APP_ID"
+          npx cap sync ios
+      - name: Exercise real AdMob on the iPhone simulator
+        run: python3 test/ios-admob-simulator.py "$RUNNER_TEMP/admob-simulator"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-ad-check-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/admob-simulator/*.png
+            ${{ runner.temp }}/admob-simulator/*.json
+          if-no-files-found: ignore
+          retention-days: 3

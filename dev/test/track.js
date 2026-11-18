@@ -38,7 +38,7 @@ function makeFakeClient(){return{channel(name){const subs=hub[name]||(hub[name]=
 const dom=new JSDOM(raw,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://x.test/',beforeParse(w){
   const fc=makeFakeClient();w.supabase={createClient:()=>fc};stubFetch(w);
   w.HL_TEST_Q_MS=300;w.HL_TEST_FILL_MS=900;w.HL_TEST_QJOIN_MS=1500;
-  w.HLNative={showInterstitial:()=>new Promise(r=>setTimeout(r,50)),buyNoAds:()=>Promise.resolve(true),ownsNoAds:()=>false};
+  w.HLNative={showInterstitial:()=>new Promise(r=>setTimeout(()=>r(true),50)),buyNoAds:()=>Promise.resolve(true),ownsNoAds:()=>false};
 }});
 const w=dom.window;w.errs=[];w.addEventListener('error',e=>w.errs.push(e.message));
 const $=s=>w.document.querySelector(s);
@@ -71,8 +71,9 @@ async function playOut(){
   await playOut();
   ok(count('game_start')===1&&count('game_end')===1,'practice: one game_start and one game_end');
   const pe=sent.find(s=>s.ev==='game_end');ok(pe.props.kind==='practice'&&pe.props.t>0,'practice game_end has kind and turns');
+  await until(()=>count('ad')>=2,5000,'ad after the first game');
   w.eval('closeOv();leaveGame()');await until(()=>w.eval('view')==='home',5000,'home');
-  // ---- Play duel with a fill-in opponent, then Play again, ad after the 2nd finished game
+  // ---- Play two duels with a fill-in opponent, with one ad at each result.
   w.eval('pmSel="s"');w.eval('render(true)');
   $('#playBtn').click();
   ok(count('play_tap')===1&&sent.find(s=>s.ev==='play_tap').props.m==='s','play_tap carries the mode code');
@@ -84,14 +85,15 @@ async function playOut(){
   const ge=sent.filter(s=>s.ev==='game_end'&&s.props.kind==='play');
   ok(ge.length===1&&ge[0].props.t>0&&(ge[0].props.won===0||ge[0].props.won===1),'Play: game_end has turns and won');
   ok(count('rated')===1,'rated fires once per rated game');
+  await until(()=>count('ad')>=4,5000,'ad after the first duel');
   await until(()=>$('#againBtn'),8000,'Play again button');$('#againBtn').click();
-  ok(count('again')===1,'again fires once');ok(count('ad')===0,'no ad after the first game');
+  ok(count('again')===1,'again fires once');ok(count('ad')===4,'Play again does not trigger a duplicate ad');
   await playOut();
   ok(count('rated')===2,'second rated');
+  await until(()=>count('ad')>=6,5000,'ad after the second duel');
   await until(()=>$('#ovX'),8000,'result sheet');$('#ovX').click();
-  await until(()=>count('ad')>=2,5000,'ad show and close');
   const ads=sent.filter(s=>s.ev==='ad').map(s=>s.props.s);
-  ok(ads.join()==='show,close','ad shown then closed, once each');
+  ok(ads.join()==='show,close,show,close,show,close','one show and close per completed game');
   await until(()=>w.eval('view')==='home',5000,'home');
   // ---- leave in the middle of a duel
   $('#playBtn').click();await until(()=>phase()==='play'||$('.key[data-k="4"]'),20000,'3rd game');await lockSecret();

@@ -6,7 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       ads:
-        description: Include ads and Remove Ads
+        description: Include ads only (requires configured production AdMob IDs)
+        type: boolean
+        default: false
+      demo_ads:
+        description: Use Google demo ads with the configured app ID for consent QA when available
         type: boolean
         default: false
   push:
@@ -24,6 +28,11 @@ jobs:
     env:
       HAVE_ASC: ${{ secrets.ASC_KEY_P8 != '' }}
       TEAM_ID: GFV2WKFK58
+      HL_ADS_ONLY: ${{ inputs.ads && '1' || '0' }}
+      HL_ADS_DEMO: ${{ inputs.demo_ads && '1' || '0' }}
+      HL_ADMOB_PLATFORM: ios
+      HL_ADMOB_APP_ID: ${{ (inputs.ads || inputs.demo_ads) && vars.HIGH_LOW_ADMOB_IOS_APP_ID || '' }}
+      HL_ADMOB_INTERSTITIAL_ID: ${{ inputs.ads && !inputs.demo_ads && vars.HIGH_LOW_ADMOB_IOS_INTERSTITIAL_ID || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,11 +42,11 @@ jobs:
         run: npm ci
       - name: Build the game into www
         run: |
-          if [ "${{ inputs.ads }}" = "true" ]; then bash sync-web.sh; else HL_NO_ADS=1 bash sync-web.sh; fi
+          bash sync-web.sh
       - name: Create the iOS project
         run: |
           npx cap add ios
-          node scripts/configure-native.mjs
+          node scripts/configure-native.mjs --ios-app-id "$HL_ADMOB_APP_ID"
           cp -R ../store/launch/assets ./assets
           npx --yes @capacitor/assets generate --ios --iconBackgroundColor '#7FD0E4' --splashBackgroundColor '#7FD0E4'
           npx cap sync ios
@@ -155,10 +164,17 @@ jobs:
               names = [n for n in ipa.namelist() if n.startswith('Payload/') and n.endswith('.app/Info.plist') and n.count('/') == 2]
               if len(names) != 1: raise SystemExit('Expected exactly one top-level app in IPA')
               info = plistlib.loads(ipa.read(names[0]))
+              manifest_path = names[0].removesuffix('Info.plist') + 'PrivacyInfo.xcprivacy'
+              if manifest_path not in ipa.namelist(): raise SystemExit('Exported app is missing PrivacyInfo.xcprivacy')
+              manifest = plistlib.loads(ipa.read(manifest_path))
+              if not any(entry.get('NSPrivacyAccessedAPIType') == 'NSPrivacyAccessedAPICategoryUserDefaults'
+                         and 'CA92.1' in entry.get('NSPrivacyAccessedAPITypeReasons', [])
+                         for entry in manifest.get('NSPrivacyAccessedAPITypes', [])):
+                  raise SystemExit('Exported privacy manifest is missing the app-local UserDefaults reason CA92.1')
           expected = {'CFBundleIdentifier': 'com.highandlow.game', 'CFBundleShortVersionString': '1.0.' + os.environ['EXPECTED_BUILD'], 'CFBundleVersion': os.environ['EXPECTED_BUILD'], 'UIDeviceFamily': [1]}
           for key, value in expected.items():
               if info.get(key) != value: raise SystemExit(f'Unexpected {key}: {info.get(key)!r}; expected {value!r}')
-          print('Verified IPA bundle ID, version, build number, and iPhone-only device family')
+          print('Verified IPA bundle ID, version, build number, iPhone-only device family, and UserDefaults privacy reason')
           PY
           ditto -x -k "$IPA" "$WORK/unpacked"
           APP="$WORK/unpacked/Payload/App.app"

@@ -6,7 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       ads:
-        description: Include ads and Remove Ads
+        description: Include ads only (requires configured production AdMob IDs)
+        type: boolean
+        default: false
+      demo_ads:
+        description: Use Google demo ads with the configured app ID for consent QA when available
         type: boolean
         default: false
   push:
@@ -23,6 +27,11 @@ jobs:
         working-directory: dev/app
     env:
       HAVE_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HL_ADS_ONLY: ${{ inputs.ads && '1' || '0' }}
+      HL_ADS_DEMO: ${{ inputs.demo_ads && '1' || '0' }}
+      HL_ADMOB_PLATFORM: android
+      HL_ADMOB_APP_ID: ${{ (inputs.ads || inputs.demo_ads) && vars.HIGH_LOW_ADMOB_ANDROID_APP_ID || '' }}
+      HL_ADMOB_INTERSTITIAL_ID: ${{ inputs.ads && !inputs.demo_ads && vars.HIGH_LOW_ADMOB_ANDROID_INTERSTITIAL_ID || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,11 +45,11 @@ jobs:
         run: npm ci
       - name: Build the game into www
         run: |
-          if [ "${{ inputs.ads }}" = "true" ]; then bash sync-web.sh; else HL_NO_ADS=1 bash sync-web.sh; fi
+          bash sync-web.sh
       - name: Create the Android project
         run: |
           npx cap add android
-          node scripts/configure-native.mjs
+          node scripts/configure-native.mjs --android-app-id "$HL_ADMOB_APP_ID"
           cp -R ../store/launch/assets ./assets
           npx --yes @capacitor/assets generate --android --iconBackgroundColor '#7FD0E4' --splashBackgroundColor '#7FD0E4'
           npx cap sync android
@@ -66,7 +75,7 @@ jobs:
             -Pandroid.injected.signing.key.password="$KEY_PASS"
           rm -f "$RUNNER_TEMP/upload.jks"
       - name: Publish the signed bundle to the android-builds branch
-        if: env.HAVE_KEY == 'true'
+        if: env.HAVE_KEY == 'true' && github.ref == 'refs/heads/main' && !inputs.demo_ads
         run: |
           mkdir -p "$RUNNER_TEMP/out"
           cp android/app/build/outputs/bundle/release/*.aab "$RUNNER_TEMP/out/high-and-low-${{ github.run_number }}.aab"

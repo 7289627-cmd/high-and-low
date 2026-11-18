@@ -46,6 +46,7 @@ async function boot(o={}){
   const m=mocks(o);for(const d of (o.drop||[]))delete m.Plugins[d];
   const dom=new JSDOM('<!doctype html><body></body>',{runScripts:'dangerously',pretendToBeVisual:true,url:'https://localhost/',virtualConsole:new (require('jsdom').VirtualConsole)(),
     beforeParse(w){
+      w.require=require('node:module').createRequire(path.join(ROOT,'app/native/hlnative.js'));
       if(!o.noCapacitor)w.Capacitor={getPlatform:()=>o.platform||'android',Plugins:o.emptyPlugins?{}:m.Plugins};
       w.HL_NO_TRACK=true;w.HL_NATIVE_CONFIG=Object.assign({LOAD_TIMEOUT_MS:300,SHOW_TIMEOUT_MS:2000},o.cfg||{});
     }});
@@ -67,14 +68,16 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
   // 1) contract and test ids
   {const {w,m}=await boot();const N=w.HLNative;
    ok(N,'HLNative missing');
-   for(const k of ['showInterstitial','showRewarded','buyNoAds','ownsNoAds','restore','haptic'])ok(N&&typeof N[k]==='function','contract method missing: '+k);
+   for(const k of ['showInterstitial','showRewarded','haptic'])ok(N&&typeof N[k]==='function','contract method missing: '+k);
+   for(const k of ['buyNoAds','ownsNoAds','restore','restorePurchases'])ok(N[k]===undefined,'purchase contract must be absent: '+k);
+   ok(count(m,'configure')===0,'purchases must not initialize');
    ok(count(m,'requestConsentInfo')===1&&count(m,'initialize')===1,'consent then initialize not run once at startup');
    ok(m.log.findIndex(x=>x[0]==='requestConsentInfo')<m.log.findIndex(x=>x[0]==='initialize'),'consent must come before initialize');
    const prep=m.log.find(x=>x[0]==='prepareInterstitial');
    ok(prep&&prep[1].adId==='ca-app-pub-3940256099942544/1033173712'&&prep[1].npa===true&&prep[1].isTesting===true,'interstitial should use Google android test id, npa and isTesting: '+JSON.stringify(prep));
    ok(w.errs.length===0,'page errors '+w.errs);}
   // 1b) iOS ids
-  {const {m}=await boot({platform:'ios'});const prep=m.log.find(x=>x[0]==='prepareInterstitial');ok(prep&&/4411468910$/.test(prep[1].adId),'ios interstitial id');}
+  {const {m}=await boot({platform:'ios'});const prep=m.log.find(x=>x[0]==='prepareInterstitial');ok(prep&&/4411468910$/.test(prep[1].adId)&&prep[1].isTesting===undefined,'iOS demo id must not be replaced by isTesting');}
   // 2) interstitial resolves only after the ad closes, and cleans up listeners
   {const {w,m}=await boot();const t0=Date.now();const r=await w.HLNative.showInterstitial();
    const ci=m.log.findIndex(x=>x[0]==='closed'),si=m.log.findIndex(x=>x[0]==='showInterstitial');
@@ -87,32 +90,27 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
   {const a=await boot({reward:true});ok((await a.w.HLNative.showRewarded())===true,'rewarded with reward should be true');
    const b=await boot({reward:false});ok((await b.w.HLNative.showRewarded())===false,'rewarded closed early should be false');}
   // 4) missing plugins never throw and resolve false
-  for(const [name,o] of [['no Capacitor',{noCapacitor:true}],['empty Plugins',{emptyPlugins:true}],['drop AdMob',{drop:['AdMob'],cfg:{IAP:{productId:'remove_ads',apiKey:{ios:'k',android:'k'}}}}],['drop Purchases',{drop:['Purchases']}]]){
+  for(const [name,o] of [['no Capacitor',{noCapacitor:true}],['empty Plugins',{emptyPlugins:true}],['drop AdMob',{drop:['AdMob']}],['drop Purchases',{drop:['Purchases']}]]){
     const {w}=await boot(o);const N=w.HLNative;let res;
-    try{res=[await N.showInterstitial(),await N.showRewarded(),await N.buyNoAds(),await N.ownsNoAds(),N.haptic('light')]}catch(e){fails.push(name+' threw '+e.message);continue}
-    // drop AdMob: purchases still work (buy true). drop Purchases: interstitial still true.
-    if(name==='drop AdMob')ok(res[0]===false&&res[1]===false&&res[2]===true,name+' got '+res);
-    else if(name==='drop Purchases')ok(res[0]===true&&res[1]===false&&res[2]===false&&res[3]===false,name+' got '+res);
+    try{res=[await N.showInterstitial(),await N.showRewarded(),N.haptic('light')]}catch(e){fails.push(name+' threw '+e.message);continue}
+    if(name==='drop AdMob')ok(res[0]===false&&res[1]===false,name+' got '+res);
+    else if(name==='drop Purchases')ok(res[0]===true&&res[1]===false,name+' got '+res);
     else ok(res.every(x=>x===false),name+' should be all false, got '+res);
   }
   // 5) real ids not filled in: refuse, never call the plugin
   {const {w,m}=await boot({cfg:{TEST_MODE:false}});ok((await w.HLNative.showInterstitial())===false,'placeholder id must resolve false');ok(count(m,'prepareInterstitial')===0&&count(m,'showInterstitial')===0,'placeholder id reached plugin');
-   ok((await w.HLNative.buyNoAds())===false&&count(m,'configure')===0,'placeholder RevenueCat key reached plugin');}
+   ok(w.HLNative.buyNoAds===undefined&&count(m,'configure')===0,'purchases must not be exposed or initialized');}
   // 6) consent: form shown when required, no ads when consent denies
   {const {w,m}=await boot({consent:{status:'REQUIRED',isConsentFormAvailable:true,canRequestAds:false}});ok(count(m,'showConsentForm')===1,'consent form not shown when required');
    // mock form returns canRequestAds:true -> ads allowed
    ok(count(m,'initialize')===1,'initialize after consent form');}
   {const {w,m}=await boot({consent:{status:'REQUIRED',isConsentFormAvailable:false,canRequestAds:false}});ok(count(m,'initialize')===0,'must not initialize without consent');ok((await w.HLNative.showInterstitial())===false,'no ad without consent');}
-  // 7) purchases (key set via config)
-  {const cfg={IAP:{productId:'remove_ads',apiKey:{ios:'k',android:'k'}}};
-   const a=await boot({cfg});ok((await a.w.HLNative.ownsNoAds())===false,'owns before buying');ok((await a.w.HLNative.buyNoAds())===true,'buy should be true');ok((await a.w.HLNative.ownsNoAds())===true,'owns after buying');
-   ok(count(a.m,'configure')===1,'configure once');ok(a.m.log.find(x=>x[0]==='getProducts')[1].productIdentifiers[0]==='remove_ads','product id');
-   const b=await boot({cfg,cancel:true});ok((await b.w.HLNative.buyNoAds())===false,'cancelled purchase should be false');}
-  // 7b) restore: true after the store reports the product, false with no key; HLAds.restore() sets noAds
-  {const cfg={IAP:{productId:'remove_ads',apiKey:{ios:'k',android:'k'}}};
-   const a=await boot({cfg});ok((await a.w.HLNative.restore())===true,'restore should be true');ok(count(a.m,'restorePurchases')===1,'restorePurchases called once');
-   const b=await boot();ok((await b.w.HLNative.restore())===false,'restore without a key must resolve false');
-   const c=await boot({loadAds:true,cfg});const A=c.w.eval('HLAds');ok(!A.noAds(),'precondition');await A.restore();ok(A.noAds()===true,'HLAds.restore should set noAds');}
+  // 7) even a legacy override must not re-enable the removed purchase bridge.
+  {const {w,m}=await boot({loadAds:true,cfg:{PURCHASES_ENABLED:true,IAP:{productId:'remove_ads',apiKey:{ios:'k',android:'k'}}}});
+   const A=w.eval('HLAds');for(const k of ['buyNoAds','ownsNoAds','restore','restorePurchases'])ok(w.HLNative[k]===undefined,'purchase method exposed: '+k);
+   ok(count(m,'configure')===0&&!A.canBuy(),'purchase initialization or UI exposed');ok((await A.buy())===false,'legacy buy must safely return false');}
+  {const {w,m}=await boot({cfg:{ADS_ENABLED:false}});for(const k of ['showInterstitial','showRewarded','buyNoAds','ownsNoAds','restore'])ok(w.HLNative[k]===undefined,'ad-free contract exposed: '+k);
+   ok(count(m,'initialize')===0&&count(m,'configure')===0,'ad-free build initialized ads or purchases');}
   // 8) haptics, vibrate shim, lifecycle
   {const {w,m}=await boot();w.navigator.vibrate(8);w.navigator.vibrate(15);w.navigator.vibrate(40);
    const imp=m.log.filter(x=>x[0]==='impact').map(x=>x[1].style);ok(imp.join()==='LIGHT,MEDIUM,HEAVY','vibrate shim styles '+imp);
@@ -126,11 +124,6 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
    ok(A.canBuy()===true||A.canBuy()===false,'canBuy callable');}
   {const {w,m}=await boot({loadAds:true});const A=w.eval('HLAds');A.setNoAds(true);for(let i=0;i<6;i++)await A.between();ok(count(m,'showInterstitial')===0,'ads shown although noAds is set');}
   {const {w,m}=await boot({loadAds:true,skipNative:true});const A=w.eval('HLAds');for(let i=0;i<6;i++)await A.between();ok(count(m,'showInterstitial')===0,'web build (no HLNative) must never show ads');}
-  // after a successful purchase the ads stop (HLAds.buy sets the flag)
-  {const {w,m}=await boot({loadAds:true,cfg:{IAP:{productId:'remove_ads',apiKey:{ios:'k',android:'k'}}}});const A=w.eval('HLAds');await A.between();await A.between();ok(count(m,'showInterstitial')===1,'precondition');
-   ok((await A.buy())===true&&A.noAds(),'HLAds.buy should set noAds');await A.between();await A.between();ok(count(m,'showInterstitial')===1,'ad shown after purchase');}
-  // 10) owned purchase at startup syncs into HLAds
-  {const {w}=await boot({loadAds:true,owned:true,cfg:{IAP:{productId:'remove_ads',apiKey:{ios:'k',android:'k'}}}});await wait(40);ok(w.eval('HLAds').noAds()===true,'ownsNoAds at startup should set noAds');}
   // 12) f02 durable storage mirror (Capacitor Preferences <-> localStorage)
   {// 12a) evicted localStorage: durable keys come back, game defaults written during boot do not win, transient keys stay out, one reload
    const prefs={'hl-elo':'1500','hl-coins':'7','hl-noads':'"1"','hl-pid':'"old"','hl-host-ABCD':'{"G":1}','hl-sec-ABCD-g-p':'5','hl-session':'{}','other':'x'};
@@ -175,20 +168,20 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
    const real=fs.existsSync(path.join(ROOT,'site/index.html'))?(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(fs.readFileSync(path.join(ROOT,'site/index.html'),'utf8'))||[])[1]:null;
    for(const c of [csp,real].filter(Boolean)){
      fs.writeFileSync(tmp,'<html><head><meta http-equiv="Content-Security-Policy" content="'+c+'"></head><body></body></html>');
-     const run=()=>cp.execFileSync('python3',['-I',path.join(ROOT,'app/scripts/app_csp.py'),tmp]);run();const once=fs.readFileSync(tmp,'utf8');run();ok(fs.readFileSync(tmp,'utf8')===once,'app_csp not idempotent');
+     const run=()=>cp.execFileSync(process.env.HL_TEST_PYTHON||'python3',['-I',path.join(ROOT,'app/scripts/app_csp.py'),tmp]);run();const once=fs.readFileSync(tmp,'utf8');run();ok(fs.readFileSync(tmp,'utf8')===once,'app_csp not idempotent');
      const out=/content="([^"]*)"/.exec(once)[1];const d={};out.split(';').forEach(x=>{const a=x.trim().split(/\s+/);d[a[0]]=a.slice(1)});
      for(const k of ['script-src','style-src','font-src','img-src','media-src','connect-src','manifest-src'])ok(d[k]&&d[k].includes('capacitor://localhost')&&d[k].includes('https://localhost')&&d[k].includes("'self'"),'origins missing in '+k);
      for(const k of ['default-src','frame-src','object-src','base-uri','form-action'])ok(!(d[k]||[]).some(v=>/localhost/.test(v)),k+' must not be widened');
      ok(!/unsafe-eval|\*\s|;\s*\*/.test(out.replace(/\*\.supabase\.co/g,'')),'rewrite must not add wildcards or unsafe-eval');
      const strip=x=>x.replace(/ capacitor:\/\/localhost https:\/\/localhost/g,'');ok(strip(out)===c,'rewrite changed something besides the two origins');}
-   fs.writeFileSync(tmp,'<html><head></head></html>');let threw=false;try{cp.execFileSync('python3',['-I',path.join(ROOT,'app/scripts/app_csp.py'),tmp],{stdio:'pipe'})}catch(e){threw=true}ok(threw,'missing CSP meta must fail the sync');fs.unlinkSync(tmp);}
+   fs.writeFileSync(tmp,'<html><head></head></html>');let threw=false;try{cp.execFileSync(process.env.HL_TEST_PYTHON||'python3',['-I',path.join(ROOT,'app/scripts/app_csp.py'),tmp],{stdio:'pipe'})}catch(e){threw=true}ok(threw,'missing CSP meta must fail the sync');fs.unlinkSync(tmp);}
   // 11) the real bundle (app/native/entry.js via esbuild) on a fake native bridge: proves the plugins get registered
   //     on Capacitor.Plugins (they do not without the plugin JS imports) and calls reach nativePromise.
-  const esb=path.join(ROOT,'app/node_modules/.bin/esbuild');
+  const esb=path.join(ROOT,'app/node_modules/esbuild/bin/esbuild');
   if(!fs.existsSync(esb)){console.log('SKIP bundle smoke test (run npm install in app/)')}
   else{
     const out=path.join(require('os').tmpdir(),'hl-bundle-'+process.pid+'.js');
-    require('child_process').execFileSync(esb,[path.join(ROOT,'app/native/entry.js'),'--bundle','--format=iife','--target=es2019','--outfile='+out,'--log-level=error'],{cwd:path.join(ROOT,'app')});
+    require('child_process').execFileSync(process.execPath,[esb,path.join(ROOT,'app/native/entry.js'),'--bundle','--format=iife','--target=es2019','--outfile='+out,'--log-level=error'],{cwd:path.join(ROOT,'app')});
     const code=fs.readFileSync(out,'utf8');fs.unlinkSync(out);
     const calls=[],cbs={};
     const P=(n,...m)=>({name:n,methods:m.map(x=>({name:x,rtype:'promise'})).concat([{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'promise'}])});
@@ -204,7 +197,8 @@ const count=(m,n)=>m.log.filter(x=>x[0]===n).length;
     const w=dom.window;const errs=[];w.addEventListener('error',e=>errs.push(e.message));
     const s=w.document.createElement('script');s.textContent=code;w.document.body.appendChild(s);await wait(80);
     ok(errs.length===0,'bundle errors '+errs);
-    ok(w.Capacitor.Plugins&&w.Capacitor.Plugins.AdMob&&w.Capacitor.Plugins.Haptics&&w.Capacitor.Plugins.Purchases&&w.Capacitor.Plugins.App&&w.Capacitor.Plugins.Preferences&&w.Capacitor.Plugins.KeepAwake,'plugins not registered on Capacitor.Plugins by the bundle');
+    ok(w.Capacitor.Plugins&&w.Capacitor.Plugins.AdMob&&w.Capacitor.Plugins.Haptics&&w.Capacitor.Plugins.App&&w.Capacitor.Plugins.Preferences&&w.Capacitor.Plugins.KeepAwake,'plugins not registered on Capacitor.Plugins by the bundle');
+    ok(!w.Capacitor.Plugins.Purchases&&!calls.some(x=>x.startsWith('Purchases.')),'bundle must not register or initialize purchases');
     ok(w.HLNative&&typeof w.HLNative.showInterstitial==='function','bundle did not define HLNative');
     const r=await w.HLNative.showInterstitial();
     ok(r===true,'bundle: interstitial should resolve true, got '+r+' calls='+calls);

@@ -13,6 +13,19 @@ const SFX={
     /* IMPACT -19 LUFS */bonk:0.94,pop:0.94,zap:1.27,d_slam:1.30,k_clang:0.47,k_slam:1.27,k_boom:1.01,k_crack:0.98,k_explode:0.92,k_popbang:1.26,k_crunch:0.90
   },
   MAXVOICES:10,DEDUPE:0.035,voices:[],starts:{},
+  // iOS Capacitor serves local MP3s with a non-HTTP URLResponse. WebKit can
+  // report status 0 / ok false for that readable response, despite its data.
+  readAsset(r,path){
+    if(!r||r.type==='opaque'||r.type==='opaqueredirect')throw new Error('unreadable audio response');
+    let local=false;
+    try{
+      const loc=window.location, requested=new URL(path,loc.href), delivered=new URL(r.url||path,loc.href);
+      local=loc.protocol==='capacitor:'&&loc.hostname==='localhost'&&
+        requested.protocol==='capacitor:'&&requested.host===loc.host&&delivered.href===requested.href;
+    }catch(e){}
+    if(!r.ok&&!(r.status===0&&local))throw new Error('audio request failed');
+    return r.arrayBuffer().then(b=>{if(!b||!b.byteLength)throw new Error('empty audio');return b});
+  },
   play(key,opts){
     try{
       if(SFX.muted||!SFX.ctx||!SFX.buf[key])return;
@@ -48,34 +61,36 @@ try{SFX.muted=localStorage.getItem('hl-mute')==='1'}catch(e){}
   if(!AC)return;
   let started=false;
   function init(){
-    if(started)return;started=true;
-    ['pointerdown','touchend','keydown'].forEach(t=>document.removeEventListener(t,init,true));
+    if(started)return;
+    let ctx=null;
     try{
       try{if(navigator.audioSession)navigator.audioSession.type='ambient'}catch(e){}
-      const ctx=new AC();SFX.ctx=ctx;
-      try{ctx.resume()}catch(e){}
-      const m=ctx.createGain();m.gain.value=0.8;SFX.master=m;
+      ctx=new AC();
+      const m=ctx.createGain();m.gain.value=0.8;
       // gentle master limiter so layered cues cannot clip the output
       let out=ctx.destination;
       try{const lim=ctx.createDynamicsCompressor();lim.threshold.value=-3;lim.knee.value=3;lim.ratio.value=12;lim.attack.value=0.002;lim.release.value=0.15;lim.connect(ctx.destination);out=lim}catch(e){}
       m.connect(out);
+      SFX.ctx=ctx;SFX.master=m;started=true;
+      ['pointerdown','touchend','keydown'].forEach(t=>document.removeEventListener(t,init,true));
+      try{const p=ctx.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}
       SFX.KEYS.forEach(k=>{
         try{
-          fetch('sfx/'+k+'.mp3').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer()}).then(ab=>new Promise((res,rej)=>{
+          const url='sfx/'+k+'.mp3';
+          fetch(url).then(r=>SFX.readAsset(r,url)).then(ab=>new Promise((res,rej)=>{
             const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.catch)p.catch(rej);
           })).then(b=>{SFX.buf[k]=b}).catch(()=>{});
         }catch(e){}
       });
-    }catch(e){}
+    }catch(e){try{if(ctx&&ctx.close){const p=ctx.close();if(p&&p.catch)p.catch(()=>{})}}catch(x){}}
   }
   ['pointerdown','touchend','keydown'].forEach(t=>document.addEventListener(t,init,{capture:true,passive:true}));
-  // iOS: if the first tap didn't unlock audio, keep retrying on later taps until it is running
+  // Retry on later gestures as well: iOS may interrupt audio after an earlier successful unlock.
   function wakeAudio(){
-    const c=SFX.ctx;if(!c)return;
-    if(c.state==='running'){['touchend','click'].forEach(t=>document.removeEventListener(t,wakeAudio,true));return}
-    try{c.resume()}catch(e){}
+    const c=SFX.ctx;if(!c||c.state==='running'||document.hidden)return;
+    try{const p=c.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}
   }
-  ['touchend','click'].forEach(t=>document.addEventListener(t,wakeAudio,{capture:true,passive:true}));
+  ['pointerdown','touchend','click','keydown'].forEach(t=>document.addEventListener(t,wakeAudio,{capture:true,passive:true}));
   // e04: after a phone call, Siri or the app switcher the context can be 'interrupted' or 'suspended'; try to bring it back as soon as the page is visible again
   function backAudio(){const c=SFX.ctx;if(!c||c.state==='running'||document.hidden)return;try{const p=c.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
   document.addEventListener('visibilitychange',backAudio);window.addEventListener('pageshow',backAudio);

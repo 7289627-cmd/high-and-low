@@ -410,11 +410,10 @@ function rate(P,o){
     // my seat was taken over by a bot while I was away, then the host leaves: no win for me
     setG(',bot:1');U2.eval("isHost=false;peerMap=new Map([['h',{pres:{role:'host',gone:1,game:{}},updatedAt:1}]]);update()");
     chk(U2.eval('myElo()')===1000&&U2.eval("LS.get(LSK('hl-elo-g'))")===null,'a replaced player got win credit when the host left');
-    // Play again must not search again if the player already left while an ad was showing
+    // A queued rematch must not start if an independent leave superseded it.
     await wait(300);
-    U2.eval("window.HLNative={showInterstitial:()=>new Promise(r=>setTimeout(r,500))};HLAds.games=1;G={gid:'e01h',pub:1,phase:'over',max:100,players:[{pid:PID,name:'Me',a:1},{pid:'opp',name:'Op',a:1}]};view='game';mode='online';playAgain();G=null;view='home';mode=null");
-    await wait(1200);
-    chk(U2.eval("mode")!=='search'&&U2.eval("view")==='home','Play again searched after the player had already left during the ad');
+    await U2.eval("(async()=>{G={gid:'e01h',pub:1,phase:'over',max:100,players:[{pid:PID,name:'Me',a:1},{pid:'opp',name:'Op',a:1}]};view='game';mode='online';let finish;R={leave(){if(finish)return Promise.resolve();return new Promise(r=>{finish=r})}};const rematch=playAgain();await leaveGame();finish();await rematch})()");
+    chk(U2.eval("mode")!=='search'&&U2.eval("view")==='home','Play again searched after an independent leave superseded the rematch');
     chk(!U2.errs.length,'integration guard page errors '+U2.errs);
   }
   console.log(`PASS duel (${checks} checks)`);process.exit(0);

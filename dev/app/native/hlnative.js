@@ -34,7 +34,7 @@
       android: { interstitial: 'REPLACE_ANDROID_INTERSTITIAL_UNIT_ID', rewarded: 'REPLACE_ANDROID_REWARDED_UNIT_ID' },
       ios:     { interstitial: 'REPLACE_IOS_INTERSTITIAL_UNIT_ID',     rewarded: 'REPLACE_IOS_REWARDED_UNIT_ID' }
     },
-    LOAD_TIMEOUT_MS: 10000,   // give up waiting for an ad to load
+    LOAD_TIMEOUT_MS: 10000,   // give up waiting for an ad to load when explicitly requested
     SHOW_TIMEOUT_MS: 120000   // safety net if a close event never arrives
   };
   // Tests may override before this script runs: window.HL_NATIVE_CONFIG = { LOAD_TIMEOUT_MS: 50, ... }
@@ -200,6 +200,12 @@
 
   var ads = { interstitial: null, rewarded: null };
   var preparing = { interstitial: null, rewarded: null };
+  var interstitialRetryAt = 0;
+  function retryInterstitial() {
+    if (privacy && appActive && !document.hidden && navigator.onLine !== false &&
+        !audioHolds && !preparing.interstitial && !ads.interstitial?.ready &&
+        Date.now() >= interstitialRetryAt) preload('interstitial');
+  }
   function preload(kind) {
     var A = plug('AdMob'), o = adOptions(kind);
     if (!A || !o) return null;
@@ -207,21 +213,20 @@
     if (!fn) return null;
     // Only one native load per type can write to the plugin's cache at a time.
     if (preparing[kind]) return ads[kind];
+    if (kind === 'interstitial') interstitialRetryAt = Date.now() + 5000;
     var version = consentVersion;
+    var prepared = { ready: false };
     preparing[kind] = (async function () {
       if (!(await initAds()) || version !== consentVersion) return false;
       await fn.call(A, o);
       return version === consentVersion && privacy.canRequestAds();
-    })().catch(function () { return false; });
-    preparing[kind].then(function () {
+    })().catch(function () { return false; }).then(function (loaded) {
+      prepared.ready = loaded;
       preparing[kind] = null;
       if (kind === 'interstitial' && version !== consentVersion && privacy.canRequestAds()) preload(kind);
-    });
-    var prepared = { ready: false };
-    prepared.loaded = withTimeout(preparing[kind], CONFIG.LOAD_TIMEOUT_MS, false).then(function (loaded) {
-      prepared.ready = loaded;
       return loaded;
     });
+    prepared.loaded = preparing[kind];
     return (ads[kind] = prepared);
   }
 
@@ -232,18 +237,21 @@
     function canPresent() {
       return !readyOnly || (appActive && !document.hidden && navigator.onLine !== false && current());
     }
-    if (!A || !privacy || !privacy.canRequestAds() || !canPresent()) return { shown: false, rewarded: false };
+    if (!A || !privacy || !canPresent()) return { shown: false, rewarded: false };
     var version = consentVersion;
-    var prepared = ads[kind] || preload(kind);
-    if (readyOnly && (!prepared || !prepared.ready)) {
-      // Leave an in-flight load for the next round and retry a failed load in advance of it.
-      if (prepared && !preparing[kind]) preload(kind);
+    if (readyOnly && (!ads[kind]?.ready || !privacy.canRequestAds())) {
+      retryInterstitial();
       return { shown: false, rewarded: false };
     }
-    var loaded = prepared && (readyOnly || await prepared.loaded);
+    if (!privacy.canRequestAds()) return { shown: false, rewarded: false };
+    var prepared = ads[kind] || preload(kind);
+    var loaded = prepared && (readyOnly || await withTimeout(prepared.loaded, CONFIG.LOAD_TIMEOUT_MS, false));
+    if (!loaded) {
+      if (!preparing[kind]) preload(kind);
+      return { shown: false, rewarded: false };
+    }
     if (ads[kind] === prepared) ads[kind] = null;
     if (version !== consentVersion || !privacy.canRequestAds()) return { shown: false, rewarded: false };
-    if (!loaded) { preload(kind); return { shown: false, rewarded: false }; }
     var ev = kind === 'interstitial'
       ? { dismiss: 'interstitialAdDismissed', fail: 'interstitialAdFailedToShow' }
       : { dismiss: 'onRewardedVideoAdDismissed', fail: 'onRewardedVideoAdFailedToShow', reward: 'onRewardedVideoAdReward' };
@@ -365,8 +373,10 @@
     if (!App) return;
     try {
       var r = App.addListener('appStateChange', function (s) {
+        var wasActive = appActive;
         appActive = !s || s.isActive !== false;
         if (!appActive) audioPause(); else if (audioHolds === 0) audioResume();
+        if (!wasActive && appActive) retryInterstitial();
       });
       if (r && r.catch) r.catch(function () {});
     } catch (e) {}
@@ -393,8 +403,23 @@
       if (SB) { var a = SB.setStyle({ style: 'LIGHT' }); if (a && a.catch) a.catch(function () {}); }
     } catch (e) {}
     // consent first, then load the first interstitial
-    if (!CONFIG.ADS_ENABLED) return;
-    initAds().then(function (ok) { if (ok) { preload('interstitial'); } });
+    if (!privacy) return;
+    var wasOffline = window.navigator?.onLine === false, reconnectPending = false;
+    window.addEventListener?.('offline', function () { wasOffline = true; });
+    window.addEventListener?.('online', function () {
+      if (!wasOffline) return;
+      wasOffline = false;
+      if (reconnectPending) return;
+      reconnectPending = true;
+      // The SDK may still be settling a request made on the previous connection.
+      Promise.resolve(preparing.interstitial).then(function () {
+        setTimeout(function () {
+          reconnectPending = false;
+          retryInterstitial();
+        }, Math.max(0, interstitialRetryAt - Date.now()));
+      });
+    });
+    preload('interstitial');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else setTimeout(start, 0);
 })();

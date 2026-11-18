@@ -18,7 +18,8 @@ let view='home', mode=null, code=null, isHost=false;
 let isPub=false, roomNS=null, roomState='checking', R=null, connected=false, joinedAt=0;
 let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
-let lastEv=null, evPrimed=null, winShown=null;
+let lastEv=null, evPrimed=null, winShown=null, winPending=null;
+let adRound=null, leaveSeq=0, leaving=false;
 let ui={target:null,dir:'h',step:'dir',num:'',typed:'',pad:LS.get('hl-askpad')===1,sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, botAt=0, qSched=0, tickTimer=null, wheelSched=null;
@@ -193,7 +194,7 @@ function cleanG(g){
     const str=(v,n)=>typeof v==='string'?v.slice(0,n):'';
     const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
     if(!['lobby','secrets','play','over'].includes(g.phase))return null;
-    g.max=[100,1000,10000,100000].includes(g.max)?g.max:10000;g.pub=g.pub?1:0;
+    g.max=[100,1000,10000,100000].includes(g.max)?g.max:10000;g.pub=g.pub?1:0;g.forfeit=g.forfeit?1:0;
     const hats=typeof hatCount==='function'?hatCount():12;
     g.players=g.players.slice(0,6).filter(p=>p&&typeof p==='object'&&okPid(p.pid)).map(p=>{
       for(const k in p){const v=p[k];if(k!=='name'&&(typeof v==='object'||typeof v==='function'||(typeof v==='string'&&v.length>40)))delete p[k]}
@@ -261,7 +262,25 @@ function update(){
     if(G&&G.phase==='over')try{botGameDone()}catch(e){}
     try{trackTaunts()}catch(e){}
     trackTick();
-    if(G&&G.phase==='over'&&winShown!==G.gid+G.en){winShown=G.gid+G.en;if(!replaced())later(showWinner,900)}
+    if(!leaving&&G&&G.phase==='play'&&HLAds.can()&&byPid(PID)&&!replaced())adRound=G.gid;
+    if(!leaving&&G&&G.phase==='over'){
+      const round=G.gid;
+      const current=()=>!leaving&&view==='game'&&G&&G.gid===round&&G.phase==='over'&&!replaced();
+      if(adRound===round&&(G.forfeit||document.hidden||navigator.onLine===false))adRound=null;
+      if(winShown!==round&&winPending!==round&&!replaced()){
+        winPending=round;
+        later(()=>{
+          if(winPending===round)winPending=null;
+          if(!current()||winShown===round)return;
+          winShown=round;
+          const close=showWinner();
+          if(adRound===round){
+            adRound=null;
+            if(byPid(PID))HLAds.finished(round,()=>current()&&close.isConnected&&!document.hidden&&navigator.onLine!==false);
+          }
+        },900);
+      }
+    }
   }
   render();
 }
@@ -404,7 +423,7 @@ function hostTick(){
     for(const p of G.players){
       if(!p.a||p.bot||p.pid===PID)continue;
       const pp=peerMap.get(p.pid);
-      if(pp&&pp.pres.gone){if(G.pub&&G.phase==='play'&&G.players.length===2){G.phase='over';G.win=PID;publishG();return} /* the opponent left a rated duel: I win */takeOver(p);ch=true}
+      if(pp&&pp.pres.gone){if(G.pub&&G.phase==='play'&&G.players.length===2){G.phase='over';G.win=PID;G.forfeit=1;publishG();return} /* the opponent left a rated duel: I win */takeOver(p);ch=true}
       else if(pp)lastSeen[p.pid]=Date.now();
       else if(Date.now()-(lastSeen[p.pid]||Date.now())>(window.HL_TEST_GONE_MS||90000)){takeOver(p);ch=true}
     }
@@ -625,6 +644,7 @@ function botChoose(me){
 }
 function hostStart(){
   G.gid=uid();G.phase='secrets';G.turn=rnd(0,G.players.length-1);G.seq=0;G.stage='await';G.q=null;G.sub=[];G.subN=0;G.ev=null;G.en=0;G.asked=0;G.win=null;G.st={};
+  G.forfeit=0;
   botSecrets={};
   {const hn=G.players.filter(p=>!p.bot).length;G.bs=hn===1?botSkillBase():0.5}
   G.kn={};
@@ -777,6 +797,7 @@ function showScene(kind,p,title,text,ms,killer,n){
 function showWinner(){
   if(!G||G.phase!=='over')return;
   ++sceneSeq;
+  const round=G.gid;
   const w=byPid(G.win);
   const lo=G.pub&&G.players.length===2&&w?G.players.find(p=>p.pid!==w.pid):null;
   let conf='';if(!(lo&&lo.pid===PID))for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
@@ -787,13 +808,14 @@ function showWinner(){
   if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat: ${esc(hatName(nh))}</b></div>`;sfx('lock',{delay:0.5})}
   openOv(`<div class="sheet center has-x"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="stage">${conf}${w?`<div class="actor a-hop${lo?' pw2 pw-w':''}">${charSVG(pv(w),'happy')}</div>`:''}${lo?`<div class="actor a-slump pw2 pw-l">${charSVG(pv(lo),'scared')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
 <div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>'+shareBtnHTML()+repBtnHTML():`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}${shareBtnHTML()}${repBtnHTML()}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
-  {const c=$('#ovClose');if(c)c.onclick=()=>{closeOv();HLAds.between()}}
-  {const x=$('#ovX');if(x)x.onclick=()=>{closeOv();if(G&&G.pub){const g=G.gid;HLAds.between().then(()=>{if(G&&G.gid===g)return leaveGame()})}else HLAds.between()}}
-  {const a=$('#againBtn');if(a)a.onclick=playAgain}
+  {const c=$('#ovClose');if(c)c.onclick=closeOv}
+  {const x=$('#ovX');if(x)x.onclick=()=>{closeOv();if(G&&G.gid===round&&G.pub)leaveGame()}}
+  {const a=$('#againBtn');if(a)a.onclick=()=>{if(G&&G.gid===round)playAgain()}}
   {const sb=$('#shareBtn');if(sb)sb.onclick=()=>shareWin(sb)}
   {const rb=$('#repBtn');if(rb&&!rb.disabled)rb.onclick=reportPlayer}
-  const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();const g=G&&G.gid;HLAds.between().then(()=>{if(G&&G.gid===g)toLobby()})};
+  const l=$('#ovLobby');if(l)l.onclick=()=>{closeOv();if(G&&G.gid===round)toLobby()};
   if($('.er.ru'))later(()=>{if(!$('.er.ru'))return;sfx('d_ding');if(typeof haptic==='function')haptic('win');later(()=>{const c=$('.er-conf');if(c)c.remove()},2600)},950);
+  return $('#ovX');
 }
 function toLobby(){if(!isHost||!G)return;G.players=G.players.filter(p=>!p.hb);G.phase='lobby';G.q=null;G.ev=null;G.gid=uid();publishG()}
 
@@ -806,8 +828,11 @@ function quickStop(){
   clearInterval(pubTimer);pubTimer=null;
   if(qp){clearInterval(qp.ann);try{qp.q&&qp.q.leave()}catch(e){}qp=null}
 }
-/* The ad may take up to 15 s: if the player left or started something else meanwhile, this old request must not leave or search again. */
-function playAgain(){closeOv();track('again',{m:trackMode(playMode().max)});const g=G&&G.gid;HLAds.between().then(()=>{if(G&&G.gid===g)return leaveGame().then(quickPlay)})}
+async function playAgain(){
+  closeOv();track('again',{m:trackMode(playMode().max)});
+  const id=await leaveGame();
+  if(id===leaveSeq&&view==='home'&&!G)return quickPlay();
+}
 function waitHTML(players){
   let list=players;
   if(!list){const l=myLook()||{};list=[{pid:PID,name:safeName(NAME||'You'),c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
@@ -914,13 +939,16 @@ function addBot(){
   G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
 async function leaveGame(){
+  const id=++leaveSeq;
+  leaving=true;
   if(G&&G.pub&&G.phase==='play'&&!eloSkip){const m=byPid(PID);if(m&&m.a&&!oppVanished()){eloApply(false);stGame(false,false)}}eloSkip=false;eloRoom='';pendClear();
   trackLeave();hostSeenAt=0;quickStop();isPub=false;clearInterval(hbTimer);hbTimer=null;hbPeriod=0;
-  clearTimers();clearInterval(tickTimer);closeOv();
+  clearTimers();clearInterval(tickTimer);winPending=null;adRound=null;closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
+  if(id!==leaveSeq)return;
   LS.del(LSK('hl-session'));if(isHost&&code)LS.del('hl-host-'+code);
   R=null;view='home';mode=null;G=null;code=null;pubAt=0;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,leaveArmed:false,bubble:null};
-  keepAwake();render(true);
+  leaving=false;keepAwake();render(true);return id;
 }
 function lockSecret(n){
   haptic('tap');

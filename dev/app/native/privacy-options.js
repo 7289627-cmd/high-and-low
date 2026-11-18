@@ -2,7 +2,8 @@ function createPrivacyOptions({ document, getAdMob, onOptionsClosed = () => {} }
   let allowed = false;
   let optionsRequired = false;
   let openingOptions = false;
-  let initialRequest;
+  let hasConsentDecision = false;
+  let pendingRequest;
 
   function canRequestAds() {
     return allowed && !openingOptions;
@@ -33,12 +34,14 @@ function createPrivacyOptions({ document, getAdMob, onOptionsClosed = () => {} }
 
   async function requestConsent(showInitialForm) {
     allowed = false;
+    hasConsentDecision = false;
     const AdMob = getAdMob();
     if (!AdMob) return;
     let info;
     try {
       info = await AdMob.requestConsentInfo({});
       if (showInitialForm && info?.isConsentFormAvailable) info = await AdMob.showConsentForm();
+      hasConsentDecision = typeof info?.canRequestAds === 'boolean';
       allowed = info?.canRequestAds === true;
     } catch {
       // The bridge does not return consent information on an SDK error.
@@ -49,7 +52,7 @@ function createPrivacyOptions({ document, getAdMob, onOptionsClosed = () => {} }
   }
 
   async function showPrivacyOptions() {
-    if (!optionsRequired || openingOptions) return;
+    if (!optionsRequired || openingOptions || pendingRequest) return;
     openingOptions = true;
     updateButton();
     try {
@@ -72,8 +75,11 @@ function createPrivacyOptions({ document, getAdMob, onOptionsClosed = () => {} }
   return {
     canRequestAds,
     gatherConsent() {
-      if (!initialRequest) initialRequest = requestConsent(true);
-      return initialRequest.then(canRequestAds);
+      if (openingOptions || hasConsentDecision) return Promise.resolve(canRequestAds());
+      if (!pendingRequest) {
+        pendingRequest = requestConsent(true).then(canRequestAds).finally(() => { pendingRequest = null; });
+      }
+      return pendingRequest;
     },
   };
 }

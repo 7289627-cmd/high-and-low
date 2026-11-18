@@ -1,6 +1,6 @@
 /* ---------- Ads (app builds only) ----------
    The website never shows ads. A store build provides window.HLNative with any of:
-     showInterstitial()            full-screen ad, returns a Promise that resolves when it closes
+     showInterstitial(current)     shows an already-loaded ad if current() still permits presentation
      showRewarded()                Promise<boolean>, true if the player watched to the end
      buyNoAds()                    Promise<boolean>, true once the purchase is owned
      ownsNoAds()                   boolean or Promise<boolean>
@@ -9,23 +9,21 @@
      openRoom(urlOrHash)           boolean, bridge-internal: opens #room=CODE from an app link (sets location.hash, reloads once)
      haptic(kind), exit()          optional, see src/haptics.js and hlBack() in main.js
    The bridge (app/native/hlnative.js) also mirrors hl-* localStorage keys into Capacitor Preferences and restores them before the game boots.
-   Rules kept here so every build behaves the same:
-   never during a game, first ad no earlier than after the 2nd finished game, then every 2nd game. */
+   An active player gets one opportunity at the end of each finished round. */
 const HLAds={
-  games:0,
+  attempted:new Set(),
   noAds(){try{return localStorage.getItem('hl-noads')==='1'}catch(e){return false}},
   setNoAds(v){try{localStorage.setItem('hl-noads',v?'1':'0')}catch(e){}},
   can(){return !!(window.HLNative&&window.HLNative.showInterstitial)&&!HLAds.noAds()},
-  // call when a finished game is being left (Play again, Close, back to lobby)
-  async between(){
-    HLAds.games++;
-    if(!HLAds.can()||HLAds.games<2||HLAds.games%2)return;
+  async finished(round,current){
+    if(!HLAds.can()||HLAds.attempted.has(round))return;
+    HLAds.attempted.add(round);
+    if(HLAds.attempted.size>64)HLAds.attempted.delete(HLAds.attempted.values().next().value);
+    if(!current())return;
     try{
       track('ad',{t:'inter',s:'show'});
-      let tm,st='close';
-      // a hung ad must not block the caller; a late ad result is ignored (the race settles once)
-      await Promise.race([Promise.resolve(window.HLNative.showInterstitial()).catch(()=>{st='fail'}),new Promise(r=>{tm=setTimeout(()=>{st='fail';r()},window.HL_TEST_AD_MS||15000)})]);
-      clearTimeout(tm);track('ad',{t:'inter',s:st});
+      const shown=await window.HLNative.showInterstitial(current);
+      track('ad',{t:'inter',s:shown?'close':'fail'});
     }catch(e){track('ad',{t:'inter',s:'fail'})}
   },
   canBuy(){return !!(window.HLNative&&window.HLNative.buyNoAds)&&!HLAds.noAds()},

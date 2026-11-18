@@ -4,7 +4,7 @@ on:
     branches: [qa-ios-interstitial]
     paths:
       - 'dev/app/test/ios-admob-simulator.py'
-      - 'dev/app/native/**'
+      - 'dev/app/native/hlnative.js'
 jobs:
   simulator:
     runs-on: macos-26-intel

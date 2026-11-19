@@ -25,7 +25,9 @@ class ScreenshotsTest(unittest.TestCase):
         for operations in ([part(0, 4)], [part(0, 4), part(3, 3)], [part(0, 4), part(5, 1)]):
             with self.assertRaises(shots.SafetyError):
                 shots.parts(operations, b'abcdef')
-        bad = part(0, 6) | {'url': 'https://attacker.invalid/secret'}
+        alternate = part(0, 6) | {'url': 'https://storage.example.test/signed', 'method': 'put'}
+        self.assertEqual(shots.parts([alternate], b'abcdef'), [(alternate, b'abcdef')])
+        bad = part(0, 6) | {'url': 'https://user:pass@storage.example.test/signed'}
         with self.assertRaises(shots.SafetyError):
             shots.parts([bad], b'abcdef')
 

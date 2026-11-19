@@ -67,12 +67,10 @@ def parts(operations, data):
     for part in sorted(operations, key=lambda value: value['offset']):
         url = urllib.parse.urlsplit(part['url'])
         end = offset + part['length']
-        hostname = url.hostname or ''
-        valid_host = hostname.endswith(('.apple.com', '.icloud.com')) and url.netloc == hostname
-        if url.scheme != 'https' or not valid_host or url.fragment:
-            raise SafetyError('unexpected Apple image upload host: ' + hostname)
-        if part['method'] != 'PUT':
-            raise SafetyError('unexpected Apple image upload method')
+        if url.scheme != 'https' or not url.hostname or url.username or url.password or url.fragment:
+            raise SafetyError('invalid Apple asset upload URL')
+        if not part['method'].isascii() or not part['method'].isalpha():
+            raise SafetyError('invalid Apple asset upload method')
         if part['offset'] != offset or not offset < end <= len(data):
             raise SafetyError(f'invalid upload range {part["offset"]}+{part["length"]} for {len(data)} bytes')
         result.append((part, data[offset:end]))
@@ -83,7 +81,7 @@ def parts(operations, data):
 
 
 def transfer(opener, operation, data):
-    request = urllib.request.Request(operation['url'], method='PUT', data=data,
+    request = urllib.request.Request(operation['url'], method=operation['method'], data=data,
         headers={row['name']: row['value'] for row in operation['requestHeaders']})
     for attempt in range(3):
         try:
@@ -181,7 +179,13 @@ def upload(api, put, library_id, key, data, previous):
             or a.get('category') != CATEGORY or a.get('referenceName') != key):
         raise SafetyError('existing image differs from the approved upload')
     if a['state'] == 'AWAITING_UPLOAD':
-        for operation, chunk in parts(a['uploadOperations'], data):
+        operations = a.get('uploadOperations')
+        if not operations:
+            a = metadata.attr(metadata.get_resource(api, IMAGES, image_id))
+            operations = a.get('uploadOperations')
+        if not operations:
+            raise SafetyError('Apple returned no upload operations for the saved reservation')
+        for operation, chunk in parts(operations, data):
             put(operation, chunk)
         api('PATCH', f'/v1/{IMAGES}/{image_id}',
             {'data': {'type': IMAGES, 'id': image_id, 'attributes': {'uploaded': True}}})

@@ -31,6 +31,11 @@ class AdsBuildConfigTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {'ADS_ENABLED': False})
 
+    def test_native_ios_disables_optional_gameplay_telemetry(self):
+        for platform in ('ios', 'android'):
+            config = json.loads(self.run_config(HL_ADMOB_PLATFORM=platform).stdout)
+            self.assertEqual(config.get('DISABLE_GAMEPLAY_TELEMETRY', False), platform == 'ios')
+
     def test_production_requires_matching_non_demo_ids(self):
         good = {'HL_ADS_ONLY': '1', 'HL_ADMOB_PLATFORM': 'ios',
                 'HL_ADMOB_APP_ID': 'ca-app-pub-1234567890123456~1234567890',
@@ -39,11 +44,13 @@ class AdsBuildConfigTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         config = json.loads(result.stdout)
         self.assertTrue(config['ADS_ENABLED'])
+        self.assertTrue(config['DISABLE_GAMEPLAY_TELEMETRY'])
         self.assertNotIn('PURCHASES_ENABLED', config)
         self.assertFalse(config['TEST_MODE'])
         self.assertEqual(config['REAL_IDS']['ios']['interstitial'], good['HL_ADMOB_INTERSTITIAL_ID'])
         android = self.run_config(**(good | {'HL_ADMOB_PLATFORM': 'android'}))
         self.assertEqual(android.returncode, 0, android.stderr)
+        self.assertNotIn('DISABLE_GAMEPLAY_TELEMETRY', json.loads(android.stdout))
         self.assertEqual(json.loads(android.stdout)['REAL_IDS']['android']['interstitial'], good['HL_ADMOB_INTERSTITIAL_ID'])
         for updates in ({'HL_ADMOB_APP_ID': ''}, {'HL_ADMOB_INTERSTITIAL_ID': ''},
                         {'HL_ADMOB_PLATFORM': 'other'}, {'HL_NO_ADS': '1'},
@@ -59,7 +66,10 @@ class AdsBuildConfigTest(unittest.TestCase):
             for app_id in ('', APP_ID):
                 result = self.run_config(**args, HL_ADMOB_APP_ID=app_id)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(json.loads(result.stdout), {'ADS_ENABLED': True, 'TEST_MODE': True})
+                expected = {'ADS_ENABLED': True, 'TEST_MODE': True}
+                if platform == 'ios':
+                    expected['DISABLE_GAMEPLAY_TELEMETRY'] = True
+                self.assertEqual(json.loads(result.stdout), expected)
             for conflict in ({'HL_NO_ADS': '1'}, {'HL_ADS_ONLY': '1'},
                              {'HL_ADMOB_APP_ID': 'unexpected'}, {'HL_ADMOB_APP_ID': UNIT_ID},
                              {'HL_ADMOB_APP_ID': APP_ID, 'HL_ADMOB_INTERSTITIAL_ID': UNIT_ID}):
@@ -74,6 +84,10 @@ class AdsBuildConfigTest(unittest.TestCase):
                 script = app / 'scripts/configure-native.mjs'
                 script.parent.mkdir()
                 shutil.copyfile(APP / 'scripts/configure-native.mjs', script)
+                if platform == 'ios':
+                    plugin = pathlib.Path('node_modules/@capacitor-community/admob/ios/Sources/AdMobPlugin/AdMobPlugin.swift')
+                    (app / plugin).parent.mkdir(parents=True)
+                    shutil.copyfile(APP / plugin, app / plugin)
                 plist = app / 'ios/App/App/Info.plist'
                 plist.parent.mkdir(parents=True)
                 plist.write_bytes(plistlib.dumps({'CFBundleDisplayName': 'High & Low'}))

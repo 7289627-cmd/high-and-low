@@ -1,0 +1,57 @@
+{
+  "es-MX": {
+    "subtitle": "Adivina el número secreto",
+    "keywords": "adivinar,amigos,fiesta,multijugador,estrategia,pistas,rival,lógica",
+    "description": "Cada quien esconde un número. En tu turno, pregunta si el del rival es mayor o menor que el número que propongas. Usa las respuestas para descartar opciones y atrévete a adivinar. ¡Gana quien siga en pie!\n\nJuega un duelo de clasificación o crea una sala sin clasificación para un máximo de seis jugadores. Comparte el código de cuatro letras para invitar a tus amigos. Si falta un rival en un duelo, un jugador controlado por la computadora puede ocupar su lugar.\n\nElige un apodo. No necesitas una cuenta, pero sí conexión a internet. Pueden aparecer anuncios entre partidas."
+  },
+  "fr-FR": {
+    "subtitle": "Devine le nombre secret",
+    "keywords": "devinette,amis,soirée,multijoueur,déduction,logique,indices,duel",
+    "description": "Chacun choisit un nombre en secret. À ton tour, propose un nombre et demande à ton adversaire si le sien est plus grand ou plus petit. Élimine les possibilités, puis tente ta chance. Le dernier en jeu gagne !\n\nLance un duel classé ou crée un salon amical pour six joueurs maximum. Partage son code à quatre lettres avec tes amis. Si personne n’est disponible en duel, un adversaire contrôlé par le jeu peut prendre la place libre.\n\nChoisis un pseudo et joue sans compte. Une connexion Internet est nécessaire. Des publicités peuvent apparaître entre les parties."
+  },
+  "fr-CA": {
+    "subtitle": "Devine le nombre secret",
+    "keywords": "devinette,amis,soirée,multijoueur,déduction,logique,indices,duel",
+    "description": "Chaque personne choisit un nombre en secret. À ton tour, propose un nombre et demande à ton adversaire si le sien est plus grand ou plus petit. Élimine les possibilités, puis essaie de deviner. La dernière personne en jeu gagne !\n\nJoue un duel classé ou crée une salle amicale pour un maximum de six joueurs. Partage son code de quatre lettres avec tes amis. Si personne n’est disponible pour un duel, un adversaire contrôlé par le jeu peut prendre la place libre.\n\nChoisis un pseudo et joue sans compte. Une connexion Internet est nécessaire. Des publicités peuvent s’afficher entre les parties."
+  },
+  "pt-BR": {
+    "subtitle": "Adivinhe o número secreto",
+    "keywords": "adivinhar,amigos,festa,multijogador,dedução,lógica,pistas,duelo",
+    "description": "Cada pessoa escolhe um número em segredo. Na sua vez, diga um número e pergunte se o do adversário é maior ou menor. Use as respostas para eliminar possibilidades e dar seu palpite. Quem ficar por último vence!\n\nEntre em um duelo ranqueado ou crie uma sala entre amigos para até seis pessoas. Compartilhe o código de quatro letras para convidar a turma. Se faltar um adversário no duelo, o jogo pode colocar um bot na vaga.\n\nEscolha um apelido e jogue sem conta. É preciso ter conexão com a internet. Podem aparecer anúncios entre as partidas."
+  },
+  "id": {
+    "subtitle": "Tebak angka rahasia lawan",
+    "keywords": "tebakan,teman,angka,pesta,multipemain,strategi,logika,petunjuk",
+    "description": "Setiap pemain memilih satu angka rahasia. Saat giliranmu, sebutkan angka lalu tanyakan apakah angka lawan lebih besar atau lebih kecil. Singkirkan kemungkinan dari jawabannya, lalu tebak angka yang tepat. Pemain terakhir yang bertahan menang!\n\nMainkan duel berperingkat atau buat ruang santai untuk paling banyak enam pemain. Bagikan kode empat huruf agar temanmu bisa bergabung. Jika belum ada lawan saat duel, bot dapat mengisi tempat kosong.\n\nCukup pilih nama panggilan dan sambungkan ke internet. Kamu bisa bermain tanpa akun. Iklan dapat muncul di antara pertandingan."
+  },
+  "ar-SA": {
+    "subtitle": "خمّن عدد خصمك السرّي",
+    "keywords": "تخمين,أعداد,أصدقاء,ألغاز,تحدي,جماعي,منطق,منافسة",
+    "description": "يختار كل لاعب عددًا سرّيًا. عندما يحين دورك، اقترح عددًا واسأل خصمك إن كان عدده أكبر أو أصغر منه. استبعد الاحتمالات مع كل إجابة ثم خمّن العدد. آخر لاعب يبقى في اللعبة يفوز!\n\nالعب مواجهة مصنّفة أو أنشئ غرفة ودّية لما يصل إلى ستة لاعبين. شارك رمز الغرفة المكوّن من أربعة أحرف مع أصدقائك. إذا لم يتوفّر منافس للمواجهة، يمكن أن يشغل لاعب آلي المقعد الشاغر.\n\nاختر اسمًا مستعارًا والعب من دون حساب. يلزم الاتصال بالإنترنت، وقد تظهر إعلانات بين المباريات."
+  },
+  "ja": {
+    "subtitle": "相手の秘密の数を当てよう",
+    "keywords": "数字,推理,対戦,友達,パーティー,オンライン,早当て,頭脳戦",
+    "description": "まずは秘密の数をひとつ選ぼう。自分の番で数を挙げ、相手の数がそれより大きいか小さいかを質問。答えを手がかりに候補を絞って、これだと思ったら当てにいこう。最後まで残ったプレイヤーの勝ち！\n\nランクを競う1対1の対戦のほか、友達と最大6人で遊べるルームも作れます。4文字のルームコードを共有して友達を招待しましょう。1対1で対戦相手が見つからないときは、コンピュータが相手になることがあります。\n\nニックネームを選べば、アカウント登録なしで遊べます。インターネット接続が必要です。試合の合間に広告が表示されることがあります。"
+  },
+  "ko": {
+    "subtitle": "상대의 비밀 숫자를 맞혀 보세요",
+    "keywords": "숫자,추리,친구,파티,대결,멀티플레이,힌트,두뇌",
+    "description": "각자 비밀 숫자를 하나 고릅니다. 내 차례가 오면 숫자를 하나 제시하고 상대의 숫자가 그보다 큰지 작은지 물어보세요. 답을 듣고 범위를 좁힌 다음 숫자를 맞혀 보세요. 마지막까지 살아남으면 승리합니다!\n\n랭크를 건 일대일 대결에 도전하거나 최대 6명이 함께하는 친구 방을 만드세요. 네 글자로 된 방 코드를 공유하면 친구가 들어올 수 있습니다. 일대일 상대가 없으면 컴퓨터가 빈자리를 채울 수 있습니다.\n\n별명만 정하면 계정 없이 플레이할 수 있습니다. 인터넷 연결이 필요하며 경기 사이에 광고가 표시될 수 있습니다."
+  },
+  "hi": {
+    "subtitle": "सामने वाले की संख्या बूझें",
+    "keywords": "पहेली,संख्या,अनुमान,दोस्त,तर्क,खेल",
+    "description": "हर खिलाड़ी मन में एक संख्या चुनता है। अपनी बारी पर एक संख्या बोलें और पूछें कि सामने वाले की संख्या उससे बड़ी है या छोटी। जवाबों से दायरा घटाएँ और सही संख्या का अनुमान लगाएँ। अंत तक खेल में बने रहने वाला खिलाड़ी जीतता है!\n\nरैंक के लिए एक-के-बदले-एक मुकाबला खेलें या दोस्तों के लिए कमरा बनाएँ, जहाँ छह लोग तक खेल सकते हैं। दोस्तों को बुलाने के लिए चार अक्षरों वाला कोड साझा करें। मुकाबले में कोई प्रतिद्वंद्वी उपलब्ध न हो तो कंप्यूटर खिलाड़ी उसकी जगह ले सकता है।\n\nखेलने के लिए एक उपनाम चुनें। खाते की ज़रूरत नहीं है। इंटरनेट कनेक्शन चाहिए और मुकाबलों के बीच विज्ञापन दिख सकते हैं।"
+  },
+  "zh-Hans": {
+    "subtitle": "猜出对手的秘密数字",
+    "keywords": "数字,推理,猜谜,好友,聚会,多人,对战,提示",
+    "description": "每位玩家先选一个秘密数字。轮到你时，说出一个数字，问问对手的数字比它大还是小。根据答案一步步缩小范围，再猜出准确数字。坚持到最后的人获胜！\n\n来一场一对一排位对决，或创建最多容纳六人的好友房间。分享四个字母的房间码就能邀请朋友。排位对决若暂时没有对手，电脑玩家可能会补位。\n\n选个昵称就能玩，无需注册账号。游戏需要联网，比赛之间可能会显示广告。"
+  },
+  "zh-Hant": {
+    "subtitle": "猜出對手的祕密數字",
+    "keywords": "數字,推理,猜謎,好友,聚會,多人,對戰,提示",
+    "description": "每位玩家先選一個祕密數字。輪到你時，說出一個數字，問問對手的數字比它大還是小。根據答案一步步縮小範圍，再猜出正確數字。留到最後的人獲勝！\n\n來場一對一排名對戰，或建立最多六人同樂的好友房間。分享四個英文字母的房間碼，就能邀請朋友加入。排名對戰如果暫時找不到對手，電腦玩家可能會補上空位。\n\n取個暱稱就能玩，不需要註冊帳號。遊戲需要網路連線，比賽之間可能會顯示廣告。"
+  }
+}

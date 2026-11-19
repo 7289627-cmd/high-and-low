@@ -16,7 +16,7 @@ rm -rf "$WWW"
 mkdir -p "$WWW"
 # The site lives in $ROOT/site (working copy) or, in the GitHub repo where this folder is dev/app, in the repo root.
 if [ -d "$ROOT/site" ]; then SITE="$ROOT/site"; else SITE="$(cd "$ROOT/.." && pwd)"; fi
-for f in index.html fonts icons icon-180.png manifest.webmanifest music sfx vendor og.png privacy.html terms.html support.html; do
+for f in index.html fonts icons icon-180.png manifest.webmanifest music sfx vendor og.png privacy.html terms.html support.html support-languages.js; do
   [ -e "$SITE/$f" ] && cp -R "$SITE/$f" "$WWW/"
 done
 test -f "$WWW/index.html" || { echo "sync-web: no index.html found in $SITE"; exit 1; }

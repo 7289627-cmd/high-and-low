@@ -85,6 +85,28 @@ for (const host of [true, false]) {
   });
 }
 
+test('Friends room guests see the same room and player name with independently localized controls', async t => {
+  const host = await phone(t);
+  const guest = await phone(t);
+  host.w.eval(`HLI18n.set('es-419'); NAME = 'Play'`);
+  guest.w.eval(`HLI18n.set('fr'); NAME = 'Close'`);
+  await host.w.eval(`startOnline(true, 'ABCD')`);
+  await guest.w.eval(`startOnline(false, 'ABCD')`);
+  const lobby = JSON.parse(host.w.eval('JSON.stringify(G)'));
+  const pid = host.w.eval('PID');
+  guest.room.peers({ peers: [{ updatedAt: 1, presence: { pid, code: 'ABCD', role: 'host', game: lobby } }] });
+  await until(() => guest.w.eval(`G?.phase === 'lobby'`));
+  for (const phone of [host, guest]) {
+    assert.equal(phone.w.document.querySelector('.bar .pill').textContent, 'ABCD');
+    assert.equal(phone.w.document.querySelector('.prow2 .who b').textContent, 'Play');
+  }
+  const hostLabel = host.w.document.getElementById('leaveBtn').textContent;
+  const guestLabel = guest.w.document.getElementById('leaveBtn').textContent;
+  assert.notEqual(hostLabel, 'Leave');
+  assert.notEqual(guestLabel, 'Leave');
+  assert.notEqual(hostLabel, guestLabel);
+});
+
 test('leaving while a friends room is connecting releases the late channel', async t => {
   const { w, room, click } = await phone(t);
   w.eval('roomNS.join = () => new Promise(resolve => { window.finishJoin = resolve })');

@@ -258,9 +258,7 @@ def run(api, number):
         print('betaBuildLocalizations: created en-US what-to-test text')
 
 
-def main():
-    if len(sys.argv) != 2 or not (re.fullmatch(r'[1-9][0-9]*', sys.argv[1]) or sys.argv[1] == '--localize'):
-        raise SafetyError('usage: ios-metadata.py BUILD_NUMBER | --localize')
+def connect():
     if os.environ.get('GITHUB_ACTIONS') != 'true' or not os.environ.get('RUNNER_TEMP'):
         raise SafetyError('must run on a GitHub Actions runner')
     if any(not os.environ.get(x) for x in ('ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8')):
@@ -289,6 +287,13 @@ def main():
             raise SafetyError(f'Apple API {method} {path.split("?")[0]} failed (HTTP {exc.code} {codes})') from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise SafetyError('Apple API unavailable or returned invalid JSON') from None
+    return api, opener
+
+
+def main():
+    if len(sys.argv) != 2 or not (re.fullmatch(r'[1-9][0-9]*', sys.argv[1]) or sys.argv[1] == '--localize'):
+        raise SafetyError('usage: ios-metadata.py BUILD_NUMBER | --localize')
+    api, _ = connect()
     if sys.argv[1] == '--localize':
         localized_listing(api)
     else:

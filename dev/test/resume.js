@@ -246,8 +246,8 @@ async function scenario(name,fn){
     if(P.eval('G.players.some(p=>p.bot&&p.hb)'))return 'test setup: opponent already replaced';
     const stake=P.eval('eloAtStake()');
     P.$('#leaveBtn').click();await wait(300);
-    const shown=!!P.$('#quitBtn');
-    if(shown)P.$('#quitBtn').click();else P.$('#leaveBtn').click();
+    if(P.$('.stake'))return 'rating warning appeared after the opponent vanished';
+    P.$('#quitBtn')?.click();
     await wait(800);
     if(P.eval('view')!=='home')return 'host did not get home';
     const e1=P.eval('myElo()');
@@ -298,7 +298,7 @@ async function scenario(name,fn){
     if(!moved)return 'game stopped moving after reconnect';
     // leaving releases the lock, and no timer survives leaveGame
     B.$('#ovClose')&&B.$('#ovClose').click();
-    B.$('#leaveBtn').click();await wait(100);B.$('#leaveBtn').click();await wait(1500);
+    B.$('#leaveBtn').click();B.$('#quitBtn')?.click();await wait(1500);
     if(B.eval('view')!=='home')return 'B did not get home';
     if(B.locks.active!==0)return 'wake lock still held on the home screen';
     const t=B.eval('timers.length');if(t!==0)return t+' later() timers survive leaveGame';
@@ -310,7 +310,7 @@ async function scenario(name,fn){
   await scenario('(g) no timers after leaveGame',async W=>{
     const {A,B,C}=await friends(W,{HL_TEST_HOSTLOST_MS:40000});
     await drive([A,B,C],()=>A.eval('G.seq')>=2,15000);
-    for(const P of [C,A]){P.$('#leaveBtn').click();await wait(80);P.$('#leaveBtn').click()}
+    for(const P of [C,A]){P.$('#leaveBtn').click();P.$('#quitBtn')?.click();await wait(80)}
     // everything that was pending must be gone, and nothing may come back
     for(let i=0;i<20;i++){await wait(150);for(const P of [A,C]){if(P.eval('timers.length')!==0&&i>8)return P.tag+' has '+P.eval('timers.length')+' timers pending after leaving'}}
     for(const P of [A,C])if(P.eval('view')!=='home')return P.tag+' not home';

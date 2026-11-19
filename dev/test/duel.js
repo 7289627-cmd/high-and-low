@@ -236,7 +236,6 @@ function rate(P,o){
   await startDuel();
   let r0=elo(),n0=A.eval('LS.get(LSK("hl-elo-n"))|0');
   A.$('#leaveBtn').click();await wait(150);
-  if(A.eval('view')==='game'){chk(!A.$('#stayBtn'),'confirmation sheet shown before play starts');A.$('#leaveBtn').click();await wait(400)}
   chk(A.eval('view')==='home'&&elo()===r0&&(A.eval('LS.get(LSK("hl-elo-n"))|0'))===n0,'leaving during secrets cost rating '+elo());
   // (e2) mid-game: sheet, keep playing, then leave
   await startDuel();
@@ -271,8 +270,8 @@ function rate(P,o){
   r0=elo();A.eval('byPid(PID).a=0');
   chk(A.eval('eloAtStake()')===0,'stake while knocked out');
   A.$('#leaveBtn').click();await wait(200);
-  chk(!A.$('#stayBtn'),'confirmation sheet shown after being knocked out');
-  if(A.eval('view')==='game'){A.$('#leaveBtn').click();await wait(400)}
+  chk(A.$('#quitBtn')&&!A.$('.stake'),'leaving after being knocked out should show confirmation without a rating warning');
+  A.$('#quitBtn').click();await wait(400);
   chk(A.eval('view')==='home'&&elo()===r0,'leaving after knock out cost rating '+(r0-elo()));
   // (d)(f) forced results: win
   async function finish(win){
@@ -322,8 +321,9 @@ function rate(P,o){
   B.eval('G.phase="over";G.win="x"');await wait(300);
   chk(B.eval('myElo()')===1200,'friends game loss changed the rating');
   B.eval('G.phase="play"');B.$('#leaveBtn')&&B.$('#leaveBtn').click();await wait(200);
-  chk(!B.$('#stayBtn'),'friends room shows the leave-duel sheet');
-  await B.eval('leaveGame()');chk(B.eval('myElo()')===1200,'leaving a friends game changed the rating');
+  chk(B.$('#quitBtn')&&!B.$('.stake'),'friends room should show confirmation without a rating warning');
+  B.$('#quitBtn').click();await wait(200);
+  chk(B.eval('view')==='home'&&B.eval('myElo()')===1200,'leaving a friends game should return home without changing rating');
   chk(!B.errs.length,'page errors in friends phone '+B.errs.join('|'));
 
   /* ---------- (i) quit-dodge, opponent leaves, floor, clamp ---------- */

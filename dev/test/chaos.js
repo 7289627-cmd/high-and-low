@@ -26,7 +26,7 @@ async function game(seed){
     const now=Date.now();maxGap=Math.max(maxGap,now-lastBeat);lastBeat=now;
     if(t===sleepAt)muted.add(sleeper.tag);
     if(t===sleepAt+sleepLen){muted.delete(sleeper.tag);try{sleeper.document.dispatchEvent(new sleeper.Event('visibilitychange'))}catch(e){}}
-    if(t===leaveAt&&!left){left=true;try{leaver.$('#leaveBtn').click();await wait(80);leaver.$('#leaveBtn').click()}catch(e){}}
+    if(t===leaveAt&&!left){left=true;try{leaver.$('#leaveBtn').click();leaver.$('#quitBtn')?.click()}catch(e){}}
     act(A);if(!left||leaver!==B)act(B);if(!left||leaver!==C)act(C);if(!left||leaver!==D)act(D);
     // the idler stops acting for a stretch: the idle cap must move the game along
     if(idler&&t>80&&t<160){/* act() above already ran; undoing is not possible, so idle is modelled by the sleeper */}

@@ -27,7 +27,7 @@ function phone(name){
 const A=phone('a'),B=phone('b'),C=phone('c');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const fail=m=>{console.log('FAIL leave: '+m);process.exit(0)};
-const tapLeave=async P=>{P.$('#leaveBtn').click();await wait(100);P.$('#leaveBtn').click();await wait(100)};
+const tapLeave=async P=>{P.$('#leaveBtn').click();P.$('#quitBtn')?.click();await wait(100)};
 const join=async(P,n,code)=>{P.$('#nameIn').value=n;P.$('#nameIn').dispatchEvent(new P.Event('input'));P.$('#codeIn').value=code;P.$('#codeIn').dispatchEvent(new P.Event('input'));P.$('#joinBtn').click();await wait(500)};
 const names=()=>A.eval('G.players.map(p=>p.name).join(",")');
 (async()=>{

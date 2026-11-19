@@ -71,6 +71,9 @@ function createPrivacyOptions({ document, getAdMob, translate = key => key, onOp
     // The About handler renders the sheet before the activation reaches document.
     if (event.target.closest?.('#infoBtn')) updateButton();
   });
+  document.addEventListener('change', event => {
+    if (event.target.id === 'languageChoice') updateButton();
+  });
 
   return {
     canRequestAds,

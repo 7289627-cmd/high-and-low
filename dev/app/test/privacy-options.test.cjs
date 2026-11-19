@@ -32,6 +32,12 @@ function aboutPanel() {
   return {
     document,
     controls,
+    changeLanguage() {
+      controls.length = 0;  // the game redraws the open About sheet
+      const event = new Event('change');
+      Object.defineProperty(event, 'target', { value: { id: 'languageChoice' } });
+      document.dispatchEvent(event);
+    },
     open() {
       controls.length = 0;
       sheetOpen = true;
@@ -116,7 +122,7 @@ test('the privacy control follows the language of the open game', async () => {
   about.open();
   assert.equal(about.controls[0].textContent, 'Pilihan privasi');
   label = '隐私选项';
-  about.open();
+  about.changeLanguage();
   assert.equal(about.controls[0].textContent, '隐私选项');
 });
 

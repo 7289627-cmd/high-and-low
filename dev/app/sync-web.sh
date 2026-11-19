@@ -34,6 +34,8 @@ p = pathlib.Path(sys.argv[1]); s = p.read_text()
 import os, json
 cfg = json.loads(os.environ['HL_NATIVE_BUILD_CONFIG'])
 tag = '<script>window.HL_NATIVE_CONFIG=' + json.dumps(cfg, separators=(',', ':')) + '</script>\n<script src="hlnative.js"></script>\n'
+if cfg.get('DISABLE_GAMEPLAY_TELEMETRY'):
+    tag = '<script>window.HL_NO_TRACK=true</script>\n' + tag
 marker = '<script src="vendor/supabase-'
 if tag in s: sys.exit(0)
 if s.count(marker) != 1: sys.exit('sync-web: could not find the script marker in index.html (build.py changed?)')

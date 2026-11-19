@@ -1,4 +1,4 @@
-function createPrivacyOptions({ document, getAdMob, onOptionsClosed = () => {} }) {
+function createPrivacyOptions({ document, getAdMob, translate = key => key, onOptionsClosed = () => {} }) {
   let allowed = false;
   let optionsRequired = false;
   let openingOptions = false;
@@ -25,10 +25,10 @@ function createPrivacyOptions({ document, getAdMob, onOptionsClosed = () => {} }
       button.id = 'hlPrivacyOptions';
       button.type = 'button';
       button.className = 'btn';
-      button.textContent = 'Privacy choices';
       button.addEventListener('click', showPrivacyOptions);
       row.insertBefore(button, sheet.querySelector('#ovClose'));
     }
+    button.textContent = translate('Privacy choices');
     button.disabled = openingOptions;
   }
 

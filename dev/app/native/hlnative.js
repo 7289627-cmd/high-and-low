@@ -168,6 +168,7 @@
   var consentVersion = 0;
   var privacy = CONFIG.ADS_ENABLED && plug('AdMob') ? require('./privacy-options.js').createPrivacyOptions({
     document: document,
+    translate: function (key) { return window.HLI18n ? window.HLI18n.t(key) : key; },
     getAdMob: function () { return plug('AdMob'); },
     onOptionsClosed: function (allowed) {
       consentVersion++;

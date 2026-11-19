@@ -33,7 +33,8 @@ LOCALES = {'ar-SA': 'ar', 'es-MX': 'es-419', 'fr-CA': 'fr', 'fr-FR': 'fr',
            'hi': 'hi', 'id': 'id', 'ja': 'ja', 'ko': 'ko', 'pt-BR': 'pt-BR',
            'zh-Hans': 'zh-Hans', 'zh-Hant': 'zh-Hant'}
 READY = {'PREPARE_FOR_SUBMISSION', 'APPROVED', 'ACCEPTED'}
-PLACEMENT_READY = {'PARENT_PREPARE_FOR_SUBMISSION', 'PARENT_READY_FOR_REVIEW'}
+# The live draft returns ACTIVE for placements whose images have completed processing.
+PLACEMENT_READY = {'ACTIVE', 'PARENT_PREPARE_FOR_SUBMISSION', 'PARENT_READY_FOR_REVIEW'}
 
 
 def link(kind, identifier):
@@ -280,10 +281,11 @@ def run(api, put, images):
             final = placed(api, loc_id, group)
             placement_ids(final, group, set(images_for_locale))
             states = [metadata.attr(row).get('state') for row in final]
-            if [row['id'] for row in final] == desired and all(state in PLACEMENT_READY for state in states):
+            ordered = [row['id'] for row in final] == desired
+            if ordered and all(state in PLACEMENT_READY for state in states):
                 break
             if time.monotonic() > deadline:
-                raise SafetyError(f'{locale}: screenshot readback did not converge (states {states})')
+                raise SafetyError(f'{locale}: screenshot readback did not converge (ordered={ordered}, states={states})')
             time.sleep(2)
         print(locale + ': 3 processed iPhone screenshots verified in order', flush=True)
 

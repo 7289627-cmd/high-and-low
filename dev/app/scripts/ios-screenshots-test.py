@@ -97,7 +97,7 @@ class ScreenshotsTest(unittest.TestCase):
                 locale = rels['appStoreVersionLocalization']['data']['id']
                 self.assertNotEqual(locale, 'id-en-US')
                 if kind == shots.PLACEMENTS:
-                    result = row(kind, 'placement-' + str(len(writes)), **a, state='PARENT_PREPARE_FOR_SUBMISSION')
+                    result = row(kind, 'placement-' + str(len(writes)), **a, state='ACTIVE')
                     result['relationships'] = {'image': rels['image']}
                     placements[locale].insert(0, result)
                 else:

@@ -15,7 +15,9 @@ css=''.join((H/'src'/f).read_text() for f in ['base.css','extra.css','deaths.css
 css+=''.join(f.read_text() for f in sorted((H/'src').glob('zz_*.css')))  # extra stylesheets, loaded last
 art_css=FONTRE.sub('',css)  # artifact build keeps Google Fonts (single file, no fonts/ folder)
 snd=(H/'src/sound.js').read_text()+(H/'src/music.js').read_text()+(H/'src/haptics.js').read_text()
-js=snd+(H/'src/flags.js').read_text()+(H/'src/track.js').read_text()+(H/'src/ads.js').read_text()+(H/'src/base.js').read_text()+((H/'src/showdown.js').read_text() if (H/'src/showdown.js').exists() else '')+((H/'src/powers.js').read_text() if (H/'src/powers.js').exists() else '')+(H/'src/names.js').read_text()+(H/'src/rating.js').read_text()+(H/'src/botlife.js').read_text()+(H/'src/streak.js').read_text()+(H/'src/share.js').read_text()+(H/'src/main.js').read_text()
+catalogs={f.stem:json.loads(f.read_text(encoding='utf-8-sig')) for f in sorted((H/'src/locales').glob('*.json'))}
+localization='window.HL_TRANSLATIONS='+json.dumps(catalogs).replace('<','\\u003c')+';\n'+(H/'src/i18n.js').read_text(encoding='utf-8')+'\n'
+js=localization+snd+(H/'src/flags.js').read_text()+(H/'src/track.js').read_text()+(H/'src/ads.js').read_text()+(H/'src/base.js').read_text()+((H/'src/showdown.js').read_text() if (H/'src/showdown.js').exists() else '')+((H/'src/powers.js').read_text() if (H/'src/powers.js').exists() else '')+(H/'src/names.js').read_text()+(H/'src/rating.js').read_text()+(H/'src/botlife.js').read_text()+(H/'src/streak.js').read_text()+(H/'src/share.js').read_text()+(H/'src/main.js').read_text()
 import sys,json
 if len(sys.argv)>1 and sys.argv[1]=='web':
     cfgp=H/'config.json'

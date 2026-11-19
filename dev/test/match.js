@@ -59,9 +59,11 @@ function advertiser(codes,max){
     ok(s.host&&!/^(ZZZZ|YYYY|XXXX)$/.test(s.code),'(1) did not end up hosting');
     ok(A.eval('QFAIL.size')===2,'(1) QFAIL size '+A.eval('QFAIL.size'));
     console.log('info: 2 dead adverts then host, game started after '+dt+'ms (test timings: queue 300, join 1200 each, fill 900)');
-    // leave, press Play again: failed codes skipped, third (XXXX) is still tried once, then host
+    // Advertisements may arrive in any order. Mark the one not tried as failed, too.
     await A.eval('leaveGame()');await wait(300);
-    A.eval('QFAIL.set("XXXX",Date.now())');
+    const remaining = ['ZZZZ','YYYY','XXXX'].filter(code=>!deadTried.includes(code));
+    ok(remaining.length===1,'(1b) expected one untried advertisement');
+    A.eval(`QFAIL.set(${JSON.stringify(remaining[0])},Date.now())`);
     const seen2=[];const iv2=setInterval(()=>{try{const c=A.eval('code');if(c&&c!==seen2[seen2.length-1])seen2.push(c)}catch(e){}},30);
     const t1=Date.now();A.$('#playBtn').click();
     const s2=await until(A,s=>s.host&&s.code&&s.view==='game',2500);

@@ -29,7 +29,7 @@ function finish(w,won){
   const b=A.$('#shareBtn');ok(!!b,'winner has no button');
   if(b){ok(b.getAttribute('aria-label')==='Share','aria-label');ok(b.textContent.trim()==='','button has text');ok(b.previousElementSibling&&b.previousElementSibling.id==='againBtn','not next to primary')}
   ok(A.eval('shareFacts()')==='1 – 10,000  ·  Mind Reader'.replace('Mind Reader','Rookie 1012')||/1 – 10,000/.test(A.eval('shareFacts()')),'facts');
-  ok(/Rookie 1012|Guesser 1012/.test(A.eval('shareFacts()')),'facts rating: '+A.eval('shareFacts()'));
+  ok(A.eval('shareFacts()').endsWith('Rookie '+A.eval('fmt(1012)')),'facts rating: '+A.eval('shareFacts()'));
   // hash flag and persistence
   const H=phone({hash:'#flags=share'});await wait(100);ok(H.HL_FLAGS.share===true,'hash flag');
   ok(H.localStorage.getItem('hl-flags')==='share','flag persisted');

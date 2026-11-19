@@ -159,11 +159,27 @@ jobs:
           IPA="$(find "$WORK/export" -maxdepth 1 -name '*.ipa' -type f -print)"
           test "$(printf '%s\n' "$IPA" | grep -c .)" -eq 1
           IPA="$IPA" EXPECTED_BUILD="${{ github.run_number }}" python3 - <<'PY'
-          import os, plistlib, zipfile
+          import json, os, plistlib, re, zipfile
           with zipfile.ZipFile(os.environ['IPA']) as ipa:
               names = [n for n in ipa.namelist() if n.startswith('Payload/') and n.endswith('.app/Info.plist') and n.count('/') == 2]
               if len(names) != 1: raise SystemExit('Expected exactly one top-level app in IPA')
               info = plistlib.loads(ipa.read(names[0]))
+              if os.environ.get('HL_ADS_ONLY') == '1':
+                  public = names[0].removesuffix('Info.plist') + 'public/'
+                  html = ipa.read(public + 'index.html').decode()
+                  match = re.search(r'<script>window\.HL_NATIVE_CONFIG=(.*?)</script>', html)
+                  config = json.loads(match.group(1)) if match else {}
+                  unit = config.get('REAL_IDS', {}).get('ios', {}).get('interstitial')
+                  if (config.get('ADS_ENABLED') is not True or config.get('TEST_MODE') is not False
+                          or config.get('DISABLE_GAMEPLAY_TELEMETRY') is not True
+                          or unit != os.environ['HL_ADMOB_INTERSTITIAL_ID']
+                          or info.get('GADApplicationIdentifier') != os.environ['HL_ADMOB_APP_ID']):
+                      raise SystemExit('Exported app does not match its iOS production ad configuration')
+                  for page in ('privacy.html', 'support.html', 'terms.html'):
+                      with open('www/' + page, 'rb') as source:
+                          if ipa.read(public + page) != source.read():
+                              raise SystemExit('Exported legal page differs from bundled source: ' + page)
+                  print('Verified production AdMob app and interstitial, demo mode off, optional gameplay telemetry off, and bundled disclosures')
               manifest_path = names[0].removesuffix('Info.plist') + 'PrivacyInfo.xcprivacy'
               if manifest_path not in ipa.namelist(): raise SystemExit('Exported app is missing PrivacyInfo.xcprivacy')
               manifest = plistlib.loads(ipa.read(manifest_path))

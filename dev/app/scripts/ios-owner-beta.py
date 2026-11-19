@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare one iOS build in an empty, manual, private High & Low TestFlight group.
-
-Apple supports assigning builds and testers in the original group-creation request.
-For an existing group Apple has no conditional add-build-if-empty operation, so
-this script only verifies an existing group; it never modifies its membership.
-"""
+"""Prepare, inspect, or explicitly assign a build to the private High & Low TestFlight group."""
 import json
 import os
 from pathlib import Path
@@ -17,6 +12,7 @@ import urllib.request
 
 APP = '6835591902'
 GROUP = 'High & Low Owner Test'
+OWNER_GROUP_ID = 'e1735043-f046-40af-a7ea-de5d07e2d285'
 FLAGS = {'name': GROUP, 'isInternalGroup': True, 'publicLinkEnabled': False,
          'hasAccessToAllBuilds': False}
 
@@ -58,7 +54,7 @@ def groups_path():
     })
 
 
-def prepare(api, number):
+def valid_build(api, number):
     builds = rows(api('GET', build_path(number)))
     if len(builds) != 1:
         raise Stop('The requested iOS build is missing or ambiguous')
@@ -66,8 +62,25 @@ def prepare(api, number):
     attrs = build['attributes']
     if attrs.get('version') != number or attrs.get('processingState') != 'VALID' or attrs.get('expired') is not False:
         raise Stop('The requested iOS build did not pass version, processing and expiration checks')
-    build_id = identifier(build, 'builds')
-    build_link = {'type': 'builds', 'id': build_id}
+    return {'type': 'builds', 'id': identifier(build, 'builds')}
+
+
+def group_relationships(api, group, *, allow_null_public_link=False):
+    group_id = identifier(group, 'betaGroups')
+    attr = group['attributes']
+    public_link = attr.get('publicLinkEnabled', True)
+    closed = public_link is False or (allow_null_public_link and public_link is None)
+    if (attr.get('name') != GROUP or attr.get('isInternalGroup') is not True
+            or not closed or attr.get('hasAccessToAllBuilds') is not False):
+        raise Stop('Group name, visibility or manual distribution settings do not match')
+    base = '/v1/betaGroups/' + group_id + '/relationships/'
+    if api('GET', base + 'app')['data'] != {'type': 'apps', 'id': APP}:
+        raise Stop('Group belongs to a different app')
+    return base
+
+
+def prepare(api, number):
+    build_link = valid_build(api, number)
     app_link = {'type': 'apps', 'id': APP}
     groups = rows(api('GET', groups_path()))
     if len(groups) > 1:
@@ -83,19 +96,26 @@ def prepare(api, number):
         groups = rows(api('GET', groups_path()))
         if len(groups) != 1 or identifier(groups[0], 'betaGroups') != group_id:
             raise Stop('Created group could not be uniquely verified; inspect TestFlight before retrying')
-    group_id = identifier(groups[0], 'betaGroups')
-    attr = groups[0]['attributes']
-    if (attr.get('name') != GROUP or attr.get('isInternalGroup') is not True
-            or attr.get('publicLinkEnabled') is not False or attr.get('hasAccessToAllBuilds') is not False):
-        raise Stop('Group name, visibility or manual distribution settings do not match')
-    base = '/v1/betaGroups/' + group_id + '/relationships/'
-    if api('GET', base + 'app')['data'] != app_link:
-        raise Stop('Group belongs to a different app')
+    base = group_relationships(api, groups[0])
     if rows(api('GET', base + 'betaTesters?limit=1')):
         raise Stop('The owner group already has testers')
     if rows(api('GET', base + 'builds?limit=2')) != [build_link]:
         raise Stop('Existing group has a different build set; no build was added to it')
     print(f'Verified private manual group for High & Low iOS 1.0.{number}, build {number}, with zero testers.')
+
+
+def assign(api, number):
+    build = valid_build(api, number)
+    groups = rows(api('GET', groups_path()))
+    if len(groups) != 1 or identifier(groups[0], 'betaGroups') != OWNER_GROUP_ID:
+        raise Stop('The existing owner group is missing or ambiguous')
+    base = group_relationships(api, groups[0], allow_null_public_link=True)
+    builds = base + 'builds'
+    if build not in rows(api('GET', builds + '?limit=200')):
+        api('POST', builds, {'data': [build]})
+        if build not in rows(api('GET', builds + '?limit=200')):
+            raise Stop('Build assignment could not be verified in the owner group')
+    print(f'Verified High & Low iOS 1.0.{number}, build {number}, in the internal owner group.')
 
 
 def flag(attr, key):
@@ -167,9 +187,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def main():
-    read_only = len(sys.argv) == 3 and sys.argv[2] == '--inspect'
-    if len(sys.argv) != 2 and not read_only:
-        raise Stop('Usage: ios-owner-beta.py BUILD_NUMBER [--inspect]')
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] not in ('--inspect', '--assign')):
+        raise Stop('Usage: ios-owner-beta.py BUILD_NUMBER [--inspect | --assign]')
+    mode = sys.argv[2] if len(sys.argv) == 3 else None
     if os.environ.get('GITHUB_ACTIONS') != 'true' or not os.environ.get('RUNNER_TEMP'):
         raise Stop('Run on a GitHub Actions runner')
     if any(not os.environ.get(key) for key in ('ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8')):
@@ -178,21 +198,25 @@ def main():
     opener = urllib.request.build_opener(NoRedirect())
 
     def api(method, path, body=None):
-        if read_only and (method != 'GET' or body is not None):
+        if mode == '--inspect' and (method != 'GET' or body is not None):
             raise Stop('Read-only mode refused a write')
         request = urllib.request.Request(signing['API'] + path, method=method,
             data=json.dumps(body).encode() if body is not None else None,
             headers={'Authorization': 'Bearer ' + signing['token'](), 'Content-Type': 'application/json'})
         try:
             with opener.open(request, timeout=15) as response:
+                if response.status == 204:
+                    return {}
                 return json.load(response)
         except urllib.error.HTTPError as error:
             raise Stop(f'Apple API {method} returned HTTP {error.code}') from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise Stop('Apple API unavailable or invalid response; check group state before retrying') from None
 
-    if read_only:
+    if mode == '--inspect':
         inspect(lambda path: api('GET', path), sys.argv[1])
+    elif mode == '--assign':
+        assign(api, sys.argv[1])
     else:
         prepare(api, sys.argv[1])
 

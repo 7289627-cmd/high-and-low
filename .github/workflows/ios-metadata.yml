@@ -2,6 +2,10 @@ name: Prepare Apple listing and TestFlight notes
 on:
   workflow_dispatch:
     inputs:
+      upload_screenshots:
+        description: Upload and verify the localized iPhone screenshots only
+        type: boolean
+        default: false
       build_number:
         description: High & Low iOS build number for the beta notes
         required: true
@@ -26,7 +30,7 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Verify draft field handling and private build assignment
@@ -34,7 +38,7 @@ jobs:
           python3 dev/app/scripts/ios-metadata-test.py
           python3 dev/app/scripts/ios-owner-beta-test.py
       - name: Fill missing English listing fields and beta notes
-        if: ${{ !inputs.inspect_only && !inputs.assign_owner_group }}
+        if: ${{ !inputs.upload_screenshots && !inputs.inspect_only && !inputs.assign_owner_group }}
         env:
           BUILD_NUMBER: ${{ inputs.build_number }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -42,14 +46,14 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: python3 dev/app/scripts/ios-metadata.py "$BUILD_NUMBER"
       - name: Apply and verify translations for the editable App Store listing
-        if: ${{ !inputs.inspect_only && !inputs.assign_owner_group && !inputs.prepare_private_group }}
+        if: ${{ !inputs.upload_screenshots && !inputs.inspect_only && !inputs.assign_owner_group && !inputs.prepare_private_group }}
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: python3 dev/app/scripts/ios-metadata.py --localize
       - name: Prepare private TestFlight group
-        if: ${{ !cancelled() && !inputs.inspect_only && !inputs.assign_owner_group && inputs.prepare_private_group }}
+        if: ${{ !inputs.upload_screenshots && !cancelled() && !inputs.inspect_only && !inputs.assign_owner_group && inputs.prepare_private_group }}
         env:
           BUILD_NUMBER: ${{ inputs.build_number }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -57,7 +61,7 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: python3 dev/app/scripts/ios-owner-beta.py "$BUILD_NUMBER"
       - name: Inspect TestFlight status
-        if: ${{ !cancelled() && (inputs.inspect_only || (!inputs.assign_owner_group && inputs.prepare_private_group)) }}
+        if: ${{ !inputs.upload_screenshots && !cancelled() && (inputs.inspect_only || (!inputs.assign_owner_group && inputs.prepare_private_group)) }}
         env:
           BUILD_NUMBER: ${{ inputs.build_number }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -65,10 +69,20 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: python3 dev/app/scripts/ios-owner-beta.py "$BUILD_NUMBER" --inspect
       - name: Assign the exact build to the owner TestFlight group
-        if: ${{ !inputs.inspect_only && inputs.assign_owner_group }}
+        if: ${{ !inputs.upload_screenshots && !inputs.inspect_only && inputs.assign_owner_group }}
         env:
           BUILD_NUMBER: ${{ inputs.build_number }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: python3 dev/app/scripts/ios-owner-beta.py "$BUILD_NUMBER" --assign
+
+      - name: Upload and verify localized iPhone screenshots
+        if: ${{ inputs.upload_screenshots && !inputs.inspect_only && !inputs.prepare_private_group && !inputs.assign_owner_group }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          python3 dev/app/scripts/ios-screenshots-test.py
+          python3 dev/app/scripts/ios-screenshots.py dev/store/iphone-localized

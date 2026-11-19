@@ -6,7 +6,7 @@ function shareUrl(){try{if((window.HLNative||location.protocol==='capacitor:')&&
 function shareFacts(){
   const out=[];
   if(G&&G.max)out.push('1 – '+fmt(G.max));
-  if(G&&typeof eloLast!=='undefined'&&eloLast&&eloLast.gid===G.gid)out.push(rankName(eloLast.to)+' '+eloLast.to);
+  if(G&&typeof eloLast!=='undefined'&&eloLast&&eloLast.gid===G.gid)out.push(uiText(rankName(eloLast.to))+' '+fmt(eloLast.to));
   return out.join('  ·  ');
 }
 function shareImg(src){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=src})}
@@ -34,7 +34,7 @@ async function drawShareCard(p,facts,addr){
   // title
   x.textAlign='center';x.textBaseline='alphabetic';x.lineJoin='round';
   const big=(t,y,sz,fill)=>{x.font=sz+'px '+D;x.lineWidth=sz*.14;x.strokeStyle='#1E2240';x.strokeText(t,W/2,y);x.fillStyle=fill;x.fillText(t,W/2,y)};
-  big('I won',230,150,'#FFFFFF');
+  big(uiText('I won'),230,150,'#FFFFFF');
   big('High & Low',395,172,'#FFD23F');
   // bean
   const bw=500,bh=Math.round(bw*1.4);
@@ -61,7 +61,7 @@ function shareCanvas(){
 }
 function shareBlob(cv){return new Promise(res=>{try{cv.toBlob(b=>res(b),'image/png')}catch(e){res(null)}})}
 async function shareWin(btn){
-  const url=shareUrl(),text='I won High & Low!',title='High & Low';
+  const url=shareUrl(),text=uiText('I won High & Low!'),title='High & Low';
   const isAbort=e=>e&&(e.name==='AbortError'||/cancel/i.test(e.message||''));
   try{
     if(btn){if(btn.dataset.busy)return;btn.dataset.busy='1'}
@@ -100,5 +100,5 @@ async function shareWin(btn){
 function shareBtnHTML(){
   const w=G&&byPid(G.win);
   if(!shareOn()||!w||w.pid!==PID)return '';
-  return `<button class="btn round share-btn" id="shareBtn" aria-label="Share">${SHARE_ICON}</button>`;
+  return `<button class="btn round share-btn" id="shareBtn" aria-label="${uiHTML("Share")}">${SHARE_ICON}</button>`;
 }

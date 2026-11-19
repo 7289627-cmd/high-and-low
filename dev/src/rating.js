@@ -11,8 +11,8 @@ function playMode(){const k=pmSel||LS.get('hl-pm');return MODES.find(m=>m.k===k)
 function modeMult(max){const m=MODES.find(x=>x.max===max);return m?m.mult:1}
 function modesHTML(){
   const cur=playMode().k;
-  return `<div class="modes" role="radiogroup" aria-label="Range" aria-describedby="homeRangeHint">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>1 – ${fmt(m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>
-<p class="tip" id="homeRangeHint">Bigger ranges mean more possible secret numbers.</p>`;
+  return `<div class="modes" role="radiogroup" aria-label="${uiHTML("Range")}" aria-describedby="homeRangeHint">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>1 – ${fmt(m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>
+<p class="tip" id="homeRangeHint">${uiHTML("Bigger ranges mean more possible secret numbers.")}</p>`;
 }
 const RANKS=[[0,'Rookie'],[1050,'Guesser'],[1150,'Sharp'],[1300,'Hunter'],[1450,'Mind Reader'],[1600,'Mastermind']];
 function myElo(){const e=LS.get(LSK('hl-elo'));return Number.isInteger(e)?Math.min(3000,Math.max(100,e)):ELO0}
@@ -99,7 +99,7 @@ function rankIdx(e){let n=0;RANKS.forEach((r,i)=>{if(e>=r[0])n=i});return n}
 function rankBadge(e,cls){return `<svg class="rkb${cls?' '+cls:''}" viewBox="0 0 48 48" aria-hidden="true">${RANK_ART[rankIdx(e)]}</svg>`}
 /* Where the rating sits between its rank's floor and the next rank's threshold, 0 to 1. The top rank is full. */
 function rankFrac(e){const i=rankIdx(e);if(i>=RANKS.length-1)return 1;const a=i?RANKS[i][0]:100,b=RANKS[i+1][0];return Math.max(0,Math.min(1,(e-a)/(b-a)))}
-function eloPill(){const e=myElo();return `<div class="wins-pill elo-pill"><b>${e}</b> ${rankBadge(e)}${rankName(e)}${eloFlash?`<span class="elo-fl ${eloFlash>0?'up':'down'}">${eloDeltaTxt(eloFlash)}</span>`:''}</div>`}
+function eloPill(){const e=myElo();return `<div class="wins-pill elo-pill"><b>${e}</b> ${rankBadge(e)}${uiHTML(rankName(e))}${eloFlash?`<span class="elo-fl ${eloFlash>0?'up':'down'}">${eloDeltaTxt(eloFlash)}</span>`:''}</div>`}
 /* Paper confetti for a rank-up: beans and triangles in the game palette, one burst. */
 function rankConfetti(){
   const cols=['#EE4B3B','#3D7BFF','#2FA36B','#A35BFF','#FF8A2B','#FF5FA8','#FFD23F'];
@@ -117,5 +117,5 @@ function eloResultHTML(){
   const r=eloLast,i0=rankIdx(r.from),i1=rankIdx(r.to),ru=!!r.up,rd=i1<i0;
   const cu=typeof CSS!=='undefined'&&CSS.registerProperty?' cu':'';
   const a=Math.round(rankFrac(r.from)*100),b=Math.round(rankFrac(r.to)*100);
-  return `<div class="er${ru?' ru':''}${i1===RANKS.length-1?' top':''}"><div class="elo-res ${r.d>0?'up':r.d<0?'down':''}${cu}" style="--f:${r.from};--t:${r.to}"><span class="d">${eloDeltaTxt(r.d)}</span><b>${r.to}</b><span class="rk"><span class="bd">${rankBadge(r.to,ru?'stamp':'')}${ru?'<u></u>':''}</span><span class="nm">${rankName(r.to)}</span></span></div><div class="er-bar${ru?' fu':rd?' fd':''}" style="--a:${a}%;--b:${b}%"><i></i></div>${ru?rankConfetti():''}</div>`;
+  return `<div class="er${ru?' ru':''}${i1===RANKS.length-1?' top':''}"><div class="elo-res ${r.d>0?'up':r.d<0?'down':''}${cu}" style="--f:${r.from};--t:${r.to}"><span class="d">${eloDeltaTxt(r.d)}</span><b>${r.to}</b><span class="rk"><span class="bd">${rankBadge(r.to,ru?'stamp':'')}${ru?'<u></u>':''}</span><span class="nm">${uiHTML(rankName(r.to))}</span></span></div><div class="er-bar${ru?' fu':rd?' fd':''}" style="--a:${a}%;--b:${b}%"><i></i></div>${ru?rankConfetti():''}</div>`;
 }

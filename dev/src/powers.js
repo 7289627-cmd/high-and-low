@@ -24,9 +24,9 @@ function pwEarn(){const n=stWinCoins();LS.set(LSK('hl-coins'),myCoins()+n);windo
 function pwWinBlock(){
   if(!window.__pwWon)return '';
   const n=window.__pwWon;window.__pwWon=0;sfx('lock',{delay:0.3});
-  return `<div class="newhat pw-won" role="img" aria-label="+${n>1?n:5} coins">${pwCoinSVG(26)}<b>+${n>1?n:5}</b>${n>5?stSunSVG(24):''}</div>`;
+  return `<div class="newhat pw-won" role="img" aria-label="${uiHTML('{count} coins',{count:'+'+fmt(n>1?n:5)})}">${pwCoinSVG(26)}<b>+${n>1?n:5}</b>${n>5?stSunSVG(24):''}</div>`;
 }
-function pwHomePill(){const c=myCoins();return c>0?`<div class="wins-pill coins-home">${pwCoinSVG(16)}<b>${c}</b><span class="sr-only"> coins</span></div>`:''}
+function pwHomePill(){const c=myCoins();return c>0?`<div class="wins-pill coins-home">${pwCoinSVG(16)}<b>${c}</b><span class="sr-only">${uiHTML('Coins')}</span></div>`:''}
 function pwSpend(ev){
   if(!G||ev.a!==PID)return;
   const d=pwDef(ev.t);if(!d)return;
@@ -37,7 +37,7 @@ function pwSpend(ev){
   LS.set(LSK('hl-coins'),Math.max(0,myCoins()-d.cost));
 }
 function pwCoinSVG(s){return `<svg viewBox="0 0 16 16" width="${s||14}" height="${s||14}" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="#FFD23F" stroke="#1E2240" stroke-width="2"/><circle cx="8" cy="8" r="3" fill="none" stroke="#1E2240" stroke-width="1.5"/></svg>`}
-function pwCoinPill(p){if(p&&p.bot&&!p.hb)return '';return `<span class="coin-pill" title="Coins">${pwCoinSVG(14)}<b>${pwCoins(p)}</b></span>`}
+function pwCoinPill(p){if(p&&p.bot&&!p.hb)return '';return `<span class="coin-pill" title="${uiHTML("Coins")}">${pwCoinSVG(14)}<b>${pwCoins(p)}</b></span>`}
 
 /* ---------- Shared validation (host and client). Returns '' when OK, else a short reason ---------- */
 function pwCan(p,id,tg){
@@ -195,16 +195,16 @@ function leftX(p){
 }
 function pwBits(p){
   let h=pwCoinPill(p);
-  if(p.a&&p.sh)h+=`<span class="pw-ic-sm" title="Shield" aria-label="Shielded">${pwIcon('shield','pw-i18')}</span>`;
-  if(p.a&&p.fz)h+=`<span class="pw-ic-sm" title="Frozen" aria-label="Frozen">${pwIcon('freeze','pw-i18')}</span>`;
+  if(p.a&&p.sh)h+=`<span class="pw-ic-sm" title="${uiHTML("Shield")}" aria-label="${uiHTML("Shielded")}">${pwIcon('shield','pw-i18')}</span>`;
+  if(p.a&&p.fz)h+=`<span class="pw-ic-sm" title="${uiHTML("Frozen")}" aria-label="${uiHTML("Frozen")}">${pwIcon('freeze','pw-i18')}</span>`;
   const pk=G&&G.pk&&G.pk[PID]&&G.pk[PID][p.pid];
-  if(p.a&&pk)h+=`<span class="pw-par ${pk}">${pk==='odd'?'ODD':'EVEN'}</span>`;
+  if(p.a&&pk)h+=`<span class="pw-par ${pk}">${uiHTML(pk==='odd'?'ODD':'EVEN')}</span>`;
   return h?`<span class="pw-bits">${h}</span>`:'';
 }
 const PW_BOLT='<svg class="pw-bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2.5 5 13.5h6l-1.5 8 9-12h-6z" fill="currentColor" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>';
 function pwBtnHTML(){
   const me=byPid(PID);
-  return me&&me.a&&canAct()?`<button class="btn sm pw-btn" id="pwBtn">${PW_BOLT}Powers</button>`:'';
+  return me&&me.a&&canAct()?`<button class="btn sm pw-btn" id="pwBtn">${PW_BOLT}${uiHTML('Powers')}</button>`:'';
 }
 
 /* ---------- Powers sheet ---------- */
@@ -215,13 +215,13 @@ function pwSheetHTML(){
     let why=pwCan(me,d.id,d.id==='peek'?'x':null);
     if(!why&&myCoins()<d.cost)why='Not enough coins';
     if(why==='Pick another player')why=G.players.some(p=>p.a&&p.pid!==PID)?'':'Nobody to peek at';
-    return `<div class="pw-card ${why?'off':''}"><span class="pw-ic">${pwIcon(d.id,'pw-i44')}</span><span class="pw-tx"><span class="pw-nm"><b>${d.name}</b><span class="pw-cost">${pwCoinSVG(13)}${d.cost}</span></span><span class="pw-ds">${d.desc}</span>${why?`<em class="pw-why">${esc(why)}</em>`:''}</span><button class="btn sm go" data-pw="${d.id}" aria-label="Use ${d.name}" ${why?'disabled':''}>Use</button></div>`;
+    return `<div class="pw-card ${why?'off':''}"><span class="pw-ic">${pwIcon(d.id,'pw-i44')}</span><span class="pw-tx"><span class="pw-nm"><b>${uiHTML(d.name)}</b><span class="pw-cost">${pwCoinSVG(13)}${d.cost}</span></span><span class="pw-ds">${uiHTML(d.desc)}</span>${why?`<em class="pw-why">${uiHTML(why)}</em>`:''}</span><button class="btn sm go" data-pw="${d.id}" aria-label="${uiHTML('Use {name}',{name:uiText(d.name)})}" ${why?'disabled':''}>${uiHTML("Use")}</button></div>`;
   }).join('');
-  return `<div class="sheet pw-sheet"><h2>${PW_BOLT}Powers</h2><div class="pw-have">${pwCoinPill(me)}</div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">Close</button></div></div>`;
+  return `<div class="sheet pw-sheet"><h2>${PW_BOLT}${uiHTML('Powers')}</h2><div class="pw-have">${pwCoinPill(me)}</div><div class="pw-list">${cards}</div><div class="btn-row"><button class="btn" id="pwClose">${uiHTML("Close")}</button></div></div>`;
 }
 function pwPeekHTML(){
   const others=G.players.filter(p=>p.a&&p.pid!==PID);
-  return `<div class="sheet pw-sheet"><h2>Peek at who?</h2><div class="pw-targets">${others.map(p=>`<button class="pw-tg" data-pwtg="${esc(p.pid)}"><span class="mini">${charSVG(pv(p),'idle')}</span><b>${esc(p.name)}</b></button>`).join('')}</div><div class="btn-row"><button class="btn" id="pwBack">Back</button><button class="btn" id="pwClose">Close</button></div></div>`;
+  return `<div class="sheet pw-sheet"><h2>${uiHTML("Peek at who?")}</h2><div class="pw-targets">${others.map(p=>`<button class="pw-tg" data-pwtg="${esc(p.pid)}"><span class="mini">${charSVG(pv(p),'idle')}</span><b>${esc(p.name)}</b></button>`).join('')}</div><div class="btn-row"><button class="btn" id="pwBack">${uiHTML("Back")}</button><button class="btn" id="pwClose">${uiHTML("Close")}</button></div></div>`;
 }
 function pwShow(html){
   openOv(html,e=>{if(e.target===document.getElementById('ov'))pwClose()});
@@ -264,8 +264,8 @@ function pwEvent(ev){
   pwSpend(ev);
   if(ev.t==='snap'){
     const id=++sceneSeq,t0=Date.now();
-    const who=A?(A.pid===PID?'You':esc(A.name)):'Someone';
-    openOv(`<div class="sheet center"><div class="stage pw-stage">${A?`<div class="actor a-dance">${charSVG(pv(A),'happy')}</div>`:''}</div><h2>Instant Showdown</h2><p>${who} pulled everyone into the guess zone!</p></div>`,()=>{if(id===sceneSeq&&Date.now()-t0>500)closeOv()});
+    const who=A?(A.pid===PID?uiText('You'):A.name):uiText('Someone');
+    openOv(`<div class="sheet center"><div class="stage pw-stage">${A?`<div class="actor a-dance">${charSVG(pv(A),'happy')}</div>`:''}</div><h2>${uiHTML("Instant Showdown")}</h2><p>${uiHTML('{name} pulled everyone into the guess zone!',{name:who})}</p></div>`,()=>{if(id===sceneSeq&&Date.now()-t0>500)closeOv()});
     later(()=>{if(id===sceneSeq)closeOv()},2600);
     sfx('vo_final');sfx('wheelland',{delay:0.2});
   }
@@ -275,16 +275,16 @@ function pwEvent(ev){
   else if(ev.t==='blocked'){pwBubble(ev,ev.tg,'Blocked!');sfx('bonk')}
   else if(ev.t==='freeze'||ev.t==='frozen'){pwBubble(ev,ev.tg,'Frozen','freeze');sfx('zap')}
 }
-function pwEvText(ev,a,t){
-  const T=byPid(ev.tg);
+function pwEvText(ev,name,target){
+  const mine=ev.tg===PID;
   switch(ev.t){
-    case 'snap':return `${a} pulled everyone into the guess zone!`;
-    case 'peek':return `${a} peeked at ${t}.`;
-    case 'double':return `${a} doubled down.`;
-    case 'shield':return `${a} raised a shield.`;
-    case 'blocked':return `${T&&T.pid===PID?'Your':t+"'s"} shield blocked ${a==='You'?'you':a}!`;
-    case 'freeze':return `${a} froze ${t}.`;
-    case 'frozen':return `${T&&T.pid===PID?'You are':t+' is'} frozen and ${T&&T.pid===PID?'skip':'skips'} a turn.`;
+    case 'snap':return uiText('{name} pulled everyone into the guess zone!',{name});
+    case 'peek':return uiText('{name} peeked at {target}.',{name,target});
+    case 'double':return uiText('{name} doubled down.',{name});
+    case 'shield':return uiText('{name} raised a shield.',{name});
+    case 'blocked':return uiText(mine?'Your shield blocked {name}!':"{target}'s shield blocked {name}!",{name:ev.a===PID?uiText('you'):name,target});
+    case 'freeze':return uiText('{name} froze {target}.',{name,target});
+    case 'frozen':return uiText(mine?'You are frozen and skip a turn.':'{target} is frozen and skips a turn.',{target});
   }
   return '';
 }

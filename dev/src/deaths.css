@@ -13,7 +13,7 @@ body.showdown::after{content:"";position:fixed;inset:0;pointer-events:none;z-ind
 body.showdown #app{position:relative;z-index:1}
 body.showdown .card.dead{opacity:.25;transform:scale(.92)}
 body.showdown .card:not(.dead){border-color:#FFD23F;border-width:4px;transform:scale(1.04);box-shadow:0 0 22px 6px rgba(255,255,255,.55),0 0 60px 14px rgba(255,255,255,.18),0 4px 0 var(--ink)}
-body.showdown .cast::before{content:"FINAL SHOWDOWN";grid-column:1/-1;text-align:center;font-family:var(--display);font-size:30px;line-height:1.1;color:var(--yellow);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;animation:d2pulse 1.4s ease-in-out infinite alternate}
+body.showdown .cast::before{content:attr(data-showdown);grid-column:1/-1;text-align:center;font-family:var(--display);font-size:30px;line-height:1.1;color:var(--yellow);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;animation:d2pulse 1.4s ease-in-out infinite alternate}
 @keyframes d2pulse{from{transform:scale(1)}to{transform:scale(1.07)}}
 @media (prefers-reduced-motion:reduce){
   body.showdown::after,body.showdown .cast::before{animation:none}

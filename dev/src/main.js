@@ -24,7 +24,8 @@ let ui={target:null,dir:'h',step:'dir',num:'',typed:'',pad:LS.get('hl-askpad')==
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, botAt=0, qSched=0, tickTimer=null, wheelSched=null;
 
-function sfx(k,o){try{SFX.play(k,o)}catch(e){}}
+const nonverbalCues={vo_ready:'tick',vo_go:'send',vo_youwin:'yes',vo_gameover:'nope',vo_final:'wheelland',vo_hurry:'hint',vo_timeover:'error',vo_wrong:'nope'};
+function sfx(k,o){try{SFX.play(HLI18n.locale()==='en'?k:nonverbalCues[k]||k,o)}catch(e){}}
 const babRate=()=>{const me=G&&byPid(PID);return 0.9+((me?me.c:0)%6)*0.07};
 const sfxSeen={hint:new Set(),seq:new Set(),go:new Set(),burst:new Set(),final:new Set(),hurry:new Set(),over:new Set(),lobby:{gid:null,n:0}};
 let hbTimer=null,hbPeriod=0;
@@ -51,7 +52,7 @@ function repOthers(){return G&&mode!=='solo'?G.players.filter(p=>p.pid!==PID&&(!
 function repBtnHTML(){
   const o=repOthers();if(o.length!==1)return '';
   const done=repPids.has(o[0].pid);
-  return `<button class="btn round rep-btn${done?' done':''}" id="repBtn" aria-label="${done?'Reported':'Report player'}"${done?' disabled':''}>${done?REP_TICK:REP_FLAG}</button>`;
+  return `<button class="btn round rep-btn${done?' done':''}" id="repBtn" aria-label="${uiHTML(done?'Reported':'Report player')}"${done?' disabled':''}>${done?REP_TICK:REP_FLAG}</button>`;
 }
 const REP_FLAG='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 5h12l-3 4.5 3 4.5H6" fill="currentColor"/></svg>';
 const REP_TICK='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>';
@@ -61,7 +62,7 @@ function reportPlayer(){
   try{track('report',{k:isPub?1:2,hb:p.hb?1:0,n:G.players.length})}catch(e){}
   if(k&&k!=='bean'&&!repList.includes(k)){repList.push(k);repList=repList.slice(-REPCAP);LS.set(REPK,repList)}
   repPids.add(p.pid);repFix(p);
-  const b=$('#repBtn');if(b){b.innerHTML=REP_TICK;b.disabled=true;b.classList.add('done');b.setAttribute('aria-label','Reported')}
+  const b=$('#repBtn');if(b){b.innerHTML=REP_TICK;b.disabled=true;b.classList.add('done');b.setAttribute('aria-label',uiText('Reported'))}
   render(true);
 }
 let tnN=Math.floor(Date.now()/1000),tnSeen={},popId=0,newHatIdx=null;
@@ -104,7 +105,7 @@ function tauntSend(e){
 }
 function tauntBar(){
   const dis=Date.now()<ui.tauntUntil;
-  return `<div class="taunt-bar" role="group" aria-label="Taunts">${TAUNTS.map((e,i)=>`<button class="taunt-btn" data-tn="${i}" aria-label="${TAUNT_NAMES[i]}" ${dis?'disabled':''}>${e}</button>`).join('')}</div>`;
+  return `<div class="taunt-bar" role="group" aria-label="${uiHTML("Taunts")}">${TAUNTS.map((e,i)=>`<button class="taunt-btn" data-tn="${i}" aria-label="${uiHTML(TAUNT_NAMES[i])}" ${dis?'disabled':''}>${e}</button>`).join('')}</div>`;
 }
 function countWin(){
   const key=G.gid+':'+G.en;
@@ -118,11 +119,11 @@ function countWin(){
 function awardsHTML(){
   const st=G.st||{},rows=[];
   const best=(i,min)=>{let b=null,bv=null;for(const p of G.players){const a=st[p.pid];if(!a||a[i]==null)continue;const v=a[i];if(bv===null||(min?v<bv:v>bv)){b=p;bv=v}}return b?{p:b,v:bv}:null};
-  const add=(name,r,txt)=>{if(r)rows.push(`<div class="award"><span class="aw-bean">${charSVG(pv(r.p),'idle')}</span><span class="aw-txt"><b>${name}</b><span>${esc(r.p.name)}</span></span><span class="aw-stat">${txt}</span></div>`)};
-  let r=best(1);if(r&&r.v>0)add('Most deadly',r,r.v+(r.v>1?' kills':' kill'));
-  r=best(2);if(r&&r.v>0)add('Worst guesser',r,r.v+(r.v>1?' misses':' miss'));
-  r=best(3,true);if(r)add('Closest call',r,fmt(r.v)+' left');
-  r=best(0);if(r&&r.v>0)add('Most curious',r,r.v+(r.v>1?' questions':' question'));
+  const add=(name,r,txt)=>{if(r)rows.push(`<div class="award"><span class="aw-bean">${charSVG(pv(r.p),'idle')}</span><span class="aw-txt"><b>${uiHTML(name)}</b><span>${esc(r.p.name)}</span></span><span class="aw-stat">${txt}</span></div>`)};
+  let r=best(1);if(r&&r.v>0)add('Most deadly',r,uiHTML(HLI18n.pluralKey('{count} kill','{count} kills',r.v),{count:fmt(r.v)}));
+  r=best(2);if(r&&r.v>0)add('Worst guesser',r,uiHTML(HLI18n.pluralKey('{count} miss','{count} misses',r.v),{count:fmt(r.v)}));
+  r=best(3,true);if(r)add('Closest call',r,uiHTML('{count} left',{count:fmt(r.v)}));
+  r=best(0);if(r&&r.v>0)add('Most curious',r,uiHTML(HLI18n.pluralKey('{count} question','{count} questions',r.v),{count:fmt(r.v)}));
   return rows.length?`<div class="awards">${rows.slice(0,4).join('')}</div>`:'';
 }
 const byPid=pid=>G&&G.players.find(p=>p.pid===pid);
@@ -720,41 +721,49 @@ function playNewEvent(){
     if(ev.t==='ask'&&ev.tg===PID)seen('asked');
     if(navigator.vibrate&&ev.tg===PID)try{navigator.vibrate(30)}catch(e){}
   }
-  else if(ev.t==='hit'&&T)showScene(ev.k,T,`${A?A.name:'Someone'} guessed ${fmt(ev.n)}!`,`${T.pid===PID?'You':T.name} ${CAPTION[ev.k]}`,sceneMs(ev.k),A||null,ev.n);
-  else if(ev.t==='out'&&A)showScene(ev.k,A,`It wasn't ${fmt(ev.n)}!`,`${A.pid===PID?'You':A.name} ran out of hearts and ${CAPTION[ev.k]}`,sceneMs(ev.k));
-  else if(ev.t==='bonk'&&A)showScene('bonk',A,`It wasn't ${fmt(ev.n)}!`,`${A.pid===PID?'You':A.name} got bonked and lost a heart. ${A.h} left.`,2500);
+  else if(ev.t==='hit'&&T)showScene(ev.k,T,uiText('{name} guessed {number}!',{name:A?.name||uiText('Someone'),number:fmt(ev.n)}),uiText('{name} '+CAPTION[ev.k],{name:T.pid===PID?uiText('You'):T.name}),sceneMs(ev.k),A||null,ev.n);
+  else if(ev.t==='out'&&A)showScene(ev.k,A,uiText("It wasn't {number}!",{number:fmt(ev.n)}),uiText('{name} '+CAPTION[ev.k],{name:A.pid===PID?uiText('You'):A.name}),sceneMs(ev.k));
+  else if(ev.t==='bonk'&&A)showScene('bonk',A,uiText("It wasn't {number}!",{number:fmt(ev.n)}),uiText('{name} got bonked and lost a heart. {count} left.',{name:A.pid===PID?uiText('You'):A.name,count:fmt(A.h)}),2500);
 }
 function evText(ev){
-  const A=byPid(ev.a),T=byPid(ev.tg);const a=A?(A.pid===PID?'You':A.name):'',t=T?(T.pid===PID?'you':T.name):'';
-  {const pt=pwEvText(ev,a,t);if(pt)return pt}
+  const A=byPid(ev.a),T=byPid(ev.tg);
+  const name=A?(A.pid===PID?uiText('You'):A.name):'';
+  const target=T?(T.pid===PID?uiText('you'):T.name):'';
+  const direction=uiText(ev.dir==='l'?'lower':'higher');
+  const pt=pwEvText(ev,name,target);if(pt)return pt;
   if(ev.t==='askall'){
     const r=(ev.rs||{})[PID];
-    if(G.players.length===2)return ev.a===PID?'You asked.':`${(byPid(ev.a)||{}).name||'They'} asked.`;
-    if(ev.a===PID)return 'You asked everyone.';
-    if(r)return `${a} asked you: ${ev.dir==='l'?'lower':'higher'} than ${fmt(r.x)}? ${r.ans?'Yes.':'No.'}`;
-    if((ev.bl||[]).includes(PID))return `Your shield blocked ${a}!`;
-    return `${a} asked everyone.`;
+    if(G.players.length===2)return ev.a===PID?uiText('You asked.'):uiText('{name} asked.',{name:A?.name||uiText('They')});
+    if(ev.a===PID)return uiText('You asked everyone.');
+    if(r)return uiText('{name} asked you: {direction} than {number}? {answer}',{name,direction,number:fmt(r.x),answer:uiText(r.ans?'Yes.':'No.')});
+    if((ev.bl||[]).includes(PID))return uiText('Your shield blocked {name}!',{name});
+    return uiText('{name} asked everyone.',{name});
   }
   const inv=ev.a===PID||ev.tg===PID;
-  if(!inv&&ev.t==='ask')return `${a} asked ${t}.`;
-  if(!inv&&ev.t==='miss')return `${a} guessed at ${t}. Miss.`;
+  if(!inv&&ev.t==='ask')return uiText('{name} asked {target}.',{name,target});
+  if(!inv&&ev.t==='miss')return uiText('{name} guessed at {target}. Miss.',{name,target});
   switch(ev.t){
-    case 'ask':return `${a} asked ${t}: ${ev.dir==='l'?'lower':'higher'} than ${fmt(ev.x)}? ${ev.ans?'Yes.':'No.'}`;
-    case 'hit':return `${a} guessed ${fmt(ev.n)}. ${T&&T.pid===PID?'You are':t+' is'} out.`;
-    case 'miss':return `${a} guessed ${fmt(ev.n)} for ${t}. Wrong.`;
-    case 'bonk':return `${a} missed with ${fmt(ev.n)} and lost a heart.`;
-    case 'out':return `${a} missed with ${fmt(ev.n)} and ran out of hearts.`;
-  }return '';
+    case 'ask':return uiText('{name} asked {target}: {direction} than {number}? {answer}',{name,target,direction,number:fmt(ev.x),answer:uiText(ev.ans?'Yes.':'No.')});
+    case 'hit':return uiText(T?.pid===PID?'{name} guessed {number}. You are out.':'{name} guessed {number}. {target} is out.',{name,target,number:fmt(ev.n)});
+    case 'miss':return uiText('{name} guessed {number} for {target}. Wrong.',{name,target,number:fmt(ev.n)});
+    case 'bonk':return uiText('{name} missed with {number} and lost a heart.',{name,number:fmt(ev.n)});
+    case 'out':return uiText('{name} missed with {number} and ran out of hearts.',{name,number:fmt(ev.n)});
+  }
+  return '';
 }
 function qText(q){
-  const A=byPid(q.a),T=byPid(q.tg);const a=A?(A.pid===PID?'You':A.name):'',t=T?(T.pid===PID?'you':T.name):'';
+  const A=byPid(q.a),T=byPid(q.tg);
+  const name=A?(A.pid===PID?uiText('You'):A.name):'';
+  const target=T?(T.pid===PID?uiText('you'):T.name):'';
+  const direction=uiText(q.dir==='l'?'lower':'higher');
   if(q.t==='askall'){
     const x=q.xs&&q.xs[PID];
-    if(q.a===PID)return 'You are asking everyone…';
-    return Number.isInteger(x)?`${a} is asking you: ${q.dir==='l'?'lower':'higher'} than ${fmt(x)}?`:`${a} is asking everyone…`;
+    if(q.a===PID)return uiText('You are asking everyone…');
+    return Number.isInteger(x)?uiText('{name} is asking you: {direction} than {number}?',{name,direction,number:fmt(x)}):uiText('{name} is asking everyone…',{name});
   }
-  if(q.a!==PID&&q.tg!==PID)return q.t==='ask'?`${a} is asking ${t}…`:`${a} is guessing at ${t}…`;
-  return q.t==='ask'?`${a} ${A&&A.pid===PID?'are':'is'} asking ${t}: ${q.dir==='l'?'lower':'higher'} than ${fmt(q.x)}?`:`${a} ${A&&A.pid===PID?'are':'is'} guessing ${t} picked ${fmt(q.n)}…`;
+  if(q.a!==PID&&q.tg!==PID)return uiText(q.t==='ask'?'{name} is asking {target}…':'{name} is guessing at {target}…',{name,target});
+  if(q.t==='ask')return uiText(q.a===PID?'You are asking {target}: {direction} than {number}?':'{name} is asking {target}: {direction} than {number}?',{name,target,direction,number:fmt(q.x)});
+  return uiText(q.a===PID?'You are guessing {target} picked {number}…':'{name} is guessing {target} picked {number}…',{name,target,number:fmt(q.n)});
 }
 
 /* ---------- Overlays ---------- */
@@ -793,7 +802,7 @@ function announce(t){
   l.textContent='';clearTimeout(announce.t);announce.t=setTimeout(()=>{l.textContent=t},60);
 }
 let a11Turn='';
-function a11Watch(){if(canAct()){const k=G.gid+':'+G.turnNo;if(a11Turn!==k){a11Turn=k;announce('Your turn')}}}
+function a11Watch(){if(canAct()){const k=G.gid+':'+G.turnNo;if(a11Turn!==k){a11Turn=k;announce(uiText('Your turn'))}}}
 function showScene(kind,p,title,text,ms,killer,n){
   const id=++sceneSeq;
   try{MUSIC.duck(ms)}catch(e){}
@@ -808,12 +817,12 @@ function showWinner(){
   const lo=G.pub&&G.players.length===2&&w?G.players.find(p=>p.pid!==w.pid):null;
   let conf='';if(!(lo&&lo.pid===PID))for(let i=0;i<26;i++)conf+=`<i class="fall" style="left:${rnd(0,96)}%;animation-delay:${(Math.random()*2.4).toFixed(2)}s;background:${COLORS[i%6]}"></i>`;
   sfx('win');sfx(w&&w.pid===PID?'vo_youwin':'vo_gameover',{delay:0.9});haptic(w&&w.pid===PID?'win':'lose');
-  const name=w?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Nobody survived';
-  announce(w?(w.pid===PID?'You win':w.name+' wins'):'Nobody survived');
+  const name=w?(w.pid===PID?uiHTML('You win!'):uiHTML('{name} wins!',{name:w.name})):uiHTML('Nobody survived');
+  announce(w?(w.pid===PID?uiText('You win'):uiText('{name} wins',{name:w.name})):uiText('Nobody survived'));
   let hatBlock='';const nh=newHatIdx;newHatIdx=null;
-  if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>New hat: ${esc(hatName(nh))}</b></div>`;sfx('lock',{delay:0.5})}
-  openOv(`<div class="sheet center has-x"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="stage">${conf}${w?`<div class="actor a-hop${lo?' pw2 pw-w':''}">${charSVG(pv(w),'happy')}</div>`:''}${lo?`<div class="actor a-slump pw2 pw-l">${charSVG(pv(lo),'scared')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
-<div class="btn-row">${G.pub?'<button class="btn primary" id="againBtn">Play again</button>'+shareBtnHTML()+repBtnHTML():`${isHost?'<button class="btn primary" id="ovLobby">Play again</button>':''}${shareBtnHTML()}${repBtnHTML()}<button class="btn" id="ovClose">Close</button>`}</div></div>`);
+  if(nh!=null&&w&&w.pid===PID){hatBlock=`<div class="newhat"><span class="nh-bean">${charSVG({color:COLORS[w.c%6],acc:nh,id:w.c},'happy')}</span><b>${uiHTML('New hat: {name}',{name:uiText(hatName(nh))})}</b></div>`;sfx('lock',{delay:0.5})}
+  openOv(`<div class="sheet center has-x"><button class="ov-x" id="ovX" aria-label="${uiHTML("Close")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="stage">${conf}${w?`<div class="actor a-hop${lo?' pw2 pw-w':''}">${charSVG(pv(w),'happy')}</div>`:''}${lo?`<div class="actor a-slump pw2 pw-l">${charSVG(pv(lo),'scared')}</div>`:''}</div><h2>${name}</h2>${eloResultHTML()}${w&&w.pid===PID?pwWinBlock():''}${hatBlock}${G.players.length>2?awardsHTML():''}
+<div class="btn-row">${G.pub?`<button class="btn primary" id="againBtn">${uiHTML("Play again")}</button>`+shareBtnHTML()+repBtnHTML():`${isHost?`<button class="btn primary" id="ovLobby">${uiHTML("Play again")}</button>`:''}${shareBtnHTML()}${repBtnHTML()}<button class="btn" id="ovClose">${uiHTML("Close")}</button>`}</div></div>`);
   {const c=$('#ovClose');if(c)c.onclick=closeOv}
   {const x=$('#ovX');if(x)x.onclick=()=>{closeOv();if(G&&G.gid===round&&G.pub)leaveGame()}}
   {const a=$('#againBtn');if(a)a.onclick=()=>{if(G&&G.gid===round)playAgain()}}
@@ -842,10 +851,10 @@ async function playAgain(){
 function waitHTML(players){
   let list=players;
   if(!list){const l=myLook()||{};list=[{pid:PID,name:safeName(NAME||'You'),c:l.c!=null?l.c:0,k:l.k!=null?l.k:null}]}
-  const rows=list.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}</span><span></span></div>`).join('');
+  const rows=list.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?`<span class="tag up">${uiHTML("YOU")}</span>`:''}${p.bot&&!p.hb?`<span class="tag">${uiHTML("BOT")}</span>`:''}</span><span></span></div>`).join('');
   return `<main class="scroll waitv"><h1 class="logo small">High<span>&amp;</span>Low</h1><section class="panel"><div class="plist">${rows}</div></section>
-<p class="finding">Finding a match<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
-<button class="btn" id="leaveBtn">Leave</button></main>`;
+<p class="finding">${uiHTML("Finding a match")}<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
+<button class="btn" id="leaveBtn">${uiHTML("Leave")}</button></main>`;
 }
 async function quickPlay(){
   quickStop();trackSearchStart();
@@ -953,8 +962,8 @@ function requestLeave(){
     return;
   }
   const stake=eloAtStake();
-  const warning=stake>0?`<p class="stake">You'll lose <b>${stake}</b> rating</p>`:'';
-  openOv(`<div class="sheet center"><h2>${stake>0?'Leave the duel?':'Leave the game?'}</h2>${warning}<div class="btn-row"><button class="btn primary" id="stayBtn">Keep playing</button><button class="btn" id="quitBtn">Leave</button></div></div>`);
+  const warning=stake>0?`<p class="stake">${uiMarkup("You'll lose {number} rating",{number:'<b>'+fmt(stake)+'</b>'})}</p>`:'';
+  openOv(`<div class="sheet center"><h2>${uiHTML(stake>0?'Leave the duel?':'Leave the game?')}</h2>${warning}<div class="btn-row"><button class="btn primary" id="stayBtn">${uiHTML("Keep playing")}</button><button class="btn" id="quitBtn">${uiHTML("Leave")}</button></div></div>`);
   $('#stayBtn').onclick=closeOv;
   $('#quitBtn').onclick=()=>leaveGame();
 }
@@ -980,7 +989,7 @@ function doAsk(){
   const t=curTarget();if(!t||!askViewOn())return;
   const sl=askSlots(mv(t)),x=ui.pad?(ui.typed?Number(ui.typed):NaN):Number(sl.prefix+ui.num);
   const lo=sl.lo, hi=sl.hi;
-  if(!Number.isInteger(x)||x<lo||x>hi){ui.err=`Pick ${fmt(lo)} to ${fmt(hi)}`;sfx('error');render(true);return}
+  if(!Number.isInteger(x)||x<lo||x>hi){ui.err=uiText('Pick {min} to {max}',{min:fmt(lo),max:fmt(hi)});sfx('error');render(true);return}
   ui.err='';sfx('send');sendAct({tg:t.pid,t:'askall',dir:ui.dir,x});seen('num');ui.step='dir';ui.num=ui.typed='';
 }
 
@@ -1083,13 +1092,13 @@ function homeLook(){return myLook()||{c:0,k:0}}
 function meBean(){const l=homeLook();return charSVG({color:COLORS[l.c%6],acc:l.k,id:l.c},'idle')}
 function lookSheetHTML(){
   const l=homeLook();
-  const sw=COLORS.map((c,i)=>`<button class="pk-sw ${i===l.c?'sel':''}" data-hc="${i}" aria-label="Color ${i+1}" aria-pressed="${i===l.c}">${charSVG({color:c,acc:l.k,id:i},'idle')}</button>`).join('');
+  const sw=COLORS.map((c,i)=>`<button class="pk-sw ${i===l.c?'sel':''}" data-hc="${i}" aria-label="${uiHTML('Color {number}',{number:fmt(i+1)})}" aria-pressed="${i===l.c}">${charSVG({color:c,acc:l.k,id:i},'idle')}</button>`).join('');
   let hats='';
   for(let i=0;i<hatCount();i++){
     const ok=hatUnlocked(i);
-    hats+=`<button class="pk-hat ${i===l.k?'sel':''} ${ok?'':'locked'}" data-hk="${i}" ${ok?'':'disabled'} aria-pressed="${i===l.k}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[l.c%6],acc:i,id:l.c},'idle')}</span><span class="hn">${ok?esc(hatName(i)):'Win '+(HAT_NEED[i]||99)}</span></button>`;
+    hats+=`<button class="pk-hat ${i===l.k?'sel':''} ${ok?'':'locked'}" data-hk="${i}" ${ok?'':'disabled'} aria-pressed="${i===l.k}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[l.c%6],acc:i,id:l.c},'idle')}</span><span class="hn">${ok?uiHTML(hatName(i)):uiHTML('Win {number}',{number:fmt(HAT_NEED[i]||99)})}</span></button>`;
   }
-  return `<div class="sheet center has-x looksheet" aria-label="Your look"><button class="ov-x" id="ovX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="look-me">${charSVG({color:COLORS[l.c%6],acc:l.k,id:l.c},'happy')}</div><div class="picker"><div class="pk-row">${sw}</div><div class="pk-grid">${hats}</div></div></div>`;
+  return `<div class="sheet center has-x looksheet" aria-label="${uiHTML("Your look")}"><button class="ov-x" id="ovX" aria-label="${uiHTML("Close")}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></button><div class="look-me">${charSVG({color:COLORS[l.c%6],acc:l.k,id:l.c},'happy')}</div><div class="picker"><div class="pk-row">${sw}</div><div class="pk-grid">${hats}</div></div></div>`;
 }
 function openLook(){
   openOv(lookSheetHTML(),e=>{
@@ -1108,20 +1117,20 @@ function homeHTML(){
   const online=roomState==='ok';
   if(canRejoin||ui.codeIn||ui.homeErr){if(!ui.fAuto){ui.fAuto=true;ui.friends=true}}else ui.fAuto=false;
   return `<main class="scroll home">${homeSceneHTML()}
-<section class="hero"><button class="info-btn" id="infoBtn" aria-label="About">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${stPillRow(eloPill())}${pwHomePill()}</section>
+<section class="hero"><button class="info-btn" id="infoBtn" aria-label="${uiHTML("About")}">i</button>${muteHTML()}<h1 class="logo big">High<span>&amp;</span>Low</h1><div class="skygap"></div>${stPillRow(eloPill())}${pwHomePill()}</section>
 ${offline()?offlineHTML():''}<section class="panel" ${offline()?'hidden':''}>
- <div class="field me-row"><button class="me-btn" id="meBtn" aria-label="Change look">${meBean()}</button><input id="nameIn" maxlength="12" autocomplete="nickname" aria-label="Your name" value="${esc(NAME)}" placeholder="Your name"></div>
+ <div class="field me-row"><button class="me-btn" id="meBtn" aria-label="${uiHTML("Change look")}">${meBean()}</button><input dir="auto" id="nameIn" maxlength="12" autocomplete="nickname" aria-label="${uiHTML("Your name")}" value="${esc(NAME)}" placeholder="${uiHTML("Your name")}"></div>
  ${modesHTML()}
- <button id="playBtn" class="btn primary big full">Play</button>
- <button id="friendsBtn" class="btn full" aria-expanded="${!!ui.friends}">Play with friends</button>
+ <button id="playBtn" class="btn primary big full">${uiHTML("Play")}</button>
+ <button id="friendsBtn" class="btn full" aria-expanded="${!!ui.friends}">${uiHTML("Play with friends")}</button>
  <div class="friends ${ui.friends?'':'closed'}">
-  ${canRejoin?`<button class="btn go full" id="rejoinBtn">Rejoin room ${esc(sess.code)}</button>`:''}
-  <button class="btn primary full" id="hostBtn" ${online?'':'disabled'}>Host a game</button>
-  <div class="join-row"><input id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Room code"><button class="btn" id="joinBtn" ${online?'':'disabled'}>Join</button></div>
-  ${ui.homeErr?`<p class="err">${esc(ui.homeErr)}</p>`:''}
-  <button class="btn full" id="soloBtn" ${NEED_NET?'hidden':''}>Practice</button>
+  ${canRejoin?`<button class="btn go full" id="rejoinBtn">${uiHTML('Rejoin room {code}',{code:sess.code})}</button>`:''}
+  <button class="btn primary full" id="hostBtn" ${online?'':'disabled'}>${uiHTML("Host a game")}</button>
+  <div class="join-row"><input dir="ltr" id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="${uiHTML("CODE")}" aria-label="${uiHTML("Room code")}"><button class="btn" id="joinBtn" ${online?'':'disabled'}>${uiHTML("Join")}</button></div>
+  ${ui.homeErr?`<p class="err">${uiHTML(ui.homeErr)}</p>`:''}
+  <button class="btn full" id="soloBtn" ${NEED_NET?'hidden':''}>${uiHTML("Practice")}</button>
  </div>
- ${roomState==='checking'?'<p class="tip">Connecting…</p>':''}
+ ${roomState==='checking'?`<p class="tip">${uiHTML("Connecting…")}</p>`:''}
 </section>
 </main>`;
 }
@@ -1129,8 +1138,8 @@ function inviteURL(){const app=window.HLNative||location.protocol==='capacitor:'
 function qrHTML(){
   if(!window.qrcode||!code)return '';
   try{const q=window.qrcode(0,'M');q.addData(inviteURL());q.make();
-    return `<div class="qr"><img src="${q.createDataURL(6,2)}" alt="QR code to join room ${esc(code)}" aria-describedby="roomQrHint"></div>
-<p class="tip" id="roomQrHint">To join, scan with your phone’s camera and open the link.</p>`}catch(e){return ''}
+    return `<div class="qr"><img src="${q.createDataURL(6,2)}" alt="${uiHTML('QR code to join room {code}',{code})}" aria-describedby="roomQrHint"></div>
+<p class="tip" id="roomQrHint">${uiHTML("To join, scan with your phone’s camera and open the link.")}</p>`}catch(e){return ''}
 }
 function trackConn(){
   if(view!=='game'||mode!=='online'||connected){discSince=0;return}
@@ -1146,33 +1155,33 @@ function timerLeft(){
 function timerPill(){
   const v=timerLeft();if(v===null)return '';
   const f=Math.min(1,v/Math.max(1,G.timer));
-  return `<span class="tclock ${v<6?'low':''}" style="--f:${f.toFixed(3)};${ph(v<6?0.28:3.6,0)}" role="timer" aria-label="${v} seconds left"><i class="bell l"></i><i class="bell r"></i><i class="foot l"></i><i class="foot r"></i><span class="face"><b>${v}</b></span></span>`;
+  return `<span class="tclock ${v<6?'low':''}" style="--f:${f.toFixed(3)};${ph(v<6?0.28:3.6,0)}" role="timer" aria-label="${uiHTML('{count} seconds left',{count:fmt(v)})}"><i class="bell l"></i><i class="bell r"></i><i class="foot l"></i><i class="foot r"></i><span class="face"><b>${fmt(v)}</b></span></span>`;
 }
 const SPK='<path d="M3 9h4l5-4v14l-5-4H3z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
 function muteHTML(){
   const m=SFX.muted;
-  return `<button class="mute-btn" id="muteBtn" aria-label="${m?'Unmute sounds':'Mute sounds'}" aria-pressed="${m}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none">${SPK}${m?'<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>':'<path d="M16 8.5q3 3.5 0 7M19 5.5q6 6.5 0 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>'}</svg></button>`;
+  return `<button class="mute-btn" id="muteBtn" aria-label="${uiHTML(m?'Unmute sounds':'Mute sounds')}" aria-pressed="${m}"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none">${SPK}${m?'<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>':'<path d="M16 8.5q3 3.5 0 7M19 5.5q6 6.5 0 13" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>'}</svg></button>`;
 }
 function headerHTML(){
-  const st=mode==='solo'?'<span class="status solo"><i></i>Practice</span>':(connected?'<span class="status"><i></i>Live</span>':'<span class="status off"><i></i>Connecting</span>');
-  const ban=connBanner()?'<div class="conn-banner">Reconnecting…</div>':'';
-  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">Leave</button></header>${ban}`;
+  const st=mode==='solo'?`<span class="status solo"><i></i>${uiHTML("Practice")}</span>`:(connected?`<span class="status"><i></i>${uiHTML("Live")}</span>`:`<span class="status off"><i></i>${uiHTML("Connecting")}</span>`);
+  const ban=connBanner()?`<div class="conn-banner">${uiHTML("Reconnecting…")}</div>`:'';
+  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${uiHTML("Leave")}</button></header>${ban}`;
 }
 function gameHTML(){
   if(mode==='search'||(isPub&&!G))return waitHTML(null);
   if(!G){
     const long=Date.now()-joinedAt>7000;
-    return headerHTML()+`<main class="scroll"><section class="panel center"><div class="big-bean">${charSVG({color:COLORS[2],acc:4,id:2},'scared','bob')}</div><h2>Looking for room ${esc(code)}…</h2>
+    return headerHTML()+`<main class="scroll"><section class="panel center"><div class="big-bean">${charSVG({color:COLORS[2],acc:4,id:2},'scared','bob')}</div><h2>${uiHTML('Looking for room {code}…',{code})}</h2>
 </section></main>`;
   }
   if(G.phase==='lobby')return G.pub?waitHTML(G.players):headerHTML()+lobbyHTML();
   if(G.phase==='secrets')return headerHTML()+secretsHTML();
-  if((!byPid(PID)||replaced())&&G.phase!=='over')return headerHTML()+`<main class="cast">${G.players.map(cardHTML).join('')}</main><section class="tray"><p class="hint">Watching</p></section>`;
+  if((!byPid(PID)||replaced())&&G.phase!=='over')return headerHTML()+`<main class="cast" data-showdown="${uiHTML('FINAL SHOWDOWN')}">${G.players.map(cardHTML).join('')}</main><section class="tray"><p class="hint">${uiHTML("Watching")}</p></section>`;
   if(askViewOn())return headerHTML()+askViewHTML();
   if(guessViewOn())return headerHTML()+guessViewHTML();
   const duel=G.players.length===2,me0=G.players.findIndex(p=>p.pid===PID);
   const order=duel&&me0===0?[1,0]:G.players.map((_,i)=>i);
-  return headerHTML()+`<main class="cast ${duel?'duel':''}"><div class="clock-corner">${timerPill()}</div>${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray">${trayHTML()}</section>`;
+  return headerHTML()+`<main class="cast ${duel?'duel':''}" data-showdown="${uiHTML('FINAL SHOWDOWN')}"><div class="clock-corner">${timerPill()}</div>${order.map(i=>cardHTML(G.players[i],i)).join(duel?'<div class="vs">VS</div>':'')}</main><section class="tray">${trayHTML()}</section>`;
 }
 function canAct(){
   if(!G||G.phase!=='play')return false;
@@ -1191,7 +1200,7 @@ function guessViewHTML(){
   for(let n=tv.lo;n<=tv.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
   return `<main class="guessv"><div class="ask-top">${timerPill()}${pwBtnHTML()}</div>
 <div class="ped"><div class="ped-bean jit">${popHTML(t.pid)}${charSVG(pv(t),'scared')}</div><div class="ped-base"><b>${esc(t.name)}</b></div></div>
-<p class="ped-q">Which one is it?</p>
+<p class="ped-q">${uiHTML("Which one is it?")}</p>
 <div class="guess-grid big n${btns.length} ${fmt(tv.hi).length>=7?'c2':fmt(tv.hi).length>=5?'c3':''}">${btns.join('')}</div></main>`;
 }
 function askViewOn(){const t=curTarget();return canAct()&&isAsk(G.sub[0])&&!!t&&t.a}
@@ -1200,7 +1209,7 @@ const BIG_DN=`<svg class="arrow" viewBox="0 0 100 100" aria-hidden="true"><path 
 const BKSP=`<svg viewBox="0 0 32 24" aria-hidden="true" width="30" height="22"><path d="M10 2h19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H10L1 12z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M15 8l8 8M23 8l-8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
 function padHTML(extra,rise){
   const k=n=>`<button class="key" data-k="${n}">${n}</button>`;
-  return `<div class="pad ${rise?'rise':''}">${[1,2,3,4,5,6,7,8,9].map(k).join('')}<button class="key del" data-k="del" aria-label="Delete">${BKSP}</button>${k(0)}${extra}</div>`;
+  return `<div class="pad ${rise?'rise':''}">${[1,2,3,4,5,6,7,8,9].map(k).join('')}<button class="key del" data-k="del" aria-label="${uiHTML("Delete")}">${BKSP}</button>${k(0)}${extra}</div>`;
 }
 function askSlots(t){
   const lo=ui.dir==='l'?t.lo+1:t.lo,hi=ui.dir==='l'?t.hi:t.hi-1;
@@ -1231,7 +1240,7 @@ function sliderParts(tv,x){
 function sliderHTML(tv){
   const x=askX();if(x===null)return '';
   const q=sliderParts(tv,x),seg=(c,fl,fr)=>`<i class="${c} ${fr<0.17?'tiny':''}" style="flex:${fl} 1 0"><em>${c.toUpperCase()}</em></i>`;
-  return `<div class="sld" id="sld" role="slider" tabindex="0" aria-label="Number" aria-valuemin="${askSlots(tv).lo}" aria-valuemax="${askSlots(tv).hi}" aria-valuenow="${x}" aria-valuetext="${ui.dir==='l'?'Lower':'Higher'} than ${fmt(x)}">
+  return `<div class="sld" id="sld" role="slider" tabindex="0" aria-label="${uiHTML("Number")}" aria-valuemin="${askSlots(tv).lo}" aria-valuemax="${askSlots(tv).hi}" aria-valuenow="${x}" aria-valuetext="${uiHTML('{direction} than {number}',{direction:uiText(ui.dir==='l'?'Lower':'Higher'),number:fmt(x)})}">
 <div class="sld-track" id="sldTrack">${seg(q.lc,q.leftN,q.f)}${seg(q.rc,q.T-q.leftN,1-q.f)}<b class="sld-thumb" id="sldThumb" style="left:${(q.f*100).toFixed(3)}%"></b></div>
 <div class="rl-caps"><span class="${q.lc}" id="sldL">${q.lt}</span><span class="${q.rc}" id="sldR">${q.rt}</span></div></div>`;
 }
@@ -1245,7 +1254,7 @@ function sliderPaint(){
   const th=$('#sldThumb');if(th)th.style.left=(q.f*100).toFixed(3)+'%';
   const l=$('#sldL'),r=$('#sldR');if(l)l.textContent=q.lt;if(r)r.textContent=q.rt;
   const bn=$('#bigNum');if(bn)bn.textContent=fmt(x);
-  const sd=$('#sld');if(sd){sd.setAttribute('aria-valuenow',x);sd.setAttribute('aria-valuetext',(ui.dir==='l'?'Lower':'Higher')+' than '+fmt(x))}
+  const sd=$('#sld');if(sd){sd.setAttribute('aria-valuenow',x);sd.setAttribute('aria-valuetext',uiText('{direction} than {number}',{direction:uiText(ui.dir==='l'?'Lower':'Higher'),number:fmt(x)}))}
 }
 function secPaint(){
   const tr=$('#secTrack');if(!tr)return false;
@@ -1310,15 +1319,15 @@ function askViewHTML(){
   const t=curTarget(),me=byPid(PID),tv=mv(t);
   const k=(G.subN||1)-G.sub.length+1;
   const one=G.players.length>2&&askTg(PID).length===1;
-  const top=`<div class="ask-top">${ui.step==='num'?`<button class="btn sm" id="askBack">Back</button><button class="btn sm padtog" id="padTog" aria-label="${ui.pad?'Use the slider':'Use the number pad'}">${ui.pad?ICO_SLD:ICO_PAD}</button>`:''}
+  const top=`<div class="ask-top">${ui.step==='num'?`<button class="btn sm" id="askBack">${uiHTML("Back")}</button><button class="btn sm padtog" id="padTog" aria-label="${uiHTML(ui.pad?'Use the slider':'Use the number pad')}">${ui.pad?ICO_SLD:ICO_PAD}</button>`:''}
 ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}${one?'':`<div class="ask-row">${askRowHTML(t,tv)}</div>`}</div>${one?whoHTML(t,tv):''}`;
   if(ui.step!=='num'){
     const bk=G.gid+':'+G.seq;
     if(!sfxSeen.burst.has(bk)){sfxSeen.burst.add(bk);[0,0.14,0.28,0.42].forEach(d=>sfx('babble'+rnd(1,3),{delay:d,rate:babRate()+(Math.random()-.5)*0.16}))}
     return `<section class="askv">${top}${hint('dir','Tap HIGHER or LOWER')}<div class="split">
-<button class="half hi" data-pickdir="h">${BIG_UP}<span class="word">HIGHER</span></button>
-<button class="half lo" data-pickdir="l"><span class="word">LOWER</span>${BIG_DN}</button>
-<div class="speaker"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span><div class="speech"><span class="jit">Is it…</span></div></div>
+<button class="half hi" data-pickdir="h">${BIG_UP}<span class="word">${uiHTML("HIGHER")}</span></button>
+<button class="half lo" data-pickdir="l"><span class="word">${uiHTML("LOWER")}</span>${BIG_DN}</button>
+<div class="speaker"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span><div class="speech"><span class="jit">${uiHTML("Is it…")}</span></div></div>
 </div></section>`;
   }
   const land=ui.land;ui.land=false;
@@ -1327,12 +1336,12 @@ ${timerPill()}${ui.step==='num'?'':pwBtnHTML()}${one?'':`<div class="ask-row">${
   const x=askX(),ty=ui.pad?(ui.typed||''):null;
   return `<section class="askv ${ui.pad?'padon':''}">${top}
 <div class="say"><span class="spk-bean jit-slow">${charSVG(pv(me),'talk')}</span>
-<div class="speech big ${land?'pop':''}"><span>Is it</span> <button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="${ui.dir==='l'?'Lower':'Higher'}, switch to ${ui.dir==='l'?'higher':'lower'}">${word}</button> <span>than</span> <span class="numslot"><span class="bignum ${ty===''?'blank':''}" id="bigNum">${ty===null?fmt(x):ty===''?'_':fmt(Number(ty))}</span><span class="qm">?</span></span></div></div>
+<div class="speech big ${land?'pop':''}">${uiMarkup('Is it {direction} than {number}?',{direction:`<button class="dirword ${ui.dir==='l'?'lo':'hi'} ${land?'land':''}" id="flipDir" aria-label="${uiHTML(ui.dir==='l'?'Lower, switch to higher':'Higher, switch to lower')}">${uiHTML(word)}</button>`,number:`<span class="numslot"><span class="bignum ${ty===''?'blank':''}" id="bigNum">${ty===null?fmt(x):ty===''?'_':fmt(Number(ty))}</span></span>`})}</div></div>
 ${ui.pad?'':sliderHTML(tv)}
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
 ${ui.pad?padHTML('',false):''}
-<div class="nudge two" ${ui.pad?'hidden':''}><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
-<button class="btn primary big full" id="askGo">Ask</button>
+<div class="nudge two" ${ui.pad?'hidden':''}><button class="key nb" data-k="dec" aria-label="${uiHTML("One lower")}">−</button><button class="key nb" data-k="inc" aria-label="${uiHTML("One higher")}">+</button></div>
+<button class="btn primary big full" id="askGo">${uiHTML("Ask")}</button>
 </section>`;
 }
 function wheelSVG(){
@@ -1352,7 +1361,7 @@ function showWheel(){
   if(!G)return;
   const id=++sceneSeq,n=G.players.length,w=360/n,first=G.players[G.turn];
   const final=360*6-(G.turn+.5)*w+(Math.random()-.5)*w*.6;
-  openOv(`<div class="sheet center"><h2>Who goes first?</h2><div class="wheel-wrap"><div class="wheel" id="wheel">${wheelSVG()}</div>
+  openOv(`<div class="sheet center"><h2>${uiHTML("Who goes first?")}</h2><div class="wheel-wrap"><div class="wheel" id="wheel">${wheelSVG()}</div>
 <svg class="pointer" viewBox="0 0 40 44" aria-hidden="true"><path d="M20 42L4 6h32z" fill="#EE4B3B" stroke="#1E2240" stroke-width="4" stroke-linejoin="round"/></svg></div>
 <p id="wheelMsg" class="wheel-msg"></p></div>`);
   const el=$('#wheel');
@@ -1373,7 +1382,7 @@ function showWheel(){
    };
    requestAnimationFrame(loop);}
   requestAnimationFrame(()=>requestAnimationFrame(()=>{if(el)el.style.transform=`rotate(${final}deg)`}));
-  later(()=>{if(id!==sceneSeq)return;const m=$('#wheelMsg');if(m){m.textContent=first.pid===PID?'You go first!':`${first.name} goes first!`;m.classList.add('win')}sfx('wheelland');buzz(40)},4300);
+  later(()=>{if(id!==sceneSeq)return;const m=$('#wheelMsg');if(m){m.textContent=first.pid===PID?uiText('You go first!'):uiText('{name} goes first!',{name:first.name});m.classList.add('win')}sfx('wheelland');buzz(40)},4300);
   later(()=>{if(id===sceneSeq)closeOv()},5800);
 }
 function padPress(k){
@@ -1395,24 +1404,24 @@ function padPress(k){
   ui[field]=v;ui.err='';render(true);
 }
 function lobbyHTML(){
-  const rows=G.players.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${p.pid===G.players[0].pid&&!p.bot&&mode==='online'?'<span class="tag">HOST</span>':''}</span>
-${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove ${esc(p.name)}">×</button>`:(p.pid===PID?`<button class="btn sm" id="lookBtn" aria-expanded="${!!ui.picker}">Change look</button>`:'<span></span>')}</div>`).join('');
+  const rows=G.players.map(p=>`<div class="prow2"><span class="lpic">${popHTML(p.pid)}${charSVG(pv(p),'idle','bob')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?`<span class="tag up">${uiHTML("YOU")}</span>`:''}${p.bot&&!p.hb?`<span class="tag">${uiHTML("BOT")}</span>`:''}${p.pid===G.players[0].pid&&!p.bot&&mode==='online'?`<span class="tag">${uiHTML("HOST")}</span>`:''}</span>
+${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="${uiHTML('Remove {name}',{name:p.name})}">×</button>`:(p.pid===PID?`<button class="btn sm" id="lookBtn" aria-expanded="${!!ui.picker}">${uiHTML("Change look")}</button>`:'<span></span>')}</div>`).join('');
   const full=!byPid(PID)&&G.players.length>=6;
   return `<main class="scroll">
-${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Copied':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}${isHost&&G.players.filter(q=>!q.bot).length<2?`<div class="join-row lob-join"><input id="lobCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Friend's room code"><button class="btn" id="lobJoin">Join</button></div>${ui.lobErr?`<p class="err">${esc(ui.lobErr)}</p>`:''}`:''}</section>`:''}
-<section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
+${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${uiHTML(ui.inviteCopied?'Copied':'Send invite')}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}${isHost&&G.players.filter(q=>!q.bot).length<2?`<div class="join-row lob-join"><input dir="ltr" id="lobCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="${uiHTML("CODE")}" aria-label="${uiHTML("Friend's room code")}"><button class="btn" id="lobJoin">${uiHTML("Join")}</button></div>${ui.lobErr?`<p class="err">${uiHTML(ui.lobErr)}</p>`:''}`:''}</section>`:''}
+<section class="panel"><h2>${uiHTML("Players")} <small>${uiHTML('{count} of 6',{count:fmt(G.players.length)})}</small></h2><div class="plist">${rows}</div>
 ${ui.picker&&byPid(PID)?pickerHTML():''}
-${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" aria-describedby="botHint" style="justify-self:start">+ Add a bot</button>':''}
-${isHost||G.players.some(p=>p.bot)?'<p class="tip" id="botHint">Bots take a seat and play their own turns.</p>':''}
-${full?'<p class="err">This room is full</p>':''}</section>
+${isHost&&G.players.length<6?`<button class="btn sm" id="addBot" aria-describedby="botHint" style="justify-self:start">${uiHTML("+ Add a bot")}</button>`:''}
+${isHost||G.players.some(p=>p.bot)?`<p class="tip" id="botHint">${uiHTML("Bots take a seat and play their own turns.")}</p>`:''}
+${full?`<p class="err">${uiHTML("This room is full")}</p>`:''}</section>
 ${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
-<section class="panel"><h2>Number range</h2>
-<p class="tip" id="roomRangeHint">Everyone picks a secret number from this range.</p>
+<section class="panel"><h2>${uiHTML("Number range")}</h2>
+<p class="tip" id="roomRangeHint">${uiHTML("Everyone picks a secret number from this range.")}</p>
 ${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-describedby="roomRangeHint" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
-<h2>Turn timer</h2>
-<p class="tip" id="roomTimerHint">With the timer on, the game takes your turn when time runs out.</p>
-${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-describedby="roomTimerHint" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' sec':'Off'}</p>`}</section>
-${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host…</p>'}
+<h2>${uiHTML("Turn timer")}</h2>
+<p class="tip" id="roomTimerHint">${uiHTML("With the timer on, the game takes your turn when time runs out.")}</p>
+${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-describedby="roomTimerHint" aria-pressed="${(G.timer||0)===v}">${uiHTML(l==='Off'?l:'{count} sec',{count:fmt(v)})}</button>`).join('')}</div>`:`<p class="tip">${G.timer?uiHTML('{count} sec',{count:fmt(G.timer)}):uiHTML('Off')}</p>`}</section>
+${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${uiHTML(G.players.length<2?'Waiting for players…':'Start game')}</button>`:`<p class="hint" style="text-align:center">${uiHTML("Waiting for the host…")}</p>`}
 </main>`;
 }
 const LOCK_SVG='<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1E2240"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#1E2240" stroke-width="2"/></svg>';
@@ -1420,11 +1429,11 @@ function pickerHTML(){
   const me=byPid(PID),l=myLook();
   const curC=me.c%6,curK=l?l.k:(me.k!=null?me.k:me.c);
   const sw=COLORS.map((c,i)=>{const taken=G.players.some(q=>q.pid!==PID&&q.c===i);
-    return `<button class="pk-sw ${i===curC?'sel':''}" data-lc="${i}" ${taken?'disabled':''} aria-label="Color ${i+1}" aria-pressed="${i===curC}">${charSVG({color:c,acc:curK,id:i},'idle')}</button>`}).join('');
+    return `<button class="pk-sw ${i===curC?'sel':''}" data-lc="${i}" ${taken?'disabled':''} aria-label="${uiHTML('Color {number}',{number:fmt(i+1)})}" aria-pressed="${i===curC}">${charSVG({color:c,acc:curK,id:i},'idle')}</button>`}).join('');
   let hats='';
   for(let i=0;i<hatCount();i++){
     const ok=hatUnlocked(i);
-    hats+=`<button class="pk-hat ${i===curK?'sel':''} ${ok?'':'locked'}" data-lk="${i}" ${ok?'':'disabled'} aria-pressed="${i===curK}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[curC],acc:i,id:curC},'idle')}</span><span class="hn">${ok?esc(hatName(i)):'Win '+(HAT_NEED[i]||99)}</span></button>`;
+    hats+=`<button class="pk-hat ${i===curK?'sel':''} ${ok?'':'locked'}" data-lk="${i}" ${ok?'':'disabled'} aria-pressed="${i===curK}">${ok?'':`<span class="lockb">${LOCK_SVG}</span>`}<span class="hb">${charSVG({color:COLORS[curC],acc:i,id:curC},'idle')}</span><span class="hn">${ok?uiHTML(hatName(i)):uiHTML('Win {number}',{number:fmt(HAT_NEED[i]||99)})}</span></button>`;
   }
   return `<div class="picker"><div class="pk-row">${sw}</div><div class="pk-grid">${hats}</div></div>`;
 }
@@ -1436,22 +1445,22 @@ function setLook(patch){
 }
 function secretsHTML(){
   const me=byPid(PID);
-  const list=G.players.map(p=>{const r=(p.bot&&!(G.bw&&G.bw[p.pid]))||(getPres(p.pid)||{}).ready===G.gid;return `<div class="prow2"><span>${charSVG(pv(p),r?'idle':'scared')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span><span class="${r?'state-ok':'state-wait'}">${r?'Ready':'Picking…'}</span></div>`}).join('');
+  const list=G.players.map(p=>{const r=(p.bot&&!(G.bw&&G.bw[p.pid]))||(getPres(p.pid)||{}).ready===G.gid;return `<div class="prow2"><span>${charSVG(pv(p),r?'idle':'scared')}</span><span class="who"><b>${esc(p.name)}</b>${p.pid===PID?`<span class="tag up">${uiHTML("YOU")}</span>`:''}</span><span class="${r?'state-ok':'state-wait'}">${uiHTML(r?'Ready':'Picking…')}</span></div>`}).join('');
   if(me&&!mySecret){
     if(ui.secGid!==G.gid){ui.secGid=G.gid;ui.sec=String(rnd(1,G.max));ui.secTyped=false}
     const n=Math.min(G.max,Math.max(1,Number(ui.sec)||1)),f=G.max>1?(n-1)/(G.max-1):0;
-    return `<main class="scroll"><section class="panel center secpick"><div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">Pick your number</h2>
+    return `<main class="scroll"><section class="panel center secpick"><div class="big-bean">${charSVG(pv(me),'scared','bob')}</div><h2 style="font-family:var(--display);font-weight:400">${uiHTML("Pick your number")}</h2>
 <div class="secret-big entry" id="secNum">${ui.sec?fmt(n):'&nbsp;'}</div>
-<div class="sld one" id="secSld" role="slider" tabindex="0" aria-label="Your number" aria-valuemin="1" aria-valuemax="${G.max}" aria-valuenow="${n}" aria-valuetext="${fmt(n)}"><div class="sld-track" id="secTrack"><i class="pick" id="secFill" style="width:${(f*100).toFixed(3)}%"></i><b class="sld-thumb" id="secThumb" style="left:${(f*100).toFixed(3)}%"></b></div>
+<div class="sld one" id="secSld" role="slider" tabindex="0" aria-label="${uiHTML("Your number")}" aria-valuemin="1" aria-valuemax="${G.max}" aria-valuenow="${n}" aria-valuetext="${fmt(n)}"><div class="sld-track" id="secTrack"><i class="pick" id="secFill" style="width:${(f*100).toFixed(3)}%"></i><b class="sld-thumb" id="secThumb" style="left:${(f*100).toFixed(3)}%"></b></div>
 <div class="sld-ends"><span>1</span><span>${fmt(G.max)}</span></div></div>
 ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
-<div class="nudge"><button class="key nb" data-k="dec" aria-label="One lower">−</button><button class="key mid" data-k="rand">RANDOM</button><button class="key nb" data-k="inc" aria-label="One higher">+</button></div>
+<div class="nudge"><button class="key nb" data-k="dec" aria-label="${uiHTML("One lower")}">−</button><button class="key mid" data-k="rand">${uiHTML("RANDOM")}</button><button class="key nb" data-k="inc" aria-label="${uiHTML("One higher")}">+</button></div>
 <div hidden>${padHTML('',false)}</div>
-<button class="btn go big full" id="lockBtn" ${ui.sec?'':'disabled'}>Lock it in</button></section>
-<section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
+<button class="btn go big full" id="lockBtn" ${ui.sec?'':'disabled'}>${uiHTML("Lock it in")}</button></section>
+<section class="panel"><h2>${uiHTML("Who's ready")}</h2><div class="ready-list">${list}</div></section></main>`;
   }
-  return `<main class="scroll"><section class="panel center"><div class="secret-big">${ui.show&&mySecret?fmt(mySecret.n):'••••'}</div><button class="link" id="showBtn">${ui.show?'Hide':'Show'}</button></section>
-<section class="panel"><h2>Who's ready</h2><div class="ready-list">${list}</div></section></main>`;
+  return `<main class="scroll"><section class="panel center"><div class="secret-big">${ui.show&&mySecret?fmt(mySecret.n):'••••'}</div><button class="link" id="showBtn">${uiHTML(ui.show?'Hide':'Show')}</button></section>
+<section class="panel"><h2>${uiHTML("Who's ready")}</h2><div class="ready-list">${list}</div></section></main>`;
 }
 let hpPrev={},hpGid='';
 function hpHTML(pid,v,z){
@@ -1469,7 +1478,7 @@ function hpHTML(pid,v,z){
     const xs=myXs(v);let pips='';
     for(let k=v.lo;k<=v.hi;k++)pips+=`<i class="pip ${xs.includes(k)?'x':''}"></i>`;
     mid=`<span class="rb-pips">${pips}</span>`;
-  }else mid=`<i class="keep"><em>${fmt(n)} left</em></i>`;
+  }else mid=`<i class="keep"><em>${uiHTML('{count} left',{count:fmt(n)})}</em></i>`;
   return `<span class="rb ${tone} ${live?'live':''}"><span class="rb-ends"><b class="${live&&cl>0?'pop':''}" style="${d}">${fmt(v.lo)}</b><b class="${live&&cr>0?'pop':''}" style="${d}">${fmt(v.hi)}</b></span><span class="rb-track">${seg('l',cl)}${mid}${seg('r',cr)}</span>${live?`<b class="dmg" style="${d}">−${fmt(cut)}</b>`:''}</span>`;
 }
 /* My own card: a health bar showing how few numbers the closest opponent still has me down to, with that opponent's face. */
@@ -1479,10 +1488,10 @@ function huntHTML(p){
   if(!h)return '';
   const frac=Math.log(Math.max(m,1))/Math.log(Math.max(G.max,2)),tone=m<=10?'hot':frac>0.66?'ok':frac>0.38?'mid':'low';
   const fresh=m>=G.max;
-  return `<span class="hunt ${tone}" role="img" aria-label="${fresh?'Nobody is close yet':esc(h.name)+' has you down to '+fmt(m)}">${fresh?'':`<span class="hunt-b">${charSVG(pv(h),tone==='hot'?'happy':'idle')}</span>`}<span class="hunt-track"><i style="width:${Math.max(8,Math.round(frac*100))}%"></i><em>${fmt(m)}<u> left</u></em></span></span>`;
+  return `<span class="hunt ${tone}" role="img" aria-label="${fresh?uiHTML('Nobody is close yet'):uiHTML('{name} has you down to {count}',{name:h.name,count:fmt(m)})}">${fresh?'':`<span class="hunt-b">${charSVG(pv(h),tone==='hot'?'happy':'idle')}</span>`}<span class="hunt-track"><i style="width:${Math.max(8,Math.round(frac*100))}%"></i><em>${uiHTML('{count} left',{count:fmt(m)})}</em></span></span>`;
 }
 function cardHTML(p,i){
-  if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?'<span class="tag up">YOU</span>':''}</span>${pwBits(p)}<span class="rip">${typeof DEATH_ICON!=='undefined'&&DEATH_ICON[p.d]?`<span class="dicon">${DEATH_ICON[p.d]}</span>`:''}${SHORT[p.d]||'Out'}</span></span></div>`;
+  if(!p.a)return `<div class="card dead"><span class="pic">${popHTML(p.pid)}${TOMB}</span><span class="info"><span class="nm"><b>${esc(p.name)}</b>${p.pid===PID?`<span class="tag up">${uiHTML("YOU")}</span>`:''}</span>${pwBits(p)}<span class="rip">${typeof DEATH_ICON!=='undefined'&&DEATH_ICON[p.d]?`<span class="dicon">${DEATH_ICON[p.d]}</span>`:''}${uiHTML(SHORT[p.d]||'Out')}</span></span></div>`;
   const cur=G.players[G.turn];
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
   const pick=false;
@@ -1490,39 +1499,54 @@ function cardHTML(p,i){
   const v=mv(p),total=G.max,lf=(v.lo-1)/total*100,w=Math.max((v.hi-v.lo+1)/total*100,2);
   const ct=curTarget(),z=!mine&&zone(v),isT=G.q?(G.q.t==='askall'?!!(G.q.xs&&p.pid in G.q.xs):G.q.tg===p.pid):!!(ct&&ct.pid===p.pid);
   const dg=mine?(p.dg|0):0;
-  const bb=bubOf(p.pid),bub=bb?`<span class="bubble ${bb.up?'up':'down'}${bb.ic&&pwIcon(bb.ic)?' pw-bub':''}"${bb.ic&&pwIcon(bb.ic)?` role="img" aria-label="${esc(bb.text)}">${pwIcon(bb.ic,'pw-i28')}`:`>${esc(bb.text)}`}</span>`:'';
+  const bb=bubOf(p.pid),bub=bb?`<span class="bubble ${bb.up?'up':'down'}${bb.ic&&pwIcon(bb.ic)?' pw-bub':''}"${bb.ic&&pwIcon(bb.ic)?` role="img" aria-label="${uiHTML(bb.text)}">${pwIcon(bb.ic,'pw-i28')}`:`>${uiHTML(bb.text)}`}</span>`:'';
   const turnTag='';
   const inner=`<span class="pic">${bub}${popHTML(p.pid)}${charSVG(pv(p),isT||z||dg>=2?'scared':'idle','bob')}</span>
-<span class="info"><span class="nm"><b>${esc(p.name)}</b>${G.pub&&Number.isInteger(p.el)?`<span class="elo">${p.el}</span>`:''}${mine?'<span class="tag">YOU</span>':''}${p.bot&&!p.hb?'<span class="tag">BOT</span>':''}${turnTag}</span>${pwBits(p)}
-${mine?huntHTML(p):`${hpHTML(p.pid,v,z)}${z?`<span class="zone">${leftX(v)} LEFT</span>`:''}`}
-${mine&&mySecret?`<span class="left">Yours: <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${ui.show?'Hide':'Show'}</button></span>`:''}</span>`;
+<span class="info"><span class="nm"><b>${esc(p.name)}</b>${G.pub&&Number.isInteger(p.el)?`<span class="elo">${p.el}</span>`:''}${mine?`<span class="tag">${uiHTML("YOU")}</span>`:''}${p.bot&&!p.hb?`<span class="tag">${uiHTML("BOT")}</span>`:''}${turnTag}</span>${pwBits(p)}
+${mine?huntHTML(p):`${hpHTML(p.pid,v,z)}${z?`<span class="zone">${uiHTML('{count} LEFT',{count:fmt(leftX(v))})}</span>`:''}`}
+${mine&&mySecret?`<span class="left">${uiHTML("Yours:")} <b>${ui.show?fmt(mySecret.n):'••••'}</b> <button class="link reveal" id="showBtn">${uiHTML(ui.show?'Hide':'Show')}</button></span>`:''}</span>`;
   if(mine)return `<div class="card mine ${i===G.turn?'is-turn':''} ${isT?'is-target':''} ${dg>=3?'dg3':''}">${inner}</div>`;
-  return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${esc(p.name)}, between ${fmt(v.lo)} and ${fmt(v.hi)}">${inner}</button>`;
+  return `<button class="card ${i===G.turn&&G.phase==='play'?'is-turn':''} ${isT?'is-target':''} ${pick?'pick':''}" data-pid="${esc(p.pid)}" ${pick?'':'tabindex="-1"'} aria-label="${uiHTML('{name}, between {min} and {max}',{name:p.name,min:fmt(v.lo),max:fmt(v.hi)})}">${inner}</button>`;
 }
 function trayHTML(){return trayInner()+(byPid(PID)?tauntBar():'')}
 function trayInner(){
-  if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w&&!(w.pid===PID&&replaced())?(w.pid===PID?'You win!':esc(w.name)+' wins!'):'Game over'}</div>${G.pub?'':isHost?'<div class="btn-row"><button class="btn primary" id="toLobby">Play again</button></div>':'<p class="hint">Waiting for the host…</p>'}`}
+  if(G.phase==='over'){const w=byPid(G.win);return `<div class="turn-name">${w&&!(w.pid===PID&&replaced())?(w.pid===PID?uiHTML('You win!'):uiHTML('{name} wins!',{name:w.name})):uiHTML('Game over')}</div>${G.pub?'':isHost?`<div class="btn-row"><button class="btn primary" id="toLobby">${uiHTML("Play again")}</button></div>`:`<p class="hint">${uiHTML("Waiting for the host…")}</p>`}`}
   const cur=G.players[G.turn],me=byPid(PID),myTurn=cur.pid===PID&&!(me&&me.bot);
   const evLine=G.ev&&(myTurn||G.ev.a===cur.pid)?`<div class="msg">${esc(evText(G.ev))}</div>`:'';
-  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?'Your turn':esc(cur.name)+"'s turn"}${''}</div>${evLine}</div></div>`;
+  const head=`<div class="turn"><span>${charSVG(pv(cur),'idle')}</span><div><div class="turn-name">${myTurn?uiHTML('Your turn'):uiHTML("{name}'s turn",{name:cur.name})}${''}</div>${evLine}</div></div>`;
   if(!myTurn){
     const ct=curTarget();
-    let body=G.stage==='wheel'?'':G.q?`<p class="hint">${esc(qText(G.q))}</p>`:(ct?'':`<p class="hint">Waiting for ${esc(cur.name)}…</p>`);
+    let body=G.stage==='wheel'?'':G.q?`<p class="hint">${esc(qText(G.q))}</p>`:(ct?'':`<p class="hint">${uiHTML('Waiting for {name}…',{name:cur.name})}</p>`);
     if((G.q&&G.q.tg===PID)||(!G.q&&ct&&ct.pid===PID))body+=hint('asked','Your phone answers for you. No lying!');
-    if(me&&!me.a)body+=`<p class="sub">You're out</p>`;
+    if(me&&!me.a)body+=`<p class="sub">${uiHTML("You're out")}</p>`;
     return head+body;
   }
   const sent=myPres.act&&myPres.act.gid===G.gid&&myPres.act.seq===G.seq;
-  if(G.stage!=='await'||G.q||sent)return head+`<p class="hint">${G.q?esc(qText(G.q)):(G.stage==='await'?'Sending…':(G.stage==='power'?'Using a power…':''))}</p>`;
+  if(G.stage!=='await'||G.q||sent)return head+`<p class="hint">${G.q?esc(qText(G.q)):(G.stage==='await'?uiHTML('Sending…'):(G.stage==='power'?uiHTML('Using a power…'):''))}</p>`;
   const t=curTarget();
   if(!t||!t.a)return head;
   const tv=mv(t),xs=myXs(tv),btns=[];for(let n=tv.lo;n<=tv.hi;n++){const x=xs.includes(n);btns.push(`<button class="g" ${x?'disabled':`data-n="${n}"`}>${fmt(n)}</button>`)}
-  return head+hint('guess','Down to 10! Guess their exact number.')+`<div class="pw-row">${pwBtnHTML()}</div>`+`<p class="q">Guess <b>${esc(t.name)}</b>'s number</p><div class="guess-grid">${btns.join('')}</div>
+  return head+hint('guess','Down to 10! Guess their exact number.')+`<div class="pw-row">${pwBtnHTML()}</div>`+`<p class="q">${uiMarkup("Guess {name}'s number",{name:'<b>'+esc(t.name)+'</b>'})}</p><div class="guess-grid">${btns.join('')}</div>
 `;
 }
 
 /* ---------- Bindings ---------- */
 function on(id,fn){const el=document.getElementById(id);if(el)el.onclick=fn;return el}
+function showAbout(){
+  const languages=HLI18n.languages();
+  const selected=HLI18n.preference();
+  const option=(code,label)=>`<option value="${esc(code)}" lang="${code==='auto'?HLI18n.locale():esc(code)}"${code===selected?' selected':''}>${esc(label)}</option>`;
+  const language=languages.length>1?`<label class="language-field" for="languageChoice"><span>${uiHTML('Language')}</span><select id="languageChoice">${option('auto',uiText('Automatic'))}${languages.map(x=>option(x.code,x.label)).join('')}</select></label>`:'';
+  openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>${uiHTML('Open seats in Play are filled by bots.')}</p><p>${uiHTML('Sounds: Kenney, rubberduck and others (CC0). Piano: FluidR3 GM (CC BY 3.0).')}</p>${language}<p class="legal"><a href="privacy.html">${uiHTML('Privacy')}</a><a href="terms.html">${uiHTML('Terms')}</a><a href="support.html">${uiHTML('Support')}</a></p><div class="btn-row"><button class="btn" id="ovClose">${uiHTML('Close')}</button></div></div>`);
+  $('#ovClose').onclick=closeOv;
+  const choice=$('#languageChoice');
+  if(choice)choice.onchange=()=>{
+    HLI18n.set(choice.value);
+    render(true);
+    showAbout();
+    $('#languageChoice')?.focus();
+  };
+}
 function bind(){
   on('muteBtn',()=>{SFX.setMuted(!SFX.muted);if(!SFX.muted)sfx('pick');render(true)});
   if(view==='home'){
@@ -1543,7 +1567,7 @@ function bind(){
     on('playBtn',()=>{ui.homeErr='';track('play_tap',{m:trackMode(playMode().max)});quickPlay()});
     $$('[data-mode]').forEach(b=>b.onclick=()=>{pmSel=b.dataset.mode;LS.set('hl-pm',pmSel);sfx('pick');render(true)});
     on('meBtn',()=>{sfx('pick');openLook()});
-    on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney, rubberduck and others (CC0). Piano: FluidR3 GM (CC BY 3.0).</p><p class="legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="support.html">Support</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}${window.HLNative&&window.HLNative.restore&&!HLAds.noAds()?'<button class="link" id="restoreBtn">Restore purchases</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{track('noads_tap');HLAds.buy().then(closeOv)};const rs=$('#restoreBtn');if(rs)rs.onclick=()=>{HLAds.restore().then(closeOv)}});
+    on('infoBtn',showAbout);
     return;
   }
   on('leaveBtn',requestLeave);
@@ -1555,7 +1579,7 @@ function bind(){
       navigator.clipboard.writeText(url).then(()=>{ui.inviteCopied=true;ui.inviteUrl='';render(true);later(()=>{ui.inviteCopied=false;render(true)},2000)},fail);
     }catch(e){fail()}};
     /* e04: a share that fails for a reason other than the player cancelling (WebViews can expose navigator.share and then refuse it) falls back to copy */
-    if(navigator.share){try{const r=navigator.share({title:'High & Low',text:'Join my High & Low game! Room '+code,url});if(r&&r.catch)r.catch(e=>{if(!e||e.name!=='AbortError')copy()})}catch(e){copy()}return}
+    if(navigator.share){try{const r=navigator.share({title:'High & Low',text:uiText('Join my High & Low game! Room {code}',{code}),url});if(r&&r.catch)r.catch(e=>{if(!e||e.name!=='AbortError')copy()})}catch(e){copy()}return}
     copy();
   });
   on('lookBtn',()=>{sfx('pick');ui.picker=!ui.picker;render(true)});
@@ -1587,12 +1611,12 @@ function bind(){
 }
 
 function buzz(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
-function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=`Pick 1 to ${fmt(G.max)}`;sfx('error');render(true);return}ui.err='';sfx('send');sfx('lock',{delay:0.15});lockSecret(n);seen('secret')}
+function lockFromPad(){const n=Number(ui.sec);if(!Number.isInteger(n)||n<1||n>G.max){ui.err=uiText('Pick {min} to {max}',{min:fmt(1),max:fmt(G.max)});sfx('error');render(true);return}ui.err='';sfx('send');sfx('lock',{delay:0.15});lockSecret(n);seen('secret')}
 document.addEventListener('keydown',e=>{
   const ov=$('#ov');
   if(ov&&!ov.hidden){
     if(e.key==='Escape'){const b=ov.querySelector('#ovX,#ovClose,#stayBtn,#pwClose,#pwBack');if(b)b.click();else if(ov.onclick)ov.onclick({target:ov});return}
-    if(e.key==='Tab'){const f=[...ov.querySelectorAll('button:not(:disabled),a[href],input,[tabindex="0"]')].filter(x=>x.offsetParent!==null);const s=ov.querySelector('.sheet');
+    if(e.key==='Tab'){const f=[...ov.querySelectorAll('button:not(:disabled),a[href],input,select,[tabindex="0"]')].filter(x=>x.offsetParent!==null);const s=ov.querySelector('.sheet');
       if(!f.length){e.preventDefault();if(s)s.focus();return}
       const i=f.indexOf(document.activeElement);
       if(e.shiftKey&&(i<=0)){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i<0||i===f.length-1)){e.preventDefault();f[0].focus()}
@@ -1603,7 +1627,8 @@ document.addEventListener('keydown',e=>{
   if(askViewOn()&&ui.step==='num'&&e.key==='Escape'){const b=$('#askBack');if(b)b.click();return}
   const onPad=(G.phase==='secrets'&&byPid(PID)&&!mySecret)||(askViewOn()&&ui.step==='num');
   if(!onPad)return;
-  if(/^\d$/.test(e.key))padPress(e.key);
+  const digit=keypadDigit(e.key);
+  if(digit!==null){e.preventDefault();padPress(digit)}
   else if(e.key==='Backspace')padPress('del');
   else if(e.key==='Enter'){if(G.phase==='secrets')lockFromPad();else doAsk()}
 });
@@ -1627,11 +1652,11 @@ setInterval(()=>{
     if(tv<=5&&tv>0&&!sfxSeen.hurry.has('h'+k)){sfxSeen.hurry.add('h'+k);sfx('vo_hurry')}
     if(tv===0&&!sfxSeen.hurry.has('o'+k)){sfxSeen.hurry.add('o'+k);sfx('vo_timeover')}
   }
-  if(tv===null)return;document.querySelectorAll('.tclock').forEach(el=>{const v=timerLeft();if(v===null)return;el.style.setProperty('--f',Math.min(1,v/Math.max(1,G.timer)).toFixed(3));const b=el.querySelector('b');if(b)b.textContent=v;el.classList.toggle('low',v<6)})},1000);
+  if(tv===null)return;document.querySelectorAll('.tclock').forEach(el=>{const v=timerLeft();if(v===null)return;el.style.setProperty('--f',Math.min(1,v/Math.max(1,G.timer)).toFixed(3));const b=el.querySelector('b');if(b)b.textContent=fmt(v);el.setAttribute('aria-label',uiText('{count} seconds left',{count:fmt(v)}));el.classList.toggle('low',v<6)})},1000);
 /* ---------- Internet required (web and app builds) ---------- */
 const NEED_NET=!!window.HL_NEED_NET;
 function offline(){return NEED_NET&&(navigator.onLine===false||roomState==='none')}
-function offlineHTML(){return `<section class="panel center nonet"><svg viewBox="0 0 64 56" aria-hidden="true"><path d="M6 22a38 38 0 0 1 52 0M15 32a25 25 0 0 1 34 0M24 42a12 12 0 0 1 16 0" fill="none" stroke="#1E2240" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="50" r="4" fill="#1E2240"/><path d="M10 6 54 52" stroke="#F0503C" stroke-width="7" stroke-linecap="round"/></svg><h2>No internet</h2><button class="btn primary full" id="retryNet">Try again</button></section>`}
+function offlineHTML(){return `<section class="panel center nonet"><svg viewBox="0 0 64 56" aria-hidden="true"><path d="M6 22a38 38 0 0 1 52 0M15 32a25 25 0 0 1 34 0M24 42a12 12 0 0 1 16 0" fill="none" stroke="#1E2240" stroke-width="6" stroke-linecap="round"/><circle cx="32" cy="50" r="4" fill="#1E2240"/><path d="M10 6 54 52" stroke="#F0503C" stroke-width="7" stroke-linecap="round"/></svg><h2>${uiHTML("No internet")}</h2><button class="btn primary full" id="retryNet">${uiHTML("Try again")}</button></section>`}
 async function initRooms(){
   roomState='checking';render(true);
   try{if(navigator.onLine===false&&NEED_NET)roomNS=null;else if(window.HL_CONFIG&&window.makeSupabaseRoom)roomNS=window.makeSupabaseRoom(window.HL_CONFIG);else roomNS=window.claude&&window.claude.use?await window.claude.use('room'):null}catch(e){roomNS=null}

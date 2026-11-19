@@ -1,0 +1,6 @@
+.language-field{display:grid;gap:4px;justify-items:stretch;width:min(100%,240px);text-align:start;margin-inline:auto}
+.language-field select{width:100%;min-height:44px;padding:4px 10px;font:inherit;color:inherit;background:var(--white);border:2px solid var(--ink);border-radius:10px}
+.language-field select:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.speech.big>.numslot{unicode-bidi:isolate}
+[dir="rtl"] .logo,[dir="rtl"] .code,[dir="rtl"] .pill,[dir="rtl"] .sld,[dir="rtl"] .pad,[dir="rtl"] .rb,[dir="rtl"] .invite-url{direction:ltr;unicode-bidi:isolate}
+[dir="rtl"] .taunt-btn,[dir="rtl"] button,[dir="rtl"] input,[dir="rtl"] select{font-family:var(--body)}

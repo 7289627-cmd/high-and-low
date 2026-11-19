@@ -112,26 +112,35 @@ def query(path, **filters):
 
 
 def reference(api, max_size):
-    catalog = metadata.pages(api, query('/v1/appAssetLibraryRefData', features='APP_STORE_VERSIONS',
-                                       placementTypes=SCREENSHOT))
+    catalog = metadata.pages(api, '/v1/appAssetLibraryRefData')
     groups = set()
+    diagnostic = []
     for row in catalog:
         a = metadata.attr(row)
         profiles = {profile['placementProfileGroupId'] for profile in a['placementProfileGroups']
-                    if profile['displayClassId'] == DISPLAY and profile['platform'] == 'IOS'}
+                    if profile['displayClassId'] == DISPLAY and profile['platform'] == 'IPHONE_APP_STORE'}
         eligible = {g for f in a['features'] if f['featureId'] == 'APP_STORE_VERSIONS'
                     for p in f['placementPolicies'] if p['placementType'] == SCREENSHOT
                     for limit in p['groupLimits'] if limit['maxCount'] >= len(NAMES)
                     for g in limit['groupIds']}
-        sizes = a['imageSpecs']
-        specs = {s['specId'] for s in sizes if s['dimensions'] == {
-            'minWidth': SIZE[0], 'maxWidth': SIZE[0], 'minHeight': SIZE[1], 'maxHeight': SIZE[1]}
-            and 'image/png' in s['mimeTypes'] and max_size <= s['maxFileSize']}
-        for placement in a['placementTypes']:
-            if placement['placementTypeId'] == SCREENSHOT and CATEGORY in placement['acceptsAssetCategories']:
-                groups.update(m['placementGroupId'] for m in placement['specMappings']
-                              if m['placementGroupId'] in profiles & eligible and specs.intersection(m['specs']))
+        dimension_matches = [s for s in a['imageSpecs'] if s.get('dimensions')
+                             and s['dimensions']['minWidth'] <= SIZE[0] <= s['dimensions']['maxWidth']
+                             and s['dimensions']['minHeight'] <= SIZE[1] <= s['dimensions']['maxHeight']]
+        specs = {s['specId'] for s in dimension_matches
+                 if ('image/png' in (s.get('mimeTypes') or [])
+                     or '.png' in (s.get('fileExtensions') or []))
+                 and max_size <= s['maxFileSize']}
+        mappings = {m['placementGroupId']: set(m['specs'])
+                    for placement in a['placementTypes'] if placement['placementTypeId'] == SCREENSHOT
+                    and CATEGORY in placement['acceptsAssetCategories']
+                    for m in placement['specMappings']}
+        compatible = {group for group, ids in mappings.items() if specs.intersection(ids)}
+        groups.update(profiles & eligible & compatible)
+        diagnostic.append((sorted(profiles), sorted(profiles & eligible),
+                           len(dimension_matches), len(specs), sorted(compatible)))
     if len(groups) != 1:
+        print('Apple public specification diagnostics (profiles, eligible profiles, size matches, '
+              'PNG matches, compatible groups): ' + str(diagnostic), flush=True)
         raise SafetyError('Apple did not report a unique large-display group accepting the approved PNGs')
     return groups.pop()
 

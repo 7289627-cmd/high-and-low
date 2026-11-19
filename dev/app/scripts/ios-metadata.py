@@ -213,7 +213,8 @@ def localized_listing(api):
         sync_locale(api, 'appInfos', info['id'], 'appInfoLocalizations', locale, {
             'name': name, 'subtitle': copy['subtitle'], 'privacyPolicyUrl': INFO['privacyPolicyUrl']})
         sync_locale(api, 'appStoreVersions', version['id'], 'appStoreVersionLocalizations', locale, {
-            'keywords': copy['keywords'], 'description': copy['description'], 'supportUrl': VERSION['supportUrl']})
+            'keywords': copy['keywords'], 'description': copy['description'],
+            'supportUrl': VERSION['supportUrl'], 'marketingUrl': 'https://7289627-cmd.github.io/high-and-low/'})
 
 
 def run(api, number):

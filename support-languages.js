@@ -236,7 +236,7 @@
   };
   function match(tag) {
     if (!tag) return;
-    if (Object.hasOwn(labels, tag)) return tag;
+    if (Object.keys(labels).includes(tag)) return tag;
     const [lang, ...parts] = tag.toLowerCase().split('-');
     if (lang === 'zh') return parts.some(part => ['hant', 'tw', 'hk', 'mo'].includes(part)) ? 'zh-Hant' : 'zh-Hans';
     return Object.keys(labels).find(code => code.split('-')[0] === lang);

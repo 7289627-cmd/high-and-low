@@ -97,6 +97,14 @@ if (edit(project, (s) => {
 const plist = path.join(APP, 'ios/App/App/Info.plist');
 if (!edit(plist, (s) => {
   const put = (key, xml) => { if (!s.includes(`<key>${key}</key>`)) s = s.replace(/<\/dict>\s*<\/plist>\s*$/, `\t<key>${key}</key>\n\t${xml}\n</dict>\n</plist>\n`); };
+  // The game handles its own language bundles inside the WebView.
+  const localeDir = path.join(APP, '../src/locales');
+  const catalogs = fs.existsSync(localeDir) ? fs.readdirSync(localeDir).filter(name => name.endsWith('.json')) : [];
+  const languages = ['en', ...catalogs.map(name => path.basename(name, '.json')).filter(tag => tag !== 'en').sort()];
+  const localizations = '<array>' + languages.map(tag => `<string>${esc(tag)}</string>`).join('') + '</array>';
+  if (s.includes('<key>CFBundleLocalizations</key>')) {
+    s = s.replace(/(<key>CFBundleLocalizations<\/key>\s*)<array>[\s\S]*?<\/array>/, '$1' + localizations);
+  } else put('CFBundleLocalizations', localizations);
   if (s.includes('<key>GADApplicationIdentifier</key>')) s = s.replace(/(<key>GADApplicationIdentifier<\/key>\s*<string>)[^<]*(<\/string>)/, `$1${iosId}$2`);
   else put('GADApplicationIdentifier', `<string>${iosId}</string>`);
   // Google's own SKAdNetwork id. The full list from Google's iOS guide is still the owner's job (README).

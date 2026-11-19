@@ -12,6 +12,7 @@ https://developer.apple.com/documentation/appstoreconnectapi/get-v1-builds-_id_-
 import importlib.util
 import json
 import os
+import pathlib
 import re
 import sys
 import time
@@ -145,7 +146,7 @@ def update_missing(api, kind, row, wanted):
           (', '.join(same) or 'none') + '; skipped existing ' + (', '.join(skipped) or 'none'))
 
 
-def run(api, number):
+def editable_drafts(api):
     app = get_resource(api, 'apps', APP)
     if attr(app).get('bundleId') != 'com.highandlow.game':
         raise SafetyError('app bundle ID does not match')
@@ -154,6 +155,69 @@ def run(api, number):
     version = unique(versions, 'editable iOS version')
     infos = pages(api, '/v1/apps/' + APP + '/appInfos?limit=50')
     info = unique([x for x in infos if attr(x).get('appStoreState') == 'PREPARE_FOR_SUBMISSION'], 'editable app info')
+    return info, version
+
+
+def sync_locale(api, parent, parent_id, kind, locale, values):
+    rows = pages(api, f'/v1/{parent}/{parent_id}/{kind}?limit=200')
+    matching = [row for row in rows if attr(row).get('locale') == locale]
+    if matching:
+        rid = unique(matching, kind + ' ' + locale)['id']
+        current = attr(get_resource(api, kind, rid))
+        if current.get('locale') != locale:
+            raise SafetyError('localization identity changed')
+        changes = {k: v for k, v in values.items() if current.get(k) != v}
+        if changes:
+            api('PATCH', f'/v1/{kind}/{rid}', {'data': {'type': kind, 'id': rid, 'attributes': changes}})
+    else:
+        response = api('POST', '/v1/' + kind, {'data': {
+            'type': kind, 'attributes': {'locale': locale, **values},
+            'relationships': {parent[:-1]: {'data': {'type': parent, 'id': parent_id}}},
+        }})
+        rid = unique([response['data']], kind + ' ' + locale)['id']
+    fresh = attr(get_resource(api, kind, rid))
+    if fresh.get('locale') != locale or any(fresh.get(k) != value for k, value in values.items()):
+        raise SafetyError(f'Apple readback differs for {kind} {locale}')
+    print(f'Verified {kind} {locale}', flush=True)
+
+
+def localized_listing(api):
+    info, version = editable_drafts(api)
+    english = unique(localizations(api, 'appInfos', info['id'], 'appInfoLocalizations'), 'primary English listing')
+    name = attr(english).get('name')
+    if name != 'High & Low: Number Duel':
+        raise SafetyError('unexpected primary listing name')
+    copy_path = pathlib.Path(__file__).resolve().parents[2] / 'store/apple-localizations.json'
+    catalog = json.loads(copy_path.read_text(encoding='utf8'))
+    primary = unique(localizations(api, 'appStoreVersions', version['id'], 'appStoreVersionLocalizations'), 'primary English version')
+    english_version = attr(get_resource(api, 'appStoreVersionLocalizations', primary['id']))
+    english_info = attr(get_resource(api, 'appInfoLocalizations', english['id']))
+    for current, wanted, kind, parent, parent_id in [
+            (english_version, VERSION, 'appStoreVersionLocalizations', 'appStoreVersions', version['id']),
+            (english_info, INFO, 'appInfoLocalizations', 'appInfos', info['id'])]:
+        # A prior manual add switched the dropdown while a save was pending.
+        # Restore primary fields only if they contain an exact non-English translation.
+        repair = {k: v for k, v in wanted.items()
+                  if any(current.get(k) == copy.get(k) for copy in catalog.values() if k in copy)}
+        if repair:
+            sync_locale(api, parent, parent_id, kind, LOCALE, repair)
+    for locale, copy in catalog.items():
+        if (locale == LOCALE or set(copy) != {'subtitle', 'description', 'keywords'}
+                or not all(isinstance(v, str) and v.strip() for v in copy.values())
+                or len(copy['subtitle']) > 30 or len(copy['description']) > 4000
+                or len(copy['keywords'].encode('utf8')) > 100):
+            raise SafetyError('invalid localized copy for ' + locale)
+    for locale, copy in catalog.items():
+        if attr(get_resource(api, 'appStoreVersions', version['id'])).get('appVersionState') != 'PREPARE_FOR_SUBMISSION':
+            raise SafetyError('iOS version no longer editable')
+        sync_locale(api, 'appInfos', info['id'], 'appInfoLocalizations', locale, {
+            'name': name, 'subtitle': copy['subtitle'], 'privacyPolicyUrl': INFO['privacyPolicyUrl']})
+        sync_locale(api, 'appStoreVersions', version['id'], 'appStoreVersionLocalizations', locale, {
+            'keywords': copy['keywords'], 'description': copy['description'], 'supportUrl': VERSION['supportUrl']})
+
+
+def run(api, number):
+    info, version = editable_drafts(api)
     vloc = unique(localizations(api, 'appStoreVersions', version['id'], 'appStoreVersionLocalizations'), 'version en-US localization')
     iloc = unique(localizations(api, 'appInfos', info['id'], 'appInfoLocalizations'), 'app info en-US localization')
     query = urllib.parse.urlencode({'filter[app]': APP, 'filter[version]': number, 'limit': 200})
@@ -195,8 +259,8 @@ def run(api, number):
 
 
 def main():
-    if len(sys.argv) != 2 or not re.fullmatch(r'[1-9][0-9]*', sys.argv[1]):
-        raise SafetyError('usage: ios-metadata.py BUILD_NUMBER')
+    if len(sys.argv) != 2 or not (re.fullmatch(r'[1-9][0-9]*', sys.argv[1]) or sys.argv[1] == '--localize'):
+        raise SafetyError('usage: ios-metadata.py BUILD_NUMBER | --localize')
     if os.environ.get('GITHUB_ACTIONS') != 'true' or not os.environ.get('RUNNER_TEMP'):
         raise SafetyError('must run on a GitHub Actions runner')
     if any(not os.environ.get(x) for x in ('ASC_KEY_ID', 'ASC_ISSUER_ID', 'ASC_KEY_P8')):
@@ -218,10 +282,17 @@ def main():
                 data = response.read()
                 return json.loads(data) if data else {}
         except urllib.error.HTTPError as exc:
-            raise SafetyError('Apple API ' + method + ' failed (HTTP ' + str(exc.code) + ')') from None
+            try:
+                codes = ', '.join(str(e.get('code', '')) for e in json.loads(exc.read()).get('errors', []))
+            except (ValueError, AttributeError):
+                codes = ''
+            raise SafetyError(f'Apple API {method} {path.split("?")[0]} failed (HTTP {exc.code} {codes})') from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise SafetyError('Apple API unavailable or returned invalid JSON') from None
-    run(api, sys.argv[1])
+    if sys.argv[1] == '--localize':
+        localized_listing(api)
+    else:
+        run(api, sys.argv[1])
 
 
 if __name__ == '__main__':

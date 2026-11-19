@@ -14,6 +14,32 @@ def load():
 
 
 class MetadataSafetyTests(unittest.TestCase):
+    def test_localized_listing_creates_and_updates_only_the_requested_locale(self):
+        m = load()
+        kind = 'appStoreVersionLocalizations'
+        resources = {
+            'english': {'type': kind, 'id': 'english', 'attributes': {'locale': 'en-US', 'description': 'Keep this'}},
+        }
+        calls = []
+        def api(method, path, body=None):
+            calls.append((method, path))
+            if method == 'GET' and path.startswith('/v1/appStoreVersions/'):
+                return {'data': list(resources.values())}
+            if method == 'POST':
+                self.assertEqual(body['data']['relationships']['appStoreVersion']['data']['id'], 'draft')
+                resources['spanish'] = dict(body['data'], id='spanish')
+                return {'data': resources['spanish']}
+            rid = path.rsplit('/', 1)[-1]
+            if method == 'PATCH':
+                resources[rid]['attributes'].update(body['data']['attributes'])
+            return {'data': resources[rid]}
+        for description in ('Juega', 'Juega con amigos', 'Juega con amigos'):
+            m.sync_locale(api, 'appStoreVersions', 'draft', kind, 'es-MX', {'description': description})
+        self.assertEqual(resources['spanish']['attributes']['description'], 'Juega con amigos')
+        self.assertEqual(resources['english']['attributes']['description'], 'Keep this')
+        mutations = [method for method, path in calls if method != 'GET']
+        self.assertEqual(mutations, ['POST', 'PATCH'])
+
     def test_existing_different_values_are_not_overwritten(self):
         m = load()
         existing = {'description': 'Existing owner copy', 'keywords': '', 'supportUrl': None}

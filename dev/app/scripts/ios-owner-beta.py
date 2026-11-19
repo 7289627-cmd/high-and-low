@@ -12,7 +12,6 @@ import urllib.request
 
 APP = '6835591902'
 GROUP = 'High & Low Owner Test'
-OWNER_GROUP_ID = 'e1735043-f046-40af-a7ea-de5d07e2d285'
 FLAGS = {'name': GROUP, 'isInternalGroup': True, 'publicLinkEnabled': False,
          'hasAccessToAllBuilds': False}
 
@@ -107,7 +106,7 @@ def prepare(api, number):
 def assign(api, number):
     build = valid_build(api, number)
     groups = rows(api('GET', groups_path()))
-    if len(groups) != 1 or identifier(groups[0], 'betaGroups') != OWNER_GROUP_ID:
+    if len(groups) != 1:
         raise Stop('The existing owner group is missing or ambiguous')
     base = group_relationships(api, groups[0], allow_null_public_link=True)
     builds = base + 'builds'

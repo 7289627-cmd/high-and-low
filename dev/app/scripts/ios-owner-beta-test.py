@@ -7,8 +7,9 @@ import urllib.parse
 
 
 script = runpy.run_path(str(Path(__file__).with_name('ios-owner-beta.py')))
-APP, GROUP, OWNER_GROUP_ID, Stop = (script[key] for key in ('APP', 'GROUP', 'OWNER_GROUP_ID', 'Stop'))
-RELATIONSHIPS = '/v1/betaGroups/' + OWNER_GROUP_ID + '/relationships/'
+APP, GROUP, Stop = (script[key] for key in ('APP', 'GROUP', 'Stop'))
+API_GROUP_ID = 'resolved-api-group-id'
+RELATIONSHIPS = '/v1/betaGroups/' + API_GROUP_ID + '/relationships/'
 
 
 class Apple:
@@ -16,7 +17,7 @@ class Apple:
         self.builds = [{'type': 'builds', 'id': 'chosen-build', 'attributes': {
             'version': '18', 'processingState': 'VALID', 'expired': False,
         }}]
-        self.groups = [{'type': 'betaGroups', 'id': OWNER_GROUP_ID, 'attributes': {
+        self.groups = [{'type': 'betaGroups', 'id': API_GROUP_ID, 'attributes': {
             'name': GROUP, 'isInternalGroup': True, 'publicLinkEnabled': False, 'hasAccessToAllBuilds': False,
         }}]
         self.app = {'type': 'apps', 'id': APP}
@@ -67,7 +68,7 @@ class AssignmentTests(unittest.TestCase):
         self.assertEqual([record['id'] for record in api.group_builds], ['earlier-build', 'chosen-build'])
         self.assertEqual([record['id'] for record in api.testers], ['tester-one', 'tester-two'])
 
-    def test_accepts_explicit_null_for_the_pinned_internal_groups_public_link(self):
+    def test_accepts_explicit_null_for_the_verified_internal_groups_public_link(self):
         api = Apple()
         api.groups[0]['attributes']['publicLinkEnabled'] = None
         self.assign(api)
@@ -75,7 +76,7 @@ class AssignmentTests(unittest.TestCase):
 
     def test_rejects_unsafe_or_unavailable_targets_before_writing(self):
         for fault in ('processing', 'expired', 'missing group', 'external', 'public link', 'automatic',
-                      'missing public link', 'unrecognized public link', 'other app', 'wrong group ID'):
+                      'missing public link', 'unrecognized public link', 'other app', 'duplicate same-name group'):
             with self.subTest(fault=fault):
                 api = Apple()
                 if fault == 'processing':
@@ -96,8 +97,8 @@ class AssignmentTests(unittest.TestCase):
                     api.groups[0]['attributes']['hasAccessToAllBuilds'] = True
                 elif fault == 'other app':
                     api.app['id'] = 'other-app'
-                elif fault == 'wrong group ID':
-                    api.groups[0]['id'] = 'same-name-wrong-group'
+                elif fault == 'duplicate same-name group':
+                    api.groups.append(dict(api.groups[0], id='duplicate-group-id'))
                 with self.assertRaises(Stop):
                     self.assign(api)
                 self.assertEqual(api.writes, [])

@@ -17,9 +17,13 @@ MANIFEST = 'App/App/PrivacyInfo.xcprivacy'
 class IosPrivacyManifestTest(unittest.TestCase):
     def test_pinned_xcode_template_bundles_the_app_preferences_reason(self):
         with tempfile.TemporaryDirectory(prefix='high-and-low-ios-manifest-') as tmp:
-            app = pathlib.Path(tmp)
+            app = pathlib.Path(tmp) / 'app'
+            catalogs = app.parent / 'src/locales'
+            catalogs.mkdir(parents=True)
+            for locale in ['ar', 'zh-Hant', 'es-419']:
+                (catalogs / (locale + '.json')).write_text('{"Play":"X"}')
             script = app / 'scripts/configure-native.mjs'
-            script.parent.mkdir()
+            script.parent.mkdir(parents=True)
             shutil.copyfile(APP / 'scripts/configure-native.mjs', script)
             manifest_source = APP / 'native/PrivacyInfo.xcprivacy'
             if manifest_source.exists():
@@ -37,6 +41,9 @@ class IosPrivacyManifestTest(unittest.TestCase):
             env['NODE_PATH'] = str(APP / 'node_modules')
             configure = ['node', str(script)]
             subprocess.run(configure, env=env, capture_output=True, text=True, check=True)
+
+            info = plistlib.loads((app / 'ios' / INFO).read_bytes())
+            self.assertCountEqual(info['CFBundleLocalizations'], ['en', 'ar', 'zh-Hant', 'es-419'])
 
             bundle_manifest = app / 'ios' / MANIFEST
             self.assertTrue(bundle_manifest.is_file(), 'generated App target is missing PrivacyInfo.xcprivacy')

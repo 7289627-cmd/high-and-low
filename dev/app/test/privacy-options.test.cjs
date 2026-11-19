@@ -104,6 +104,22 @@ test('a successful consent update with no required entry point leaves About alon
   assert.equal(about.controls.length, 0);
 });
 
+test('the privacy control follows the language of the open game', async () => {
+  const about = aboutPanel();
+  let label = 'Pilihan privasi';
+  const privacy = createPrivacyOptions({
+    document: about.document,
+    getAdMob: () => ({ requestConsentInfo: async () => consent(true) }),
+    translate: key => key === 'Privacy choices' ? label : key,
+  });
+  await privacy.gatherConsent();
+  about.open();
+  assert.equal(about.controls[0].textContent, 'Pilihan privasi');
+  label = '隐私选项';
+  about.open();
+  assert.equal(about.controls[0].textContent, '隐私选项');
+});
+
 test('initial consent waits for the UMP form and fails closed if it cannot be shown', async () => {
   const about = aboutPanel();
   let rejectForm;

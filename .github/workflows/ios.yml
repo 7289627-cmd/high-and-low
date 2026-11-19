@@ -176,7 +176,7 @@ jobs:
                           or info.get('GADApplicationIdentifier') != os.environ['HL_ADMOB_APP_ID']):
                       raise SystemExit('Exported app does not match its iOS production ad configuration')
                   for page in ('privacy.html', 'support.html', 'terms.html'):
-                      with open('www/' + page, 'rb') as source:
+                      with open(os.path.join(os.environ['GITHUB_WORKSPACE'], 'dev', 'app', 'www', page), 'rb') as source:
                           if ipa.read(public + page) != source.read():
                               raise SystemExit('Exported legal page differs from bundled source: ' + page)
                   print('Verified production AdMob app and interstitial, demo mode off, optional gameplay telemetry off, and bundled disclosures')

@@ -1239,7 +1239,7 @@ function sliderParts(tv,x){
 }
 function sliderHTML(tv){
   const x=askX();if(x===null)return '';
-  const q=sliderParts(tv,x),seg=(c,fl,fr)=>`<i class="${c} ${fr<0.17?'tiny':''}" style="flex:${fl} 1 0"><em>${c.toUpperCase()}</em></i>`;
+  const q=sliderParts(tv,x),seg=(c,fl,fr)=>`<i class="${c} ${fr<0.17?'tiny':''}" style="flex:${fl} 1 0"><em>${uiHTML(c==='yes'?'YES':'NO')}</em></i>`;
   return `<div class="sld" id="sld" role="slider" tabindex="0" aria-label="${uiHTML("Number")}" aria-valuemin="${askSlots(tv).lo}" aria-valuemax="${askSlots(tv).hi}" aria-valuenow="${x}" aria-valuetext="${uiHTML('{direction} than {number}',{direction:uiText(ui.dir==='l'?'Lower':'Higher'),number:fmt(x)})}">
 <div class="sld-track" id="sldTrack">${seg(q.lc,q.leftN,q.f)}${seg(q.rc,q.T-q.leftN,1-q.f)}<b class="sld-thumb" id="sldThumb" style="left:${(q.f*100).toFixed(3)}%"></b></div>
 <div class="rl-caps"><span class="${q.lc}" id="sldL">${q.lt}</span><span class="${q.rc}" id="sldR">${q.rt}</span></div></div>`;
@@ -1306,12 +1306,12 @@ function sliderBind(){
 }
 function askRowHTML(f,fv){
   const o=askTg(PID).filter(x=>x.pid!==f.pid);
-  return `<span class="ar f"><span class="ar-b">${charSVG(pv(f),'scared','bob')}</span><span class="ar-r">${fmt(fv.lo)} – ${fmt(fv.hi)}</span></span>`+o.map(x=>`<span class="ar"><span class="ar-b">${charSVG(pv(x),'scared','bob')}</span></span>`).join('');
+  return `<span class="ar f"><span class="ar-b">${charSVG(pv(f),'scared','bob')}</span><span class="ar-r">${rangeHTML(fv.lo,fv.hi)}</span></span>`+o.map(x=>`<span class="ar"><span class="ar-b">${charSVG(pv(x),'scared','bob')}</span></span>`).join('');
 }
 /* Group games, one opponent at a time: a big banner of who this question goes to. */
 function whoHTML(t,tv){
   const k=G.gid+':'+G.seq,fresh=ui.whoK!==k;ui.whoK=k;
-  return `<div class="who ${fresh?'pop':''}" style="--c:${esc(pv(t).color||'#fff')}"><span class="who-b">${charSVG(pv(t),'scared','bob')}</span><span class="who-t"><b>${esc(t.name)}</b><em>${fmt(tv.lo)} – ${fmt(tv.hi)}</em></span></div>`;
+  return `<div class="who ${fresh?'pop':''}" style="--c:${esc(pv(t).color||'#fff')}"><span class="who-b">${charSVG(pv(t),'scared','bob')}</span><span class="who-t"><b>${esc(t.name)}</b><em>${rangeHTML(tv.lo,tv.hi)}</em></span></div>`;
 }
 const ICO_PAD=`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor">${[4,12,20].map(y=>[4,12,20].map(x=>`<rect x="${x-2.6}" y="${y-2.6}" width="5.2" height="5.2" rx="1.4"/>`).join('')).join('')}</g></svg>`;
 const ICO_SLD=`<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 12h20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><rect x="9" y="5" width="6" height="14" rx="2.5" fill="#fff" stroke="currentColor" stroke-width="2.5"/></svg>`;
@@ -1417,7 +1417,7 @@ ${full?`<p class="err">${uiHTML("This room is full")}</p>`:''}</section>
 ${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
 <section class="panel"><h2>${uiHTML("Number range")}</h2>
 <p class="tip" id="roomRangeHint">${uiHTML("Everyone picks a secret number from this range.")}</p>
-${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-describedby="roomRangeHint" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
+${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-describedby="roomRangeHint" aria-pressed="${G.max===m}">${rangeHTML(1,m)}</button>`).join('')}</div>`:`<p class="tip">${rangeHTML(1,G.max)}</p>`}
 <h2>${uiHTML("Turn timer")}</h2>
 <p class="tip" id="roomTimerHint">${uiHTML("With the timer on, the game takes your turn when time runs out.")}</p>
 ${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-describedby="roomTimerHint" aria-pressed="${(G.timer||0)===v}">${uiHTML(l==='Off'?l:'{count} sec',{count:fmt(v)})}</button>`).join('')}</div>`:`<p class="tip">${G.timer?uiHTML('{count} sec',{count:fmt(G.timer)}):uiHTML('Off')}</p>`}</section>

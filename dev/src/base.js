@@ -7,6 +7,7 @@ const INK='#1E2240';
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const fmt=n=>HLI18n.number(Number(n));
+const rangeHTML=(lo,hi)=>`<bdi dir="ltr">${fmt(lo)} – ${fmt(hi)}</bdi>`;
 const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let timers=[], sceneSeq=0, quitArmed=false;

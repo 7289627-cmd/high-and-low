@@ -11,7 +11,7 @@ function playMode(){const k=pmSel||LS.get('hl-pm');return MODES.find(m=>m.k===k)
 function modeMult(max){const m=MODES.find(x=>x.max===max);return m?m.mult:1}
 function modesHTML(){
   const cur=playMode().k;
-  return `<div class="modes" role="radiogroup" aria-label="${uiHTML("Range")}" aria-describedby="homeRangeHint">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>1 – ${fmt(m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>
+  return `<div class="modes" role="radiogroup" aria-label="${uiHTML("Range")}" aria-describedby="homeRangeHint">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>${rangeHTML(1,m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>
 <p class="tip" id="homeRangeHint">${uiHTML("Bigger ranges mean more possible secret numbers.")}</p>`;
 }
 const RANKS=[[0,'Rookie'],[1050,'Guesser'],[1150,'Sharp'],[1300,'Hunter'],[1450,'Mind Reader'],[1600,'Mastermind']];

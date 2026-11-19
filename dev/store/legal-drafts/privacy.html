@@ -23,36 +23,35 @@ code{background:var(--paper-2);padding:0 5px;border-radius:6px;font-size:.92em}
 <h2>Who we are</h2>
 <p>High &amp; Low is made by an independent developer (&ldquo;we&rdquo;). Questions: see <a href="#contactsec">Contact</a> at the bottom.</p>
 
-<h2>What stays on your phone</h2>
-<p>Your nickname, your bean's look, wins, coins, hats, rating, sound setting, whether you bought Remove Ads, and a random ID for play statistics. We do not receive these as a profile. Clearing the app or browser data erases them.</p>
+<h2>What the game stores on your device</h2>
+<p>Your nickname, your bean's look, wins, coins, hats, rating, sound setting, and a random ID for play statistics. The game sends some of these values for online play and statistics as described below.</p>
 
 <h2>What we collect</h2>
-<p><b>Play statistics.</b> When you use the game it sends a small event to our database, hosted by Supabase. An event has: its name (like &ldquo;game started&rdquo;), a random ID made on your device, and a few numbers such as range chosen, number of players and computer players, game length in seconds, win or loss, your rating after a rated game, and which power was used. We also mark whether the game opened inside the app. It has no nickname, room code, email, contacts or precise location. The random ID is not tied to who you are.</p>
-<p><b>Online play.</b> To play with others, your nickname, bean look, rating, a random player ID and your moves are sent live to the other players in your room through Supabase Realtime. They are not saved by us. The other players see your nickname, so please do not use your real name or personal details.</p>
+<p><b>Play statistics.</b> The public iPhone app does not send optional play statistics to our database. The browser game, Android app and some earlier test builds send small usage events to our database, hosted by Supabase. An event has: its name (like &ldquo;game started&rdquo;), a random ID made on your device, and a few numbers such as range chosen, number of players and computer players, game length in seconds, win or loss, your rating after a rated game, which power was used, and whether an ad was requested or shown. We also record when an event occurred and whether the game opened inside the app. These events do not include your nickname, room code, email, contacts or precise location. The random ID lets us group events from the same installation.</p>
+<p><b>Online play.</b> To play with others, your nickname, bean look, rating, coin count, random player ID, moves and preset taunts are relayed to other players through Supabase Realtime. The game uses this information to run the room. Service logs may be retained by our hosting providers. The other players see your nickname, so please do not use your real name or personal details.</p>
 <p><b>Servers.</b> Like any server, ours and our providers' servers see your IP address and basic device and browser details when your phone connects. We use this only to run and protect the game. We do not store it ourselves.</p>
+
+<p><b>Support.</b> If you contact us, we receive your email address and anything you choose to include. We use it to respond and look into the issue.</p>
 
 <h2>Computer players</h2>
 <p>Some seats in Play are filled by computer players. They are not real people and no data is collected from them.</p>
 
 <h2>Ads (app versions only)</h2>
-<p>The website shows no ads. The iOS and Android apps show ads between games through Google AdMob, which is run by Google. Google may collect and use, as described in <a href="https://policies.google.com/technologies/ads">its own ads policy</a>: your advertising ID, IP address (which can give a rough location), how you interact with ads and the app, and diagnostic information. We ask for non-personalised ads where this is possible. In some regions (for example the EEA and UK) you may be asked for consent first, and you can change it later in the same place. We do not receive this data about you. Ads are not shown if you buy Remove Ads.</p>
-
-<h2>Purchases</h2>
-<p>Remove Ads is a one-time purchase through the Apple App Store or Google Play. They take your payment, and we never see your card details. We use RevenueCat, a purchase service, to check that Remove Ads is owned and to restore it. RevenueCat receives an anonymous app user ID, your purchase status and basic device information, and keeps it under <a href="https://www.revenuecat.com/privacy/">its own policy</a>.</p>
+<p>The website shows no ads. The iOS and Android apps can show ads between games through Google AdMob, which is run by Google. Google may collect and use, as described in <a href="https://policies.google.com/technologies/ads">its own ads policy</a>: device identifiers, IP address (which can give a rough location), information about ads and how you interact with ads and the app, and diagnostic information. The first public iPhone release requests limited ads selected using context. Google may use local storage for invalid-traffic detection and fraud prevention when programmatic limited ads are available. The Android app requests non-personalised ads in ad-supported versions. Where a consent message is required, the game checks your choices before requesting ads. When available, you can reopen the consent form from <b>About &rarr; Privacy choices</b>. Where optional play statistics are enabled, they can include basic ad events as described above.</p>
 
 <h2>What we do not do</h2>
-<ul><li>No accounts, emails or phone numbers.</li><li>No selling of personal information.</li><li>No precise location, contacts, photos, microphone or camera.</li></ul>
+<ul><li>The game does not require an account, email address or phone number to play.</li><li>The game does not request access to precise location, contacts, photos, microphone or camera.</li></ul>
 
 <h2>Who handles data</h2>
-<ul><li>Supabase: hosts our statistics database and the live room service.</li><li>GitHub Pages: hosts the website, and may log IP addresses to serve pages.</li><li>Google: fonts, and AdMob in the apps.</li><li>RevenueCat, Apple and Google: purchases in the apps.</li></ul>
+<ul><li>Supabase: hosts our statistics database and the live room service.</li><li>GitHub Pages: hosts the website, and may log IP addresses to serve pages.</li><li>Google: AdMob in ad-supported app versions.</li></ul>
 <p>We may also share information if the law requires it.</p>
 
 <h2>How long we keep it</h2>
-<p>Play statistics are deleted after 14 months. Rooms are not saved after they end. Data on your phone stays until you clear it. Ad and purchase providers keep data under their own policies.</p>
+<p>We retain play statistics to understand usage and troubleshoot the game. We keep support correspondence to respond and follow up. Device data stays in app or browser storage until cleared. Our service providers retain their records under their own policies. Contact us with questions about retention or deletion.</p>
 
 <h2>Delete your data</h2>
-<p>Your random ID is made on your device and you cannot see it, so we cannot tell which statistics are yours. The simple way to cut the link is to clear the app's storage (Android: Settings, Apps, High &amp; Low, Storage, Clear storage) or delete the app (iPhone). You get a new random ID, and the old one is never used again. This also erases your rating, coins and hats on that device. Remove Ads can be restored from your store account.</p>
-<p>Want to ask about your data, or for us to delete what we can? Write to us (see <a href="#contactsec">Contact</a>). We will answer within a reasonable time.</p>
+<p>You can remove local game data by clearing the app's storage on Android or deleting the app on iPhone. This can remove your locally saved rating, coins and hats. Clearing local data does not delete play statistics that were already sent. We may be unable to identify which event records are yours because play statistics use a random installation ID.</p>
+<p>To ask about your data or request deletion, use the <a href="#contactsec">contact address below</a>.</p>
 
 <h2>Your ad choices</h2>
 <ul><li><b>iPhone and iPad:</b> Settings, Privacy &amp; Security, Tracking, then turn off Allow Apps to Request to Track. Settings, Privacy &amp; Security, Apple Advertising controls Apple's own ads.</li>

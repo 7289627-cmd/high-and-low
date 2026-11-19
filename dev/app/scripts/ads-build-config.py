@@ -6,9 +6,11 @@ import sys
 
 ads = os.environ.get('HL_ADS_ONLY') == '1'
 demo = os.environ.get('HL_ADS_DEMO') == '1'
+platform = os.environ.get('HL_ADMOB_PLATFORM', '')
 config = {'ADS_ENABLED': ads or demo}
+if platform == 'ios':
+    config['DISABLE_GAMEPLAY_TELEMETRY'] = True
 if ads or demo:
-    platform = os.environ.get('HL_ADMOB_PLATFORM', '')
     app_id = os.environ.get('HL_ADMOB_APP_ID', '')
     unit_id = os.environ.get('HL_ADMOB_INTERSTITIAL_ID', '')
     if os.environ.get('HL_NO_ADS') == '1' or (ads and demo) or platform not in ('ios', 'android'):

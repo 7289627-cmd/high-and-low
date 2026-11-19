@@ -69,8 +69,9 @@ if (edit(project, (s) => {
 })) {
   const manifestName = 'PrivacyInfo.xcprivacy';
   const manifest = path.join(APP, 'ios/App/App', manifestName);
-  if (!fs.existsSync(manifest)) {
-    fs.copyFileSync(path.join(APP, 'native', manifestName), manifest);
+  const sourceManifest = fs.readFileSync(path.join(APP, 'native', manifestName), 'utf8');
+  if (!fs.existsSync(manifest) || fs.readFileSync(manifest, 'utf8') !== sourceManifest) {
+    fs.writeFileSync(manifest, sourceManifest);
     changed++;
     console.log('added ' + path.relative(APP, manifest));
   }
@@ -109,4 +110,23 @@ if (!edit(plist, (s) => {
   put('ITSAppUsesNonExemptEncryption', '<false/>');
   return s;
 })) console.log('ios/ not found, skipped (run `npx cap add ios` first)');
+
+if (process.env.HL_ADMOB_PLATFORM === 'ios' && (process.env.HL_ADS_ONLY === '1' || process.env.HL_ADS_DEMO === '1')) {
+  // The pinned Capacitor plugin doesn't expose these settings in its JS API.
+  const pluginSource = path.join(APP, 'node_modules/@capacitor-community/admob/ios/Sources/AdMobPlugin/AdMobPlugin.swift');
+  if (!edit(pluginSource, (s) => {
+    const start = '        MobileAds.shared.start(completionHandler: nil)';
+    const privacyDefaults = [
+      '        MobileAds.shared.requestConfiguration.setPublisherFirstPartyIDEnabled(false)',
+      '        MobileAds.shared.requestConfiguration.publisherPrivacyPersonalizationState = .disabled',
+    ].join('\n');
+    // Google Mobile Ads uses this preference to request limited ads.
+    const limitedAds = '        UserDefaults.standard.set(0, forKey: "gad_has_consent_for_cookies")';
+    if (s.split(start).length !== 2) throw new Error('Cannot locate the pinned iOS AdMob SDK start call');
+    const previous = `${privacyDefaults}\n${start}`;
+    const configured = `${limitedAds}\n${previous}`;
+    if (s.includes(configured)) return s;
+    return s.replace(s.includes(previous) ? previous : start, configured);
+  })) throw new Error('Missing pinned iOS AdMob plugin source');
+}
 console.log(changed ? `done, ${changed} file(s) changed` : 'nothing to change');

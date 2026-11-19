@@ -261,6 +261,8 @@ def run(api, put, images):
 def main():
     if len(sys.argv) != 2:
         raise SafetyError('usage: ios-screenshots.py ASSET_DIRECTORY')
+    if os.environ.get('GITHUB_REF') != 'refs/heads/release-ads-only':
+        raise SafetyError('the screenshot upload is restricted to the release branch')
     images = read_images(Path(sys.argv[1]))
     api, opener = metadata.connect()
     run(api, lambda operation, data: transfer(opener, operation, data), images)

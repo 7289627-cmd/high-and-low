@@ -1,4 +1,6 @@
 {
+  "YES": "نعم",
+  "NO": "لا",
   "{count} kill": "مرات الإقصاء: {count}",
   "{count} miss": "التخمينات الخاطئة: {count}",
   "{count} question": "الأسئلة: {count}",

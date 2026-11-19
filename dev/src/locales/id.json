@@ -1,4 +1,6 @@
 {
+  "YES": "YA",
+  "NO": "TIDAK",
   "{count} kill": "{count} lawan tersingkir",
   "{count} miss": "{count} kali meleset",
   "{count} question": "{count} pertanyaan",

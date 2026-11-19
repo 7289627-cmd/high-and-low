@@ -1,4 +1,6 @@
 {
+  "YES": "是",
+  "NO": "否",
   "{count} kill": "淘汰 {count} 人",
   "{count} miss": "猜错 {count} 次",
   "{count} question": "提问 {count} 次",

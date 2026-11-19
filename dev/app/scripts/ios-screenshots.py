@@ -33,6 +33,7 @@ LOCALES = {'ar-SA': 'ar', 'es-MX': 'es-419', 'fr-CA': 'fr', 'fr-FR': 'fr',
            'hi': 'hi', 'id': 'id', 'ja': 'ja', 'ko': 'ko', 'pt-BR': 'pt-BR',
            'zh-Hans': 'zh-Hans', 'zh-Hant': 'zh-Hant'}
 READY = {'PREPARE_FOR_SUBMISSION', 'APPROVED', 'ACCEPTED'}
+PLACEMENT_READY = {'PARENT_PREPARE_FOR_SUBMISSION', 'PARENT_READY_FOR_REVIEW'}
 
 
 def link(kind, identifier):
@@ -155,11 +156,17 @@ def placement_ids(rows, group, image_ids, ready=False):
     for row in rows:
         a = metadata.attr(row)
         image = linked_id(row, 'image', IMAGES)
-        if (row.get('type') != PLACEMENTS or a.get('placementGroup') != group
-                or a.get('placementType') != SCREENSHOT or image not in image_ids or image in result
-                or a.get('state') == 'FAILED'
-                or (ready and a.get('state') != 'PARENT_PREPARE_FOR_SUBMISSION')):
-            raise SafetyError('unexpected existing placement or delivery state')
+        if row.get('type') != PLACEMENTS or a.get('placementType') != SCREENSHOT:
+            raise SafetyError('unexpected screenshot placement resource type')
+        if a.get('placementGroup') != group:
+            raise SafetyError('unexpected screenshot placement group')
+        if image not in image_ids:
+            raise SafetyError('existing screenshot placement references a different image; preserved')
+        if image in result:
+            raise SafetyError('Apple reported duplicate screenshot placements; preserved')
+        state = a.get('state')
+        if state == 'FAILED' or (ready and state not in PLACEMENT_READY):
+            raise SafetyError('unexpected screenshot placement state: ' + str(state))
         result[image] = metadata.unique([row], PLACEMENTS)['id']
     return result
 
@@ -251,6 +258,7 @@ def run(api, put, images):
         for game, assets in images.items()
     }
     wait_ready(api, [image_id for assets in assets_by_game.values() for image_id in assets])
+    print('Approved images processed; verifying locale placements', flush=True)
 
     for locale, loc_id in targets.items():
         images_for_locale = assets_by_game[LOCALES[locale]]
@@ -267,10 +275,16 @@ def run(api, put, images):
             create(api, 'appAssetLibraryPlacementOrderingRequests', {'placementGroup': group}, {
                 'orderedPlacements': {'data': [{'type': PLACEMENTS, 'id': pid} for pid in desired]},
                 'appStoreVersionLocalization': link(LOCALIZATIONS, loc_id)})
-        final = placed(api, loc_id, group)
-        placement_ids(final, group, set(images_for_locale), ready=True)
-        if [row['id'] for row in final] != desired:
-            raise SafetyError('localized placement order did not match: ' + locale)
+        deadline = time.monotonic() + 35
+        while True:
+            final = placed(api, loc_id, group)
+            placement_ids(final, group, set(images_for_locale))
+            states = [metadata.attr(row).get('state') for row in final]
+            if [row['id'] for row in final] == desired and all(state in PLACEMENT_READY for state in states):
+                break
+            if time.monotonic() > deadline:
+                raise SafetyError(f'{locale}: screenshot readback did not converge (states {states})')
+            time.sleep(2)
         print(locale + ': 3 processed iPhone screenshots verified in order', flush=True)
 
 

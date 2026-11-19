@@ -159,14 +159,21 @@ jobs:
           IPA="$(find "$WORK/export" -maxdepth 1 -name '*.ipa' -type f -print)"
           test "$(printf '%s\n' "$IPA" | grep -c .)" -eq 1
           IPA="$IPA" EXPECTED_BUILD="${{ github.run_number }}" python3 - <<'PY'
-          import json, os, plistlib, re, zipfile
+          import json, os, pathlib, plistlib, re, zipfile
           with zipfile.ZipFile(os.environ['IPA']) as ipa:
               names = [n for n in ipa.namelist() if n.startswith('Payload/') and n.endswith('.app/Info.plist') and n.count('/') == 2]
               if len(names) != 1: raise SystemExit('Expected exactly one top-level app in IPA')
               info = plistlib.loads(ipa.read(names[0]))
+              public = names[0].removesuffix('Info.plist') + 'public/'
+              html = ipa.read(public + 'index.html').decode()
+              translations = pathlib.Path(os.environ['GITHUB_WORKSPACE']) / 'dev/src/locales'
+              expected_catalogs = {p.stem: json.loads(p.read_text(encoding='utf-8-sig')) for p in translations.glob('*.json')}
+              packed, _ = json.JSONDecoder().raw_decode(html.split('window.HL_TRANSLATIONS=', 1)[1])
+              if (not expected_catalogs or packed != expected_catalogs
+                      or sorted(info.get('CFBundleLocalizations', [])) != sorted(['en', *expected_catalogs])):
+                  raise SystemExit('Exported language resources differ from the iPhone language declaration or source')
+              print('Verified packaged game languages:', ', '.join(sorted(info['CFBundleLocalizations'])))
               if os.environ.get('HL_ADS_ONLY') == '1':
-                  public = names[0].removesuffix('Info.plist') + 'public/'
-                  html = ipa.read(public + 'index.html').decode()
                   match = re.search(r'<script>window\.HL_NATIVE_CONFIG=(.*?)</script>', html)
                   config = json.loads(match.group(1)) if match else {}
                   unit = config.get('REAL_IDS', {}).get('ios', {}).get('interstitial')
@@ -175,7 +182,7 @@ jobs:
                           or unit != os.environ['HL_ADMOB_INTERSTITIAL_ID']
                           or info.get('GADApplicationIdentifier') != os.environ['HL_ADMOB_APP_ID']):
                       raise SystemExit('Exported app does not match its iOS production ad configuration')
-                  for page in ('privacy.html', 'support.html', 'terms.html'):
+                  for page in ('privacy.html', 'support.html', 'terms.html', 'support-languages.js'):
                       with open(os.path.join(os.environ['GITHUB_WORKSPACE'], 'dev', 'app', 'www', page), 'rb') as source:
                           if ipa.read(public + page) != source.read():
                               raise SystemExit('Exported legal page differs from bundled source: ' + page)

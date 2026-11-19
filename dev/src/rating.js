@@ -11,7 +11,8 @@ function playMode(){const k=pmSel||LS.get('hl-pm');return MODES.find(m=>m.k===k)
 function modeMult(max){const m=MODES.find(x=>x.max===max);return m?m.mult:1}
 function modesHTML(){
   const cur=playMode().k;
-  return `<div class="modes" role="radiogroup" aria-label="Range">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>1 – ${fmt(m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>`;
+  return `<div class="modes" role="radiogroup" aria-label="Range" aria-describedby="homeRangeHint">${MODES.map(m=>`<button class="mode" role="radio" data-mode="${m.k}" aria-checked="${m.k===cur}">${m.icon}<b>1 – ${fmt(m.max)}</b>${m.mult>1?`<em>×${m.mult}</em>`:''}</button>`).join('')}</div>
+<p class="tip" id="homeRangeHint">Bigger ranges mean more possible secret numbers.</p>`;
 }
 const RANKS=[[0,'Rookie'],[1050,'Guesser'],[1150,'Sharp'],[1300,'Hunter'],[1450,'Mind Reader'],[1600,'Mastermind']];
 function myElo(){const e=LS.get(LSK('hl-elo'));return Number.isInteger(e)?Math.min(3000,Math.max(100,e)):ELO0}

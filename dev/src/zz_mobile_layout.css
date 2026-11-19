@@ -1,0 +1,24 @@
+/* Capacitor also publishes native safe-area insets as CSS properties. Use the
+   larger value so a system bar is reserved once, even when both are present. */
+#app{
+  padding-top:calc(10px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));
+  padding-right:max(16px,env(safe-area-inset-right,0px),var(--safe-area-inset-right,0px));
+  padding-bottom:calc(12px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)));
+  padding-left:max(16px,env(safe-area-inset-left,0px),var(--safe-area-inset-left,0px));
+}
+
+@media (max-width:599px) and (max-aspect-ratio:3/2) and (pointer:coarse){
+  .bar{flex-wrap:wrap}
+  .bar .status{min-width:0;overflow-wrap:anywhere}
+  .bar #leaveBtn{flex:none;margin-inline-start:auto}
+
+  .hero{grid-template-columns:44px minmax(0,1fr) 44px;column-gap:4px}
+  .hero .info-btn,.hero .mute-btn{position:relative;grid-row:1}
+  .hero .info-btn{grid-column:1;justify-self:start}
+  .hero .mute-btn{grid-column:3;justify-self:end}
+  .hero .logo.big{grid-area:1/2;min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .hero> :not(.info-btn,.mute-btn,.logo){grid-column:1/-1}
+
+  .mode{padding-inline:6px}
+  .mode b,.chips>.chip-btn{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+}

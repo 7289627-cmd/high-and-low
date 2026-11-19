@@ -20,7 +20,7 @@ let myPres={}, peerMap=new Map(), lastSeen={};
 let G=null, botSecrets={}, mySecret=null;
 let lastEv=null, evPrimed=null, winShown=null, winPending=null;
 let adRound=null, leaveSeq=0, leaving=false;
-let ui={target:null,dir:'h',step:'dir',num:'',typed:'',pad:LS.get('hl-askpad')===1,sec:'',land:false,err:'',show:false,bubble:null,seq:null,leaveArmed:false,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
+let ui={target:null,dir:'h',step:'dir',num:'',typed:'',pad:LS.get('hl-askpad')===1,sec:'',land:false,err:'',show:false,bubble:null,seq:null,homeErr:'',codeIn:'',inviteCopied:false,inviteUrl:'',timerSeq:null,timerStart:0,picker:false,pops:[],tauntUntil:0};
 let discSince=0, timerSched='';
 let sched=false, lastSig='', botSched=0, botAt=0, qSched=0, tickTimer=null, wheelSched=null;
 
@@ -170,12 +170,18 @@ function rebuildPeers(list){
     lastSeen[pr.pid]=Date.now();
   }
 }
-async function connectRoom(){
+async function connectRoom(session){
+  const ns=roomNS;
   let r;
-  try{r=await roomNS.join('hl-'+code.toLowerCase())}catch(e){r=roomNS}
+  try{r=await ns.join('hl-'+code.toLowerCase())}catch(e){r=ns}
+  if(session!==leaveSeq){
+    try{if(r!==ns&&r.leave)await r.leave()}catch(e){}
+    return;
+  }
   R=r;joinedAt=Date.now();
-  R.onPeers(ch=>{rebuildPeers(ch.peers);schedule()},()=>{connected=false;schedule()});
-  if(R.onConnection)R.onConnection(c=>{connected=c;schedule()},()=>{connected=false;schedule()});
+  const disconnected=()=>{if(session===leaveSeq){connected=false;schedule()}};
+  R.onPeers(ch=>{if(session===leaveSeq){rebuildPeers(ch.peers);schedule()}},disconnected);
+  if(R.onConnection)R.onConnection(c=>{if(session===leaveSeq){connected=c;schedule()}},disconnected);
   R.presence(myPres).catch(()=>{});
 }
 let updBurst=0,updT=0;
@@ -915,13 +921,15 @@ async function startOnline(asHost,c,pub){
   if(!roomNS)return;
   /* A second tap or a reconnect race must not open a second channel: the first one would keep sending its stale presence forever. */
   if(mode==='online'&&view==='game'&&code===c&&isHost===asHost&&isPub===!!pub)return;
+  const session=leaveSeq;
   mode='online';isHost=asHost;code=c;view='game';tnSeen={};isPub=!!pub;
   myPres={pid:PID,name:safeName(NAME||'Player',!pub),code,role:asHost?'host':'player',el:myElo()};{const l=myLook();if(l)myPres.look=l}
   if(asHost){const saved=pub?null:LS.get('hl-host-'+code);if(saved&&saved.G&&Date.now()-saved.at<3*3600e3){G=saved.G;botSecrets=saved.botSecrets||{}}else G=newLobby();myPres.game=JSON.parse(JSON.stringify(G))}
   else G=null;
   if(!pub)LS.set(LSK('hl-session'),{code,host:asHost,at:Date.now()});
   render(true);
-  try{await connectRoom()}catch(e){roomState='none'}
+  try{await connectRoom(session)}catch(e){if(session===leaveSeq)roomState='none'}
+  if(session!==leaveSeq)return;
   schedule();
   clearInterval(tickTimer);tickTimer=setInterval(schedule,4000);
 }
@@ -938,16 +946,28 @@ function addBot(){
   const used=G.players.map(p=>p.name);const nm=BOT_NAMES.find(n=>!used.includes(n))||'Bot';
   G.players.push({pid:'bot-'+uid(),name:nm,c:freeColor(),bot:1,a:1,d:'',dg:0});
 }
+function requestLeave(){
+  if(leaving)return;
+  if(!G||G.phase==='lobby'||G.phase==='secrets'){
+    leaveGame();
+    return;
+  }
+  const stake=eloAtStake();
+  const warning=stake>0?`<p class="stake">You'll lose <b>${stake}</b> rating</p>`:'';
+  openOv(`<div class="sheet center"><h2>${stake>0?'Leave the duel?':'Leave the game?'}</h2>${warning}<div class="btn-row"><button class="btn primary" id="stayBtn">Keep playing</button><button class="btn" id="quitBtn">Leave</button></div></div>`);
+  $('#stayBtn').onclick=closeOv;
+  $('#quitBtn').onclick=()=>leaveGame();
+}
 async function leaveGame(){
   const id=++leaveSeq;
   leaving=true;
   if(G&&G.pub&&G.phase==='play'&&!eloSkip){const m=byPid(PID);if(m&&m.a&&!oppVanished()){eloApply(false);stGame(false,false)}}eloSkip=false;eloRoom='';pendClear();
   trackLeave();hostSeenAt=0;quickStop();isPub=false;clearInterval(hbTimer);hbTimer=null;hbPeriod=0;
-  clearTimers();clearInterval(tickTimer);winPending=null;adRound=null;closeOv();
+  clearTimers();clearInterval(tickTimer);tickTimer=null;winPending=null;adRound=null;closeOv();
   try{if(R&&R!==roomNS&&R.leave)await R.leave();else if(R)await R.presence({code:null,role:null,game:null,act:null,rep:null,ready:null})}catch(e){}
   if(id!==leaveSeq)return;
   LS.del(LSK('hl-session'));if(isHost&&code)LS.del('hl-host-'+code);
-  R=null;view='home';mode=null;G=null;code=null;pubAt=0;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,leaveArmed:false,bubble:null};
+  R=null;view='home';mode=null;G=null;code=null;pubAt=0;isHost=false;myPres={};peerMap=new Map();ui={...ui,target:null,bubble:null};
   leaving=false;keepAwake();render(true);return id;
 }
 function lockSecret(n){
@@ -1109,7 +1129,8 @@ function inviteURL(){const app=window.HLNative||location.protocol==='capacitor:'
 function qrHTML(){
   if(!window.qrcode||!code)return '';
   try{const q=window.qrcode(0,'M');q.addData(inviteURL());q.make();
-    return `<div class="qr"><img src="${q.createDataURL(6,2)}" alt="QR code to join room ${esc(code)}"></div>`}catch(e){return ''}
+    return `<div class="qr"><img src="${q.createDataURL(6,2)}" alt="QR code to join room ${esc(code)}" aria-describedby="roomQrHint"></div>
+<p class="tip" id="roomQrHint">To join, scan with your phone’s camera and open the link.</p>`}catch(e){return ''}
 }
 function trackConn(){
   if(view!=='game'||mode!=='online'||connected){discSince=0;return}
@@ -1135,7 +1156,7 @@ function muteHTML(){
 function headerHTML(){
   const st=mode==='solo'?'<span class="status solo"><i></i>Practice</span>':(connected?'<span class="status"><i></i>Live</span>':'<span class="status off"><i></i>Connecting</span>');
   const ban=connBanner()?'<div class="conn-banner">Reconnecting…</div>':'';
-  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">${ui.leaveArmed?'Leave?':'Leave'}</button></header>${ban}`;
+  return `<header class="bar"><h1 class="logo small">High<span>&amp;</span>Low</h1>${mode==='online'&&!isPub?`<span class="pill">${esc(code)}</span>`:''}${st}${muteHTML()}<button class="btn sm" id="leaveBtn">Leave</button></header>${ban}`;
 }
 function gameHTML(){
   if(mode==='search'||(isPub&&!G))return waitHTML(null);
@@ -1381,13 +1402,16 @@ ${isHost&&p.bot?`<button class="x" data-rmbot="${esc(p.pid)}" aria-label="Remove
 ${mode==='online'?`<section class="panel center"><div class="code">${esc(code)}</div>${qrHTML()}${isHost?`<button class="btn primary full" id="inviteBtn">${ui.inviteCopied?'Copied':'Send invite'}</button>${ui.inviteUrl?`<p class="tip invite-url" style="user-select:text;-webkit-user-select:text;word-break:break-all">${esc(ui.inviteUrl)}</p>`:''}`:''}${isHost&&G.players.filter(q=>!q.bot).length<2?`<div class="join-row lob-join"><input id="lobCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(ui.codeIn)}" placeholder="CODE" aria-label="Friend's room code"><button class="btn" id="lobJoin">Join</button></div>${ui.lobErr?`<p class="err">${esc(ui.lobErr)}</p>`:''}`:''}</section>`:''}
 <section class="panel"><h2>Players <small>${G.players.length} of 6</small></h2><div class="plist">${rows}</div>
 ${ui.picker&&byPid(PID)?pickerHTML():''}
-${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" style="justify-self:start">+ Add a bot</button>':''}
+${isHost&&G.players.length<6?'<button class="btn sm" id="addBot" aria-describedby="botHint" style="justify-self:start">+ Add a bot</button>':''}
+${isHost||G.players.some(p=>p.bot)?'<p class="tip" id="botHint">Bots take a seat and play their own turns.</p>':''}
 ${full?'<p class="err">This room is full</p>':''}</section>
 ${byPid(PID)?`<div class="taunt-wrap">${tauntBar()}</div>`:''}
 <section class="panel"><h2>Number range</h2>
-${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
+<p class="tip" id="roomRangeHint">Everyone picks a secret number from this range.</p>
+${isHost?`<div class="chips">${[100,1000,10000,100000].map(m=>`<button class="chip-btn" data-max="${m}" aria-describedby="roomRangeHint" aria-pressed="${G.max===m}">1 – ${fmt(m)}</button>`).join('')}</div>`:`<p class="tip">1 – ${fmt(G.max)}</p>`}
 <h2>Turn timer</h2>
-${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' sec':'Off'}</p>`}</section>
+<p class="tip" id="roomTimerHint">With the timer on, the game takes your turn when time runs out.</p>
+${isHost?`<div class="chips">${[[0,'Off'],[20,'20 sec'],[40,'40 sec']].map(([v,l])=>`<button class="chip-btn" data-timer="${v}" aria-describedby="roomTimerHint" aria-pressed="${(G.timer||0)===v}">${l}</button>`).join('')}</div>`:`<p class="tip">${G.timer?G.timer+' sec':'Off'}</p>`}</section>
 ${isHost?`<button class="btn primary big" id="startBtn" style="justify-self:center" ${G.players.length<2?'disabled':''}>${G.players.length<2?'Waiting for players…':'Start game'}</button>`:'<p class="hint" style="text-align:center">Waiting for the host…</p>'}
 </main>`;
 }
@@ -1522,8 +1546,7 @@ function bind(){
     on('infoBtn',()=>{openOv(`<div class="sheet center"><h2>High &amp; Low</h2><p>Open seats in Play are filled by bots.</p><p>Sounds: Kenney, rubberduck and others (CC0). Piano: FluidR3 GM (CC BY 3.0).</p><p class="legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="support.html">Support</a></p><div class="btn-row">${HLAds.canBuy()?'<button class="btn primary" id="noAdsBtn">Remove ads</button>':''}${window.HLNative&&window.HLNative.restore&&!HLAds.noAds()?'<button class="link" id="restoreBtn">Restore purchases</button>':''}<button class="btn" id="ovClose">Close</button></div></div>`);$('#ovClose').onclick=closeOv;const nb=$('#noAdsBtn');if(nb)nb.onclick=()=>{track('noads_tap');HLAds.buy().then(closeOv)};const rs=$('#restoreBtn');if(rs)rs.onclick=()=>{HLAds.restore().then(closeOv)}});
     return;
   }
-  on('leaveBtn',()=>{const stake=eloAtStake();if(stake>0){openOv(`<div class="sheet center"><h2>Leave the duel?</h2><p class="stake">You'll lose <b>${stake}</b> rating</p><div class="btn-row"><button class="btn primary" id="stayBtn">Keep playing</button><button class="btn" id="quitBtn">Leave</button></div></div>`);$('#stayBtn').onclick=closeOv;$('#quitBtn').onclick=()=>{closeOv();leaveGame()};return}
-    if(ui.leaveArmed||mode==='search'||(G&&G.pub&&G.phase==='lobby')||(isPub&&!G)){leaveGame()}else{ui.leaveArmed=true;render(true);later(()=>{ui.leaveArmed=false;render(true)},2500)}});
+  on('leaveBtn',requestLeave);
   if(!G)return;
   on('inviteBtn',()=>{
     const url=inviteURL();
@@ -1632,7 +1655,7 @@ function hlBack(){
       else if(!(o.querySelector('#wheel')||o.querySelector('.stage')))closeOv();
       return true;
     }
-    if(view==='game'){const l=$('#leaveBtn');if(l)l.click();return true}
+    if(view==='game'){requestLeave();return true}
     if(window.HLNative&&typeof window.HLNative.exit==='function')window.HLNative.exit();
     return false;
   }catch(e){return true}

@@ -67,11 +67,14 @@ def parts(operations, data):
     for part in sorted(operations, key=lambda value: value['offset']):
         url = urllib.parse.urlsplit(part['url'])
         end = offset + part['length']
-        if (part['offset'] != offset or not offset < end <= len(data) or part['method'] != 'PUT'
-                or url.scheme != 'https' or not url.hostname
-                or not url.hostname.endswith('.blobstore.apple.com') or url.netloc != url.hostname
-                or url.fragment):
-            raise SafetyError('unexpected upload operation')
+        hostname = url.hostname or ''
+        valid_host = hostname.endswith(('.apple.com', '.icloud.com')) and url.netloc == hostname
+        if url.scheme != 'https' or not valid_host or url.fragment:
+            raise SafetyError('unexpected Apple image upload host: ' + hostname)
+        if part['method'] != 'PUT':
+            raise SafetyError('unexpected Apple image upload method')
+        if part['offset'] != offset or not offset < end <= len(data):
+            raise SafetyError(f'invalid upload range {part["offset"]}+{part["length"]} for {len(data)} bytes')
         result.append((part, data[offset:end]))
         offset = end
     if offset != len(data):
